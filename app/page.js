@@ -643,6 +643,7 @@ function HomeContent() {
               mapClickCallback(lat, lng);
             }
           }}
+          highlightedPlace={highlightedPlace}
         />
       </div>
       </div>

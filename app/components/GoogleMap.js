@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, useMemo } from 'react';
 
-export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocation, onSavePolygon, onPolygonClick, onBoundsChanged, coworkingPlaces, instagramablePlaces, mapClickMode, onMapClick }) {
+export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocation, onSavePolygon, onPolygonClick, onBoundsChanged, coworkingPlaces, instagramablePlaces, mapClickMode, onMapClick, highlightedPlace }) {
   const mapRef = useRef(null);
   const [map, setMap] = useState(null);
   const [marker, setMarker] = useState(null);
@@ -458,6 +458,43 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
       }
     });
   }, [places, map]);
+
+  // Actualizar estilo del polígono resaltado
+  useEffect(() => {
+    if (!map) return;
+
+    // Actualizar todos los polígonos según si están resaltados o no
+    Object.keys(polygonsRef.current).forEach(placeId => {
+      const polygon = polygonsRef.current[placeId];
+      if (!polygon) return;
+
+      const place = places.find(p => p.id === parseInt(placeId));
+      if (!place) return;
+
+      const isHighlighted = highlightedPlace === parseInt(placeId);
+
+      polygon.setOptions({
+        strokeWeight: isHighlighted ? 4 : 3,
+        strokeOpacity: isHighlighted ? 1 : 0.8,
+        strokeColor: place.color || '#eb4034',
+        fillOpacity: isHighlighted ? 0.25 : 0.15,
+        // Aplicar patrón punteado si está resaltado
+        ...(isHighlighted && {
+          strokePosition: window.google.maps.StrokePosition.OUTSIDE,
+          strokeWeight: 4,
+          icons: [{
+            icon: {
+              path: 'M 0,-1 0,1',
+              strokeOpacity: 1,
+              scale: 2
+            },
+            offset: '0',
+            repeat: '10px'
+          }]
+        })
+      });
+    });
+  }, [highlightedPlace, places, map]);
 
   // Función para guardar ediciones del polígono
   const savePolygonEdit = (placeId, polygon) => {
