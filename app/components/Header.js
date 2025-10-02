@@ -20,8 +20,6 @@ export default function Header({ isAdminMode }) {
 
     if (result.success) {
       setShowLoginModal(false);
-      setUsername('');
-      setPassword('');
     }
   };
 
@@ -46,7 +44,12 @@ export default function Header({ isAdminMode }) {
     <>
       <header className="bg-white border-b border-gray-300 px-6 py-2 flex justify-between items-center">
         <div className="flex items-center gap-6">
-          <h1 className="text-lg font-bold text-gray-800">Mapper Trip - Real and secure trips</h1>
+          <h1
+            onClick={() => router.push('/')}
+            className="text-lg font-bold text-gray-800 cursor-pointer hover:text-gray-600 transition-colors"
+          >
+            Mapper Trip - Real and secure trips
+          </h1>
           {isAdminMode && (
             <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">Admin</span>
           )}
@@ -69,6 +72,12 @@ export default function Header({ isAdminMode }) {
               className="text-sm text-gray-600 hover:text-gray-900 transition-colors cursor-pointer"
             >
               Zonas seguras
+            </button>
+            <button
+              onClick={() => router.push('/barrios')}
+              className="text-sm text-gray-600 hover:text-gray-900 transition-colors cursor-pointer"
+            >
+              Barrios
             </button>
           </div>
         </div>

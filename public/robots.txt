@@ -1,0 +1,13 @@
+# Mapper Trip - Robots.txt
+# https://mappertrip.com
+
+User-agent: *
+Allow: /
+Allow: /nomadas-digitales
+Allow: /zonas-seguras-para-viajar
+
+# Bloquear rutas de admin y API
+Disallow: /api/
+
+# Sitemap
+Sitemap: https://mappertrip.com/sitemap.xml
