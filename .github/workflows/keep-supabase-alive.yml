@@ -1,0 +1,21 @@
+name: Keep Supabase Instance Alive
+
+on:
+  schedule:
+    # Ejecutar cada 2 días a las 3:00 AM UTC
+    - cron: '0 3 */2 * *'
+  workflow_dispatch: # Permite ejecutar manualmente desde GitHub
+
+jobs:
+  ping-supabase:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Ping Supabase Database
+        run: |
+          curl -X POST \
+            "${{ secrets.SUPABASE_URL }}/rest/v1/countries?select=id&limit=1" \
+            -H "apikey: ${{ secrets.SUPABASE_ANON_KEY }}" \
+            -H "Authorization: Bearer ${{ secrets.SUPABASE_ANON_KEY }}"
+
+          echo "✅ Supabase instance pinged successfully at $(date)"
