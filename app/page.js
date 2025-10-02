@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { Suspense, useState, useRef, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import GoogleMap from './components/GoogleMap';
 import Sidebar from './components/Sidebar';
@@ -12,7 +12,7 @@ import InstagramablePlacesPanel from './components/InstagramablePlacesPanel';
 import Header from './components/Header';
 import { useAuthStore } from './store/authStore';
 
-export default function Home() {
+function HomeContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { isAuthenticated } = useAuthStore();
@@ -647,5 +647,13 @@ export default function Home() {
       </div>
 
     </div>
+  );
+}
+
+export default function Home() {
+  return (
+    <Suspense fallback={<div className="flex h-screen items-center justify-center">Cargando...</div>}>
+      <HomeContent />
+    </Suspense>
   );
 }
