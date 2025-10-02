@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 
-export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocation, onSavePolygon }) {
+export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocation, onSavePolygon, onPolygonClick }) {
   const mapRef = useRef(null);
   const [map, setMap] = useState(null);
   const [marker, setMarker] = useState(null);
@@ -123,6 +123,11 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
       // Añadir padding para que no queden pegados a los bordes
       const padding = { top: 50, right: 50, bottom: 50, left: 50 };
       map.fitBounds(bounds, padding);
+
+      // Forzar redibujado de overlays después de fitBounds
+      setTimeout(() => {
+        window.google.maps.event.trigger(map, 'resize');
+      }, 100);
       return;
     }
 
@@ -134,6 +139,11 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
     // Centrar el mapa en el lugar seleccionado
     map.setCenter(position);
     map.setZoom(13);
+
+    // Forzar redibujado de overlays después de centrar
+    setTimeout(() => {
+      window.google.maps.event.trigger(map, 'resize');
+    }, 100);
 
     // Eliminar el marcador anterior si existe
     if (marker) {
@@ -264,10 +274,13 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
         // Variable para rastrear el vértice seleccionado
         let selectedVertex = null;
 
-        // Listener para detectar clic en vértices
+        // Listener para detectar clic en vértices o en el polígono
         window.google.maps.event.addListener(polygon, 'click', (event) => {
           if (event.vertex !== undefined && polygon.getEditable()) {
             selectedVertex = event.vertex;
+          } else if (!polygon.getEditable() && onPolygonClick) {
+            // Click en el polígono (no en vértice) cuando no está en modo edición
+            onPolygonClick(place.id);
           }
         });
 
@@ -448,6 +461,17 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
 
       airbnbMarkersRef.current.push(overlay);
     });
+
+    // Forzar redibujado de overlays con un pequeño zoom in/out después de 1 segundo
+    if (airbnbs.length > 0) {
+      setTimeout(() => {
+        const currentZoom = map.getZoom();
+        map.setZoom(currentZoom + 0.0001);
+        setTimeout(() => {
+          map.setZoom(currentZoom);
+        }, 10);
+      }, 1000);
+    }
 
     return () => {
       airbnbMarkersRef.current.forEach(m => m.setMap(null));

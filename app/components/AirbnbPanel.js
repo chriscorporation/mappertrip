@@ -160,7 +160,7 @@ export default function AirbnbPanel({ onGoToLocation, selectedCountry }) {
         <button
           onClick={handleScrapeAirbnb}
           disabled={!airbnbLink || !selectedCountry || scraping}
-          className="w-full px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed text-sm"
+          className="w-full px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed cursor-pointer text-sm"
         >
           {scraping ? 'Scrapeando...' : 'Agregar Airbnb'}
         </button>
@@ -218,7 +218,7 @@ export default function AirbnbPanel({ onGoToLocation, selectedCountry }) {
                         </div>
                         <button
                           onClick={() => handleDeleteNote(note.id, airbnb.id)}
-                          className="ml-2 opacity-0 group-hover:opacity-100 transition-opacity text-gray-400 hover:text-gray-600"
+                          className="ml-2 opacity-0 group-hover:opacity-100 transition-opacity text-gray-400 hover:text-gray-600 cursor-pointer"
                           title="Eliminar nota"
                         >
                           <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" viewBox="0 0 20 20" fill="currentColor">
@@ -248,7 +248,7 @@ export default function AirbnbPanel({ onGoToLocation, selectedCountry }) {
                     href={airbnb.original_url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex items-center gap-1 text-xs text-gray-500 hover:text-blue-600 transition-colors mt-1"
+                    className="flex items-center gap-1 text-xs text-gray-500 hover:text-blue-600 transition-colors mt-1 cursor-pointer"
                   >
                     <BiLinkExternal className="text-sm" />
                     <span>Ver apartamento</span>
@@ -260,7 +260,7 @@ export default function AirbnbPanel({ onGoToLocation, selectedCountry }) {
                 <div className="relative">
                   <button
                     onClick={() => handleDeleteAirbnb(airbnb.id)}
-                    className="p-2 rounded hover:bg-gray-100 text-gray-500"
+                    className="p-2 rounded hover:bg-gray-100 text-gray-500 cursor-pointer"
                     title="Eliminar"
                   >
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
@@ -273,13 +273,13 @@ export default function AirbnbPanel({ onGoToLocation, selectedCountry }) {
                       <div className="flex gap-2">
                         <button
                           onClick={() => setAirbnbToDelete(null)}
-                          className="flex-1 px-2 py-1 text-xs text-gray-700 bg-gray-100 rounded hover:bg-gray-200"
+                          className="flex-1 px-2 py-1 text-xs text-gray-700 bg-gray-100 rounded hover:bg-gray-200 cursor-pointer"
                         >
                           Cancelar
                         </button>
                         <button
                           onClick={() => handleDeleteAirbnb(airbnb.id, true)}
-                          className="flex-1 px-2 py-1 text-xs text-white bg-red-600 rounded hover:bg-red-700"
+                          className="flex-1 px-2 py-1 text-xs text-white bg-red-600 rounded hover:bg-red-700 cursor-pointer"
                         >
                           Eliminar
                         </button>

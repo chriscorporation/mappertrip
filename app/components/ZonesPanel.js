@@ -1,6 +1,8 @@
 'use client';
 
 import { useRef, useEffect, useState } from 'react';
+import ReactMarkdown from 'react-markdown';
+import { BiDollar, BiShield, BiMapAlt, BiInfoCircle, BiMapPin } from 'react-icons/bi';
 
 export default function ZonesPanel({
   selectedCountry,
@@ -10,14 +12,19 @@ export default function ZonesPanel({
   onColorChange,
   onGoToPlace,
   placeToDelete,
+  highlightedPlace,
   onAddPlace
 }) {
   const [address, setAddress] = useState('');
   const [hoverEnabled, setHoverEnabled] = useState(false);
   const [notes, setNotes] = useState({});
   const [newNote, setNewNote] = useState({});
+  const [perplexityData, setPerplexityData] = useState(null);
+  const [selectedZoneAddress, setSelectedZoneAddress] = useState('');
+  const [showPerplexityPanel, setShowPerplexityPanel] = useState(false);
   const inputRef = useRef(null);
   const autocompleteRef = useRef(null);
+  const cardRefs = useRef({});
 
   useEffect(() => {
     const initAutocomplete = () => {
@@ -88,6 +95,16 @@ export default function ZonesPanel({
     }
   }, [selectedCountry, places]);
 
+  // Scroll a la card cuando se resalta
+  useEffect(() => {
+    if (highlightedPlace && cardRefs.current[highlightedPlace]) {
+      cardRefs.current[highlightedPlace].scrollIntoView({
+        behavior: 'smooth',
+        block: 'center'
+      });
+    }
+  }, [highlightedPlace]);
+
   const handleAddNote = async (placeId) => {
     const noteText = newNote[placeId]?.trim();
     if (!noteText) return;
@@ -138,6 +155,7 @@ export default function ZonesPanel({
   const countryPlaces = places.filter(p => p.country_code === selectedCountry.country_code);
 
   return (
+    <div className="flex">
     <div className="w-80 bg-white border-r border-gray-300 flex flex-col">
       <div className="p-4 border-b border-gray-200">
         <h2 className="text-xl font-bold">Zones</h2>
@@ -176,13 +194,32 @@ export default function ZonesPanel({
           countryPlaces.map(place => (
             <div
               key={place.id}
-              className={`p-3 bg-gray-50 rounded-lg border border-gray-200 transition-colors ${hoverEnabled ? 'cursor-pointer hover:bg-gray-100' : ''}`}
+              ref={el => cardRefs.current[place.id] = el}
+              className={`p-3 bg-gray-50 rounded-lg transition-colors ${hoverEnabled ? 'cursor-pointer hover:bg-gray-100' : ''} ${
+                highlightedPlace === place.id
+                  ? 'border-2 border-blue-400'
+                  : 'border border-gray-200'
+              }`}
               onMouseEnter={() => hoverEnabled && onGoToPlace(place)}
             >
               <div className="mb-2">
                 <h3
                   className="font-semibold text-sm mb-1 cursor-pointer hover:text-blue-600 transition-colors"
-                  onClick={() => onGoToPlace(place)}
+                  onClick={async () => {
+                    // Posicionar en el mapa
+                    onGoToPlace(place);
+
+                    // Cargar datos de Perplexity
+                    try {
+                      const response = await fetch(`/api/perplexity-notes?zone_id=${place.id}`);
+                      const data = await response.json();
+                      setPerplexityData(data);
+                      setSelectedZoneAddress(place.address);
+                      setShowPerplexityPanel(true);
+                    } catch (error) {
+                      console.error('Error loading perplexity data:', error);
+                    }
+                  }}
                 >
                   {place.address}
                 </h3>
@@ -200,7 +237,7 @@ export default function ZonesPanel({
                         </div>
                         <button
                           onClick={() => handleDeleteNote(note.id, place.id)}
-                          className="ml-2 opacity-0 group-hover:opacity-100 transition-opacity text-gray-400 hover:text-gray-600"
+                          className="ml-2 opacity-0 group-hover:opacity-100 transition-opacity text-gray-400 hover:text-gray-600 cursor-pointer"
                           title="Eliminar nota"
                         >
                           <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" viewBox="0 0 20 20" fill="currentColor">
@@ -243,12 +280,12 @@ export default function ZonesPanel({
                   <option value="#22c55e" style={{ color: '#22c55e' }}>🟢 Seguro</option>
                   <option value="#3b82f6" style={{ color: '#3b82f6' }}>🔵 Medio</option>
                   <option value="#f97316" style={{ color: '#f97316' }}>🟠 Regular</option>
-                  <option value="#6b7280" style={{ color: '#6b7280' }}>⚪ Precaución</option>
+                  <option value="#eab308" style={{ color: '#eab308' }}>🟡 Precaución</option>
                   <option value="#dc2626" style={{ color: '#dc2626' }}>🔴 Inseguro</option>
                 </select>
                 <button
                   onClick={() => onStartDrawing(place.id)}
-                  className={`p-2 rounded hover:bg-gray-100 ${place.isDrawing ? 'bg-blue-100' : ''}`}
+                  className={`p-2 rounded hover:bg-gray-100 cursor-pointer ${place.isDrawing ? 'bg-blue-100' : ''}`}
                   title="Delimitar zona"
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
@@ -258,7 +295,7 @@ export default function ZonesPanel({
                 <div className="relative">
                   <button
                     onClick={() => onDeletePlace(place.id)}
-                    className="p-2 rounded hover:bg-gray-100 text-gray-500"
+                    className="p-2 rounded hover:bg-gray-100 text-gray-500 cursor-pointer"
                     title="Eliminar"
                   >
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
@@ -271,13 +308,13 @@ export default function ZonesPanel({
                       <div className="flex gap-2">
                         <button
                           onClick={() => onDeletePlace(null)}
-                          className="flex-1 px-2 py-1 text-xs text-gray-700 bg-gray-100 rounded hover:bg-gray-200"
+                          className="flex-1 px-2 py-1 text-xs text-gray-700 bg-gray-100 rounded hover:bg-gray-200 cursor-pointer"
                         >
                           Cancelar
                         </button>
                         <button
                           onClick={() => onDeletePlace(place.id, true)}
-                          className="flex-1 px-2 py-1 text-xs text-white bg-red-600 rounded hover:bg-red-700"
+                          className="flex-1 px-2 py-1 text-xs text-white bg-red-600 rounded hover:bg-red-700 cursor-pointer"
                         >
                           Eliminar
                         </button>
@@ -290,6 +327,105 @@ export default function ZonesPanel({
           ))
         )}
       </div>
+
+      </div>
+
+      {/* Panel flotante de Perplexity */}
+      {showPerplexityPanel && perplexityData && (
+        <div className="w-96 bg-white shadow-2xl border-l border-gray-300 overflow-y-auto">
+          <div className="sticky top-0 bg-white border-b border-gray-200 p-4 flex justify-between items-center">
+            <h2 className="text-lg font-bold">{selectedZoneAddress}</h2>
+            <button
+              onClick={() => setShowPerplexityPanel(false)}
+              className="p-2 hover:bg-gray-100 rounded cursor-pointer"
+              title="Cerrar"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+              </svg>
+            </button>
+          </div>
+
+          <div className="p-4 space-y-6">
+            {/* Rent */}
+            {perplexityData.rent && (
+              <div>
+                <div className="flex items-center gap-2 mb-2">
+                  <BiDollar className="text-base text-gray-600 flex-shrink-0" />
+                  <h3 className="font-semibold text-sm text-gray-700">Costo de renta promedio</h3>
+                </div>
+                <p className="text-lg font-bold text-gray-800">${Math.round(perplexityData.rent)} USD/mes</p>
+                <p className="text-xs text-gray-500 mt-1">Monoambiente (máx. 2 personas)</p>
+              </div>
+            )}
+
+            {/* Secure */}
+            {perplexityData.secure && (
+              <div>
+                <div className="flex items-center gap-2 mb-2">
+                  <BiShield className="text-lg text-blue-600" />
+                  <h3 className="font-semibold text-sm text-gray-700">Seguridad</h3>
+                </div>
+                <p className={`text-lg font-bold ${
+                  perplexityData.secure.toLowerCase().includes('buena') || perplexityData.secure.toLowerCase().includes('aceptable')
+                    ? 'text-green-700'
+                    : perplexityData.secure.toLowerCase().includes('media')
+                    ? 'text-orange-600'
+                    : 'text-red-600'
+                }`}>
+                  {perplexityData.secure}
+                </p>
+              </div>
+            )}
+
+            {/* Tourism */}
+            {perplexityData.tourism && (
+              <div>
+                <div className="flex items-center gap-2 mb-2">
+                  <BiMapAlt className="text-lg text-purple-600" />
+                  <h3 className="font-semibold text-sm text-gray-700">Turismo</h3>
+                </div>
+                <div className="text-xs text-gray-600 leading-relaxed prose prose-sm max-w-none">
+                  <ReactMarkdown>{perplexityData.tourism}</ReactMarkdown>
+                </div>
+              </div>
+            )}
+
+            {/* Notes */}
+            {perplexityData.notes && (
+              <div>
+                <div className="flex items-center gap-2 mb-2">
+                  <BiInfoCircle className="text-lg text-gray-600" />
+                  <h3 className="font-semibold text-sm text-gray-700">Notas Generales</h3>
+                </div>
+                <div className="text-xs text-gray-600 leading-relaxed prose prose-sm max-w-none">
+                  <ReactMarkdown>{perplexityData.notes}</ReactMarkdown>
+                </div>
+              </div>
+            )}
+
+            {/* Places */}
+            {perplexityData.places && (
+              <div>
+                <div className="flex items-center gap-2 mb-2">
+                  <BiMapPin className="text-lg text-red-600" />
+                  <h3 className="font-semibold text-sm text-gray-700">Lugares de Interés</h3>
+                </div>
+                <div className="text-xs text-gray-600 leading-relaxed prose prose-sm max-w-none">
+                  <ReactMarkdown>{perplexityData.places}</ReactMarkdown>
+                </div>
+              </div>
+            )}
+
+            {/* No data message */}
+            {!perplexityData.notes && !perplexityData.rent && !perplexityData.tourism && !perplexityData.secure && !perplexityData.places && (
+              <div className="text-center py-8">
+                <p className="text-sm text-gray-500">No hay información disponible para esta zona</p>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

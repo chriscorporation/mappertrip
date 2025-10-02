@@ -17,6 +17,7 @@ export default function Home() {
   const [placeToDelete, setPlaceToDelete] = useState(null);
   const [selectedTab, setSelectedTab] = useState('countries');
   const [selectedCountry, setSelectedCountry] = useState(null);
+  const [highlightedPlace, setHighlightedPlace] = useState(null);
   const inputRef = useRef(null);
   const autocompleteRef = useRef(null);
 
@@ -114,6 +115,23 @@ export default function Home() {
         setPlaces(prev => prev.map(p =>
           p.id === placeId ? { ...savedPlace, isDrawing: false } : p
         ));
+
+        // Ejecutar búsquedas de Perplexity en background para esta zona
+        const searchTypes = ['notes', 'rent', 'tourism', 'secure', 'places'];
+        searchTypes.forEach(async (searchType) => {
+          try {
+            await fetch('/api/perplexity-search', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                zone_id: savedPlace.id,
+                search_type: searchType
+              })
+            });
+          } catch (error) {
+            console.error(`Error executing ${searchType} search:`, error);
+          }
+        });
       } catch (error) {
         console.error('Error:', error);
       }
@@ -309,6 +327,7 @@ export default function Home() {
           onColorChange={handleColorChange}
           onGoToPlace={handleGoToPlace}
           placeToDelete={placeToDelete}
+          highlightedPlace={highlightedPlace}
           onAddPlace={(placeData) => {
             setPlaces(prev => [placeData, ...prev]);
             setSelectedPlace(placeData);
@@ -447,6 +466,10 @@ export default function Home() {
           airbnbs={airbnbs.filter(a => a.country_code === selectedCountry?.country_code)}
           airbnbLocation={airbnbLocation}
           onSavePolygon={handleSavePolygon}
+          onPolygonClick={(placeId) => {
+            setHighlightedPlace(placeId);
+            setSelectedTab('zones');
+          }}
         />
       </div>
 
