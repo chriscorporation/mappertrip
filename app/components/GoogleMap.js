@@ -474,24 +474,10 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
       const isHighlighted = highlightedPlace === parseInt(placeId);
 
       polygon.setOptions({
-        strokeWeight: isHighlighted ? 4 : 3,
-        strokeOpacity: isHighlighted ? 1 : 0.8,
-        strokeColor: place.color || '#eb4034',
+        strokeWeight: isHighlighted ? 5 : 3,
+        strokeOpacity: 1,
+        strokeColor: isHighlighted ? '#FFEB3B' : (place.color || '#eb4034'),
         fillOpacity: isHighlighted ? 0.25 : 0.15,
-        // Aplicar patrón punteado si está resaltado
-        ...(isHighlighted && {
-          strokePosition: window.google.maps.StrokePosition.OUTSIDE,
-          strokeWeight: 4,
-          icons: [{
-            icon: {
-              path: 'M 0,-1 0,1',
-              strokeOpacity: 1,
-              scale: 2
-            },
-            offset: '0',
-            repeat: '10px'
-          }]
-        })
       });
     });
   }, [highlightedPlace, places, map]);
