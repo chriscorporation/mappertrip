@@ -73,6 +73,14 @@ export default function Header({ isAdminMode }) {
             >
               Zonas seguras
             </button>
+            <a
+              href="https://vuelahoy.com/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-sm text-gray-600 hover:text-gray-900 transition-colors cursor-pointer"
+            >
+              Vuelos
+            </a>
             <button
               onClick={() => router.push('/barrios')}
               className="text-sm text-gray-600 hover:text-gray-900 transition-colors cursor-pointer"
