@@ -1,67 +1,17 @@
-'use client';
-
-import { useEffect, useRef } from 'react';
 import Header from '../components/Header';
-import { useAuthStore } from '../store/authStore';
+import AnimatedImage from '../components/AnimatedImage';
+import ExploreButton from '../components/ExploreButton';
+
+export const metadata = {
+  title: 'Zonas Seguras para Viajar - Información de Barrios y Seguridad',
+  description: 'Conoce las zonas más seguras para viajar como nómada digital. Información sobre seguridad, coworking, alojamiento Airbnb y lugares instagramables en cada barrio.',
+  openGraph: {
+    title: 'Zonas Seguras para Viajar - Información de Barrios y Seguridad',
+    description: 'Viaja informado y seguro. Descubre información detallada de cada barrio con datos de locales y viajeros expertos.',
+  },
+};
 
 export default function ZonasSeguras() {
-  const { isAuthenticated } = useAuthStore();
-  const isAdminMode = isAuthenticated;
-  const imageRef = useRef(null);
-
-  useEffect(() => {
-    const img = imageRef.current;
-    if (!img) return;
-
-    // Esperar a que la imagen cargue para obtener sus dimensiones reales
-    const handleImageLoad = () => {
-      const container = img.parentElement;
-      const containerHeight = container.offsetHeight;
-      const imgNaturalWidth = img.naturalWidth;
-      const imgNaturalHeight = img.naturalHeight;
-
-      // Calcular el alto que la imagen tendría al 100% del ancho del contenedor
-      const containerWidth = container.offsetWidth;
-      const scaledImgHeight = (imgNaturalHeight / imgNaturalWidth) * containerWidth;
-
-      // Calcular cuánto necesitamos desplazar para ver toda la imagen
-      // El máximo desplazamiento en píxeles es la diferencia entre el alto escalado y el contenedor
-      const maxScrollPx = scaledImgHeight - containerHeight;
-
-      let position = 0;
-      let direction = 1;
-      const speed = 0.2; // Velocidad en píxeles por frame
-
-      const animate = () => {
-        position += speed * direction;
-
-        // Cambiar dirección cuando llega a los límites
-        if (position >= 0) {
-          position = 0;
-          direction = -1;
-        } else if (position <= -maxScrollPx) {
-          position = -maxScrollPx;
-          direction = 1;
-        }
-
-        img.style.transform = `translateY(${position}px)`;
-        requestAnimationFrame(animate);
-      };
-
-      const animationId = requestAnimationFrame(animate);
-
-      return animationId;
-    };
-
-    if (img.complete) {
-      const animationId = handleImageLoad();
-      return () => cancelAnimationFrame(animationId);
-    } else {
-      img.addEventListener('load', handleImageLoad);
-      return () => img.removeEventListener('load', handleImageLoad);
-    }
-  }, []);
-
   const features = [
     {
       id: 'seguridad',
@@ -112,7 +62,7 @@ export default function ZonasSeguras() {
 
   return (
     <div className="flex flex-col min-h-screen overflow-y-auto">
-      <Header isAdminMode={isAdminMode} />
+      <Header isAdminMode={false} />
 
       <section className="pt-6 pb-20 bg-gray-50">
         <div className="container mx-auto px-4">
@@ -122,11 +72,11 @@ export default function ZonasSeguras() {
                 <span className="inline-block mb-5 text-sm text-gray-900 font-bold uppercase tracking-widest">
                   ¿Por qué conocer la zona?
                 </span>
-                <h2 className="font-heading mb-6 text-4xl md:text-5xl lg:text-6xl font-black tracking-tight">
+                <h1 className="font-heading mb-6 text-4xl md:text-5xl lg:text-6xl font-black tracking-tight">
                   <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-500 to-cyan-500">
                     Un viaje seguro se disfruta más
                   </span>
-                </h2>
+                </h1>
                 <p className="text-gray-500 font-bold text-lg">
                   Sabemos que conocer un nuevo país es una experiencia divertida, pero a veces se puede convertir en estresante si no conocemos bien la zona. Por eso te ayudamos a viajar informado y seguro.
                 </p>
@@ -134,10 +84,11 @@ export default function ZonasSeguras() {
 
               <div className="mb-10 flex justify-center">
                 <div className="max-w-3xl w-full rounded-3xl overflow-hidden relative" style={{ height: '364px' }}>
-                  <img
-                    ref={imageRef}
+                  <AnimatedImage
                     src="/images/digital-nomads-2.png"
                     alt="Zonas seguras para viajar"
+                    direction="vertical"
+                    speed={0.2}
                     className="block"
                     style={{ width: '100%', maxWidth: 'none', height: 'auto' }}
                   />
@@ -151,11 +102,11 @@ export default function ZonasSeguras() {
                       <div className="w-full block p-10 bg-gray-100 rounded-3xl">
                         <div className="flex flex-wrap -m-2">
                           <div className="flex-1 p-2">
-                            <h3 className="font-heading mb-4 text-3xl font-black">
+                            <h2 className="font-heading mb-4 text-3xl font-black">
                               <span className="text-transparent bg-clip-text bg-gradient-to-r from-gray-500 to-gray-900">
                                 {feature.title}
                               </span>
-                            </h3>
+                            </h2>
                             <div className="text-gray-500 font-bold">
                               {feature.description}
                             </div>
@@ -182,12 +133,7 @@ export default function ZonasSeguras() {
                 </div>
 
                 <div className="flex justify-center">
-                  <button
-                    onClick={() => window.location.href = '/'}
-                    className="px-6 py-3 text-sm text-white font-bold bg-blue-500 hover:bg-blue-600 focus:ring-4 focus:ring-blue-200 rounded-full cursor-pointer transition-colors"
-                  >
-                    Explorar destinos seguros
-                  </button>
+                  <ExploreButton />
                 </div>
               </div>
             </div>
