@@ -28,6 +28,7 @@ export async function generateStaticParams() {
 
 // Generate metadata for SEO
 export async function generateMetadata({ params }) {
+  const resolvedParams = await params;
   const { data: countries } = await supabase
     .from('countries')
     .select('name, country_code');
@@ -38,7 +39,7 @@ export async function generateMetadata({ params }) {
       .replace(/[\u0300-\u036f]/g, "")
       .replace(/\s+/g, '-')
       .replace(/[^\w-]+/g, '');
-    return slug === params.country;
+    return slug === resolvedParams.country;
   });
 
   if (!foundCountry) {
@@ -100,7 +101,8 @@ async function getCountryData(countrySlug) {
 }
 
 export default async function BarriosPais({ params }) {
-  const data = await getCountryData(params.country);
+  const resolvedParams = await params;
+  const data = await getCountryData(resolvedParams.country);
 
   if (!data) {
     notFound();
