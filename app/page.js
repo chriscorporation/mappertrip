@@ -12,6 +12,7 @@ import InstagramablePlacesPanel from './components/InstagramablePlacesPanel';
 import Header from './components/Header';
 import { useAuthStore } from './store/authStore';
 
+// Home page component with tab-based navigation for countries, zones, airbnb, coworking, and instagramable places
 function HomeContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
