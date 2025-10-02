@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, useMemo } from 'react';
 
-export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocation, onSavePolygon, onPolygonClick, onBoundsChanged, coworkingPlaces, instagramablePlaces }) {
+export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocation, onSavePolygon, onPolygonClick, onBoundsChanged, coworkingPlaces, instagramablePlaces, mapClickMode, onMapClick }) {
   const mapRef = useRef(null);
   const [map, setMap] = useState(null);
   const [marker, setMarker] = useState(null);
@@ -13,6 +13,8 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
   const airbnbMarkersRef = useRef([]);
   const animationFrameRef = useRef(null);
   const boundsChangeTimeoutRef = useRef(null);
+  const mapClickListenerRef = useRef(null);
+  const tempMarkerRef = useRef(null);
 
   useEffect(() => {
     const loadGoogleMaps = () => {
@@ -590,6 +592,84 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
       airbnbMarkersRef.current = [];
     };
   }, [map, airbnbsKey]);
+
+  // Manejar el modo de clic del mapa
+  useEffect(() => {
+    if (!map) return;
+
+    // Limpiar listener anterior si existe
+    if (mapClickListenerRef.current) {
+      window.google.maps.event.removeListener(mapClickListenerRef.current);
+      mapClickListenerRef.current = null;
+    }
+
+    // Limpiar marcador temporal anterior si existe
+    if (tempMarkerRef.current) {
+      tempMarkerRef.current.setMap(null);
+      tempMarkerRef.current = null;
+    }
+
+    // Si el modo está activo, agregar listener
+    if (mapClickMode && onMapClick) {
+      mapClickListenerRef.current = map.addListener('click', (event) => {
+        const lat = event.latLng.lat();
+        const lng = event.latLng.lng();
+
+        // Crear marcador rojo temporal arrastrable
+        if (tempMarkerRef.current) {
+          tempMarkerRef.current.setMap(null);
+        }
+
+        tempMarkerRef.current = new window.google.maps.Marker({
+          position: { lat, lng },
+          map: map,
+          animation: window.google.maps.Animation.DROP,
+          draggable: true,
+        });
+
+        // Listener para cuando se arrastra el marcador
+        tempMarkerRef.current.addListener('dragend', (dragEvent) => {
+          const newLat = dragEvent.latLng.lat();
+          const newLng = dragEvent.latLng.lng();
+          onMapClick(newLat, newLng);
+        });
+
+        onMapClick(lat, lng);
+      });
+    }
+
+    // Cambiar cursor del mapa
+    if (mapRef.current) {
+      mapRef.current.style.cursor = mapClickMode ? 'crosshair' : '';
+    }
+
+    // Ocultar polígonos cuando está activo el modo
+    Object.values(polygonsRef.current).forEach(polygon => {
+      if (polygon) {
+        polygon.setVisible(!mapClickMode);
+      }
+    });
+
+    return () => {
+      if (mapClickListenerRef.current) {
+        window.google.maps.event.removeListener(mapClickListenerRef.current);
+        mapClickListenerRef.current = null;
+      }
+      if (tempMarkerRef.current) {
+        tempMarkerRef.current.setMap(null);
+        tempMarkerRef.current = null;
+      }
+      if (mapRef.current) {
+        mapRef.current.style.cursor = '';
+      }
+      // Mostrar polígonos nuevamente
+      Object.values(polygonsRef.current).forEach(polygon => {
+        if (polygon) {
+          polygon.setVisible(true);
+        }
+      });
+    };
+  }, [map, mapClickMode, onMapClick]);
 
   return <div ref={mapRef} className="w-full h-full" />;
 }

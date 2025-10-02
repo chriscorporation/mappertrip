@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import GoogleMap from './components/GoogleMap';
 import Sidebar from './components/Sidebar';
 import CountriesPanel from './components/CountriesPanel';
@@ -12,6 +13,8 @@ import Header from './components/Header';
 import { useAuthStore } from './store/authStore';
 
 export default function Home() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const { isAuthenticated } = useAuthStore();
   const isAdminMode = isAuthenticated;
 
@@ -28,8 +31,18 @@ export default function Home() {
   const [selectedCountry, setSelectedCountry] = useState(null);
   const [highlightedPlace, setHighlightedPlace] = useState(null);
   const [mapBounds, setMapBounds] = useState(null);
+  const [mapClickMode, setMapClickMode] = useState(false);
+  const [mapClickCallback, setMapClickCallback] = useState(null);
   const inputRef = useRef(null);
   const autocompleteRef = useRef(null);
+
+  // Sync selectedTab with URL on mount and when searchParams change
+  useEffect(() => {
+    const tab = searchParams.get('tab');
+    if (tab && ['countries', 'zones', 'airbnb', 'coworking', 'instagramable'].includes(tab)) {
+      setSelectedTab(tab);
+    }
+  }, [searchParams]);
 
   useEffect(() => {
     const initAutocomplete = () => {
@@ -99,6 +112,9 @@ export default function Home() {
     // Guardar en Supabase
     if (place) {
       try {
+        // Verificar si es un polígono nuevo (no existía antes)
+        const isNewPolygon = !place.polygon;
+
         const response = await fetch('/api/places', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -126,22 +142,20 @@ export default function Home() {
           p.id === placeId ? { ...savedPlace, isDrawing: false } : p
         ));
 
-        // Ejecutar búsquedas de Perplexity en background para esta zona
-        const searchTypes = ['notes', 'rent', 'tourism', 'secure', 'places'];
-        searchTypes.forEach(async (searchType) => {
+        // Solo ejecutar búsquedas de Perplexity si es un polígono nuevo
+        if (isNewPolygon) {
           try {
-            await fetch('/api/perplexity-search', {
+            await fetch('/api/perplexity-populate', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
-                zone_id: savedPlace.id,
-                search_type: searchType
+                zone_id: savedPlace.id
               })
             });
           } catch (error) {
-            console.error(`Error executing ${searchType} search:`, error);
+            console.error('Error populating zone with AI:', error);
           }
-        });
+        }
       } catch (error) {
         console.error('Error:', error);
       }
@@ -194,6 +208,32 @@ export default function Home() {
     setSelectedPlace(place);
   };
 
+  const handleTuristicChange = async (placeId, is_turistic) => {
+    const place = places.find(p => p.id === placeId);
+
+    setPlaces(prev => prev.map(p =>
+      p.id === placeId ? { ...p, is_turistic } : p
+    ));
+
+    // Solo actualizar en Supabase si tiene polígono guardado
+    if (place && place.polygon) {
+      await fetch('/api/places', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: place.id,
+          address: place.address,
+          lat: place.lat,
+          lng: place.lng,
+          placeId: place.placeId,
+          polygon: place.polygon,
+          color: place.color,
+          is_turistic
+        })
+      });
+    }
+  };
+
   const handleViewAirbnbLocation = async () => {
     if (!airbnbLink) return;
 
@@ -243,6 +283,7 @@ export default function Home() {
             polygon: p.polygon,
             color: p.color,
             country_code: p.country_code,
+            is_turistic: p.is_turistic || false,
             isDrawing: false
           }));
           setPlaces(placesWithDrawing);
@@ -300,7 +341,7 @@ export default function Home() {
 
   const handleSelectCountry = (country) => {
     setSelectedCountry(country);
-    setSelectedTab('zones');
+    router.push('/?tab=zones');
 
     // Primero calcular bounds para zonas
     const countryPlaces = places.filter(p => p.country_code === country.country_code);
@@ -400,7 +441,6 @@ export default function Home() {
         {/* Sidebar con tabs */}
         <Sidebar
         selectedTab={selectedTab}
-        onTabChange={setSelectedTab}
         selectedCountry={selectedCountry}
         isZonesEnabled={!!selectedCountry}
       />
@@ -421,12 +461,17 @@ export default function Home() {
           onStartDrawing={handleStartDrawing}
           onDeletePlace={handleDeletePlace}
           onColorChange={handleColorChange}
+          onTuristicChange={handleTuristicChange}
           onGoToPlace={handleGoToPlace}
           placeToDelete={placeToDelete}
           highlightedPlace={highlightedPlace}
           onAddPlace={(placeData) => {
             setPlaces(prev => [placeData, ...prev]);
             setSelectedPlace(placeData);
+          }}
+          onMapClickModeChange={(isActive, callback) => {
+            setMapClickMode(isActive);
+            setMapClickCallback(() => callback);
           }}
         />
       )}
@@ -586,11 +631,17 @@ export default function Home() {
           onSavePolygon={handleSavePolygon}
           onPolygonClick={(placeId) => {
             setHighlightedPlace(placeId);
-            setSelectedTab('zones');
+            router.push('/?tab=zones');
           }}
           onBoundsChanged={setMapBounds}
           coworkingPlaces={coworkingPlaces}
           instagramablePlaces={instagramablePlaces}
+          mapClickMode={mapClickMode}
+          onMapClick={(lat, lng) => {
+            if (mapClickCallback) {
+              mapClickCallback(lat, lng);
+            }
+          }}
         />
       </div>
       </div>

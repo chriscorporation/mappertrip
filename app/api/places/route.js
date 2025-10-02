@@ -31,6 +31,38 @@ export async function GET() {
 export async function POST(request) {
   const body = await request.json();
 
+  // Primero verificar si ya existe
+  const { data: existing } = await supabaseRead
+    .from('geoplaces')
+    .select('id')
+    .eq('address', body.address)
+    .single();
+
+  if (existing) {
+    // Si ya existe, hacer un update en lugar de insert
+    const { data, error } = await supabaseWrite
+      .from('geoplaces')
+      .update({
+        lat: parseFloat(body.lat),
+        lng: parseFloat(body.lng),
+        place_id: body.placeId,
+        polygon: body.polygon,
+        color: body.color || '#22c55e',
+        country_code: body.country_code || 'AR',
+        is_turistic: body.is_turistic || false
+      })
+      .eq('id', existing.id)
+      .select()
+      .single();
+
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+
+    return NextResponse.json(data);
+  }
+
+  // Si no existe, hacer insert normal
   const { data, error } = await supabaseWrite
     .from('geoplaces')
     .insert([{
@@ -40,7 +72,8 @@ export async function POST(request) {
       place_id: body.placeId,
       polygon: body.polygon,
       color: body.color || '#22c55e',
-      country_code: body.country_code || 'AR'
+      country_code: body.country_code || 'AR',
+      is_turistic: body.is_turistic || false
     }])
     .select()
     .single();
@@ -64,7 +97,8 @@ export async function PUT(request) {
       lng: parseFloat(body.lng),
       place_id: body.placeId,
       polygon: body.polygon,
-      color: body.color
+      color: body.color,
+      is_turistic: body.is_turistic
     })
     .eq('id', body.id)
     .select()

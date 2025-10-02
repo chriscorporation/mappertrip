@@ -31,7 +31,7 @@ const PROMPTS = {
     `Busca información reciente sobre seguridad en "${address}, ${country}". Analiza opiniones de locales, extranjeros residentes, policía y viajeros frecuentes. Responde ÚNICAMENTE con una de estas frases exactas: "Seguridad buena", "Seguridad aceptable", "Seguridad media", "Seguridad baja", o "Sin seguridad".`,
 
   places: (address, country) =>
-    `Busca opiniones, comentarios y recomendaciones de lugares representativos que existan en "${address}, ${country}" o cercanos para visitar. Si no hay atracciones principales, sugiere restaurantes populares, mercados de fin de semana, o eventos importantes que ocurran en la zona. Recomienda al menos 3 a 5 lugares con sus nombres específicos. Usa formato Markdown para resaltar palabras importantes con negritas. No debe superar los 200 palabras la respuesta. Sin incluir referencias, números entre corchetes ni links.`
+    `Busca opiniones, comentarios y recomendaciones de lugares representativos que existan en "${address}, ${country}" o cercanos para visitar. Si no hay atracciones principales, sugiere restaurantes populares, mercados de fin de semana, o eventos importantes que ocurran en la zona. Recomienda al menos 3 a 5 lugares con sus nombres específicos. IMPORTANTE: Usa formato Markdown para poner en negritas **todos los nombres de lugares de interés, atracciones, restaurantes, mercados o eventos**. No debe superar los 200 palabras la respuesta. Sin incluir referencias, números entre corchetes ni links.`
 };
 
 export async function POST(request) {
@@ -75,6 +75,26 @@ export async function POST(request) {
       .single();
 
     const countryName = country?.name || zone.country_code;
+
+    // Verificar si ya existe información para este campo específico
+    const { data: existing } = await supabaseRead
+      .from('perplexity_notes')
+      .select(`id, ${search_type}`)
+      .eq('zone_id', zone_id)
+      .single();
+
+    // Si el campo ya tiene información, no llamar a Perplexity
+    if (existing && existing[search_type]) {
+      return Response.json({
+        success: true,
+        zone_id,
+        search_type,
+        response: existing[search_type],
+        skipped: true,
+        message: 'Campo ya tiene información, se omitió la llamada a Perplexity'
+      });
+    }
+
     const prompt = PROMPTS[search_type](zone.address, countryName);
 
     // Configuración base para Perplexity
@@ -162,42 +182,24 @@ export async function POST(request) {
       );
     }
 
-    // Verificar si ya existe un registro para esta zona
-    const { data: existing } = await supabaseRead
+    // Usar upsert para actualizar o insertar en un solo paso
+    const { data: result, error: upsertError } = await supabaseWrite
       .from('perplexity_notes')
-      .select('id')
-      .eq('zone_id', zone_id)
-      .single();
-
-    let result;
-    if (existing) {
-      // Actualizar registro existente
-      const { data: updated, error: updateError } = await supabaseWrite
-        .from('perplexity_notes')
-        .update({
+      .upsert(
+        {
+          zone_id: zone_id,
           [search_type]: aiResponse,
           updated_at: new Date().toISOString()
-        })
-        .eq('zone_id', zone_id)
-        .select()
-        .single();
+        },
+        {
+          onConflict: 'zone_id',
+          ignoreDuplicates: false
+        }
+      )
+      .select()
+      .single();
 
-      if (updateError) throw updateError;
-      result = updated;
-    } else {
-      // Crear nuevo registro
-      const { data: created, error: createError } = await supabaseWrite
-        .from('perplexity_notes')
-        .insert({
-          zone_id: zone_id,
-          [search_type]: aiResponse
-        })
-        .select()
-        .single();
-
-      if (createError) throw createError;
-      result = created;
-    }
+    if (upsertError) throw upsertError;
 
     return Response.json({
       success: true,

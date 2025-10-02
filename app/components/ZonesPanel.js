@@ -3,6 +3,7 @@
 import { useRef, useEffect, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { BiDollar, BiShield, BiMapAlt, BiInfoCircle, BiMapPin } from 'react-icons/bi';
+import { HiOutlineSparkles } from 'react-icons/hi';
 import { useAuthStore } from '../store/authStore';
 
 export default function ZonesPanel({
@@ -11,10 +12,12 @@ export default function ZonesPanel({
   onStartDrawing,
   onDeletePlace,
   onColorChange,
+  onTuristicChange,
   onGoToPlace,
   placeToDelete,
   highlightedPlace,
-  onAddPlace
+  onAddPlace,
+  onMapClickModeChange
 }) {
   const { isAuthenticated } = useAuthStore();
   const isAdminMode = isAuthenticated;
@@ -25,10 +28,25 @@ export default function ZonesPanel({
   const [perplexityData, setPerplexityData] = useState(null);
   const [selectedZoneAddress, setSelectedZoneAddress] = useState('');
   const [showPerplexityPanel, setShowPerplexityPanel] = useState(false);
+  const [loadingPerplexity, setLoadingPerplexity] = useState(false);
+  const [loadingAI, setLoadingAI] = useState({});
+  const [duplicateError, setDuplicateError] = useState('');
+  const [mapClickMode, setMapClickMode] = useState(false);
+  const [pendingPlace, setPendingPlace] = useState(null);
+  const [pendingPlaceName, setPendingPlaceName] = useState('');
   const inputRef = useRef(null);
   const autocompleteRef = useRef(null);
   const cardRefs = useRef({});
   const perplexityPanelRef = useRef(null);
+
+  // Notificar cuando cambia el modo de clic del mapa
+  useEffect(() => {
+    if (onMapClickModeChange) {
+      onMapClickModeChange(mapClickMode, (lat, lng) => {
+        setPendingPlace({ lat, lng });
+      });
+    }
+  }, [mapClickMode]);
 
   useEffect(() => {
     const initAutocomplete = () => {
@@ -41,7 +59,6 @@ export default function ZonesPanel({
         autocompleteRef.current = new window.google.maps.places.Autocomplete(
           inputRef.current,
           {
-            types: ['geocode'],
             componentRestrictions: { country: selectedCountry.country_code.toLowerCase() }
           }
         );
@@ -50,6 +67,20 @@ export default function ZonesPanel({
           const place = autocompleteRef.current.getPlace();
 
           if (place.geometry) {
+            // Verificar si ya existe una zona con la misma dirección
+            const countryPlaces = places.filter(p => p.country_code === selectedCountry.country_code);
+            const isDuplicate = countryPlaces.some(p =>
+              p.address.toLowerCase() === place.formatted_address.toLowerCase() ||
+              p.placeId === place.place_id
+            );
+
+            if (isDuplicate) {
+              setDuplicateError('Esta zona ya existe');
+              setTimeout(() => setDuplicateError(''), 3000);
+              setAddress('');
+              return;
+            }
+
             const placeData = {
               id: Date.now(),
               address: place.formatted_address,
@@ -64,6 +95,7 @@ export default function ZonesPanel({
 
             onAddPlace(placeData);
             setAddress('');
+            setDuplicateError('');
           }
         });
 
@@ -78,26 +110,18 @@ export default function ZonesPanel({
     initAutocomplete();
   }, [selectedCountry, onAddPlace]);
 
-  // Cargar notas para cada zona
-  useEffect(() => {
-    const loadNotes = async () => {
-      const countryPlaces = places.filter(p => p.country_code === selectedCountry?.country_code);
+  // Cargar notas bajo demanda
+  const loadNotesForPlace = async (placeId) => {
+    if (notes[placeId]) return; // Ya están cargadas
 
-      for (const place of countryPlaces) {
-        try {
-          const response = await fetch(`/api/notes?related_type=zone&related_id=${place.id}`);
-          const placeNotes = await response.json();
-          setNotes(prev => ({ ...prev, [place.id]: placeNotes }));
-        } catch (error) {
-          console.error('Error loading notes:', error);
-        }
-      }
-    };
-
-    if (selectedCountry && places.length > 0) {
-      loadNotes();
+    try {
+      const response = await fetch(`/api/notes?related_type=zone&related_id=${placeId}`);
+      const placeNotes = await response.json();
+      setNotes(prev => ({ ...prev, [placeId]: placeNotes }));
+    } catch (error) {
+      console.error('Error loading notes:', error);
     }
-  }, [selectedCountry, places]);
+  };
 
   // Scroll a la card cuando se resalta
   useEffect(() => {
@@ -168,14 +192,31 @@ export default function ZonesPanel({
 
       {isAdminMode && (
         <div className="p-4 border-b border-gray-200">
-          <input
-            ref={inputRef}
-            type="text"
-            value={address}
-            onChange={(e) => setAddress(e.target.value)}
-            placeholder="Buscar zona o barrio..."
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
-          />
+          <div className="flex gap-2">
+            <input
+              ref={inputRef}
+              type="text"
+              value={address}
+              onChange={(e) => setAddress(e.target.value)}
+              placeholder="Buscar zona o barrio..."
+              className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+            />
+            <button
+              onClick={() => setMapClickMode(!mapClickMode)}
+              className={`p-2 rounded-lg border ${mapClickMode ? 'bg-blue-100 border-blue-500' : 'border-gray-300 hover:bg-gray-100'} cursor-pointer`}
+              title="Seleccionar ubicación en el mapa"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" />
+              </svg>
+            </button>
+          </div>
+          {duplicateError && (
+            <p className="text-xs text-red-600 mt-1">{duplicateError}</p>
+          )}
+          {mapClickMode && (
+            <p className="text-xs text-blue-600 mt-1">Haz clic en el mapa para seleccionar una ubicación</p>
+          )}
         </div>
       )}
 
@@ -192,7 +233,41 @@ export default function ZonesPanel({
       </div>
 
       <div className="flex-1 overflow-y-auto p-3 space-y-3">
-        {countryPlaces.length === 0 ? (
+        {pendingPlace && (
+          <div className="p-3 bg-blue-50 rounded-lg border-2 border-blue-400">
+            <input
+              type="text"
+              value={pendingPlaceName}
+              onChange={(e) => setPendingPlaceName(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && pendingPlaceName.trim()) {
+                  const placeData = {
+                    id: Date.now(),
+                    address: pendingPlaceName.trim(),
+                    lat: pendingPlace.lat,
+                    lng: pendingPlace.lng,
+                    placeId: null,
+                    polygon: null,
+                    isDrawing: false,
+                    color: '#22c55e',
+                    country_code: selectedCountry.country_code,
+                  };
+                  onAddPlace(placeData);
+                  setPendingPlace(null);
+                  setPendingPlaceName('');
+                  setMapClickMode(false);
+                }
+              }}
+              placeholder="Nombre de la zona..."
+              className="w-full px-3 py-2 border border-blue-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+              autoFocus
+            />
+            <p className="text-xs text-gray-600 mt-2">
+              Lat: {pendingPlace.lat.toFixed(6)}, Lng: {pendingPlace.lng.toFixed(6)}
+            </p>
+          </div>
+        )}
+        {countryPlaces.length === 0 && !pendingPlace ? (
           <p className="text-gray-500 text-sm text-center mt-4">
             No hay zonas creadas para {selectedCountry.name}
           </p>
@@ -215,13 +290,19 @@ export default function ZonesPanel({
                     // Posicionar en el mapa
                     onGoToPlace(place);
 
-                    // Cargar datos de Perplexity
+                    // Cargar datos de Perplexity con spinner
+                    setLoadingPerplexity(true);
+                    setShowPerplexityPanel(true);
+                    setSelectedZoneAddress(place.address);
+
                     try {
+                      // Cargar notas primero
+                      await loadNotesForPlace(place.id);
+
+                      // Luego cargar datos de Perplexity
                       const response = await fetch(`/api/perplexity-notes?zone_id=${place.id}`);
                       const data = await response.json();
                       setPerplexityData(data);
-                      setSelectedZoneAddress(place.address);
-                      setShowPerplexityPanel(true);
 
                       // Scroll al inicio del panel
                       setTimeout(() => {
@@ -231,6 +312,8 @@ export default function ZonesPanel({
                       }, 0);
                     } catch (error) {
                       console.error('Error loading perplexity data:', error);
+                    } finally {
+                      setLoadingPerplexity(false);
                     }
                   }}
                 >
@@ -310,6 +393,46 @@ export default function ZonesPanel({
                       <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
                     </svg>
                   </button>
+                  <label
+                    className="flex items-center p-2 rounded hover:bg-gray-100 cursor-pointer"
+                    title="Lugar turístico"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={place.is_turistic || false}
+                      onChange={(e) => onTuristicChange(place.id, e.target.checked)}
+                      className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
+                    />
+                  </label>
+                  <button
+                    onClick={async () => {
+                      setLoadingAI(prev => ({ ...prev, [place.id]: true }));
+
+                      setTimeout(() => {
+                        setLoadingAI(prev => ({ ...prev, [place.id]: false }));
+                      }, 10000);
+
+                      try {
+                        await fetch('/api/perplexity-populate', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({
+                            zone_id: place.id
+                          })
+                        });
+                      } catch (error) {
+                        console.error('Error populating with AI:', error);
+                      }
+                    }}
+                    className="p-2 rounded hover:bg-purple-100 text-purple-600 cursor-pointer"
+                    title="Regenerar información con IA"
+                  >
+                    {loadingAI[place.id] ? (
+                      <div className="inline-block animate-spin rounded-full h-5 w-5 border-b-2 border-purple-600"></div>
+                    ) : (
+                      <HiOutlineSparkles className="h-5 w-5" />
+                    )}
+                  </button>
                   <div className="relative">
                     <button
                       onClick={() => onDeletePlace(place.id)}
@@ -380,8 +503,15 @@ export default function ZonesPanel({
           </div>
 
           <div className="p-4 space-y-6" role="region" aria-label="Información detallada de la zona">
+            {loadingPerplexity ? (
+              <div className="flex flex-col items-center justify-center py-12">
+                <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                <p className="mt-4 text-sm text-gray-500">Cargando información...</p>
+              </div>
+            ) : (
+              <>
             {/* Rent */}
-            {perplexityData.rent && (
+            {perplexityData?.rent && (
               <div role="article" aria-labelledby="rent-heading">
                 <div className="flex items-center gap-2 mb-2">
                   <BiDollar className="text-base text-gray-600 flex-shrink-0" aria-hidden="true" />
@@ -399,7 +529,7 @@ export default function ZonesPanel({
             )}
 
             {/* Secure */}
-            {perplexityData.secure && (
+            {perplexityData?.secure && (
               <div role="article" aria-labelledby="security-heading">
                 <div className="flex items-center gap-2 mb-2">
                   <BiShield className="text-lg text-blue-600" aria-hidden="true" />
@@ -410,7 +540,7 @@ export default function ZonesPanel({
                     perplexityData.secure.toLowerCase().includes('buena') || perplexityData.secure.toLowerCase().includes('aceptable')
                       ? 'text-green-700'
                       : perplexityData.secure.toLowerCase().includes('media')
-                      ? 'text-orange-600'
+                      ? 'text-blue-600'
                       : 'text-red-600'
                   }`}
                   title={`Nivel de seguridad de la zona: ${perplexityData.secure}`}
@@ -422,7 +552,7 @@ export default function ZonesPanel({
             )}
 
             {/* Tourism */}
-            {perplexityData.tourism && (
+            {perplexityData?.tourism && (
               <div role="article" aria-labelledby="tourism-heading">
                 <div className="flex items-center gap-2 mb-2">
                   <BiMapAlt className="text-lg text-purple-600" aria-hidden="true" />
@@ -438,7 +568,7 @@ export default function ZonesPanel({
             )}
 
             {/* Notes */}
-            {perplexityData.notes && (
+            {perplexityData?.notes && (
               <div role="article" aria-labelledby="notes-heading">
                 <div className="flex items-center gap-2 mb-2">
                   <BiInfoCircle className="text-lg text-gray-600" aria-hidden="true" />
@@ -454,7 +584,7 @@ export default function ZonesPanel({
             )}
 
             {/* Places */}
-            {perplexityData.places && (
+            {perplexityData?.places && (
               <div role="article" aria-labelledby="places-heading">
                 <div className="flex items-center gap-2 mb-2">
                   <BiMapPin className="text-lg text-red-600" aria-hidden="true" />
@@ -496,10 +626,12 @@ export default function ZonesPanel({
             )}
 
             {/* No data message */}
-            {!perplexityData.notes && !perplexityData.rent && !perplexityData.tourism && !perplexityData.secure && !perplexityData.places && (
+            {!perplexityData?.notes && !perplexityData?.rent && !perplexityData?.tourism && !perplexityData?.secure && !perplexityData?.places && (
               <div className="text-center py-8">
                 <p className="text-sm text-gray-500">No hay información disponible para esta zona</p>
               </div>
+            )}
+            </>
             )}
           </div>
         </div>
