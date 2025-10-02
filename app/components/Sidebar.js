@@ -1,12 +1,14 @@
 'use client';
 
-import { BiWorld, BiMapPin, BiHome } from 'react-icons/bi';
+import { BiWorld, BiMapPin, BiHome, BiBriefcase, BiCamera } from 'react-icons/bi';
 
 export default function Sidebar({ selectedTab, onTabChange, selectedCountry, isZonesEnabled }) {
   const tabs = [
     { id: 'countries', label: 'Countries', Icon: BiWorld },
     { id: 'zones', label: 'Zones', Icon: BiMapPin, disabled: !isZonesEnabled },
-    { id: 'airbnb', label: 'AirBnB', Icon: BiHome }
+    { id: 'airbnb', label: 'AirBnB', Icon: BiHome },
+    { id: 'coworking', label: 'CoWorking', Icon: BiBriefcase, disabled: !isZonesEnabled },
+    { id: 'instagramable', label: 'Instagramable', Icon: BiCamera, disabled: !isZonesEnabled }
   ];
 
   return (

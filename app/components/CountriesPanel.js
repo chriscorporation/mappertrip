@@ -11,7 +11,7 @@ const getFlagEmoji = (countryCode) => {
   return String.fromCodePoint(...codePoints);
 };
 
-export default function CountriesPanel({ selectedCountry, onSelectCountry }) {
+export default function CountriesPanel({ selectedCountry, onSelectCountry, places = [] }) {
   const [countries, setCountries] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -48,28 +48,39 @@ export default function CountriesPanel({ selectedCountry, onSelectCountry }) {
       </div>
 
       <div className="flex-1 overflow-y-auto">
-        {countries.map(country => (
-          <button
-            key={country.id}
-            onClick={() => onSelectCountry(country)}
-            className={`
-              w-full text-left px-4 py-3 border-b border-gray-100
-              transition-colors cursor-pointer
-              ${selectedCountry?.id === country.id
-                ? 'bg-blue-50 border-l-4 border-l-blue-600'
-                : 'hover:bg-gray-50'
-              }
-            `}
-          >
-            <div className="flex items-center gap-3">
-              <span className="text-2xl">{getFlagEmoji(country.country_code)}</span>
-              <div>
-                <p className="font-medium">{country.name}</p>
-                <p className="text-xs text-gray-500">{country.country_code}</p>
+        {countries.map(country => {
+          const zoneCount = places.filter(p => p.country_code === country.country_code).length;
+          const isDisabled = zoneCount === 0;
+
+          return (
+            <button
+              key={country.id}
+              onClick={() => !isDisabled && onSelectCountry(country)}
+              className={`
+                w-full text-left px-4 py-3 border-b border-gray-100
+                transition-colors
+                ${isDisabled
+                  ? 'opacity-40 cursor-default'
+                  : 'cursor-pointer'
+                }
+                ${selectedCountry?.id === country.id
+                  ? 'bg-blue-50 border-l-4 border-l-blue-600'
+                  : !isDisabled && 'hover:bg-gray-50'
+                }
+              `}
+            >
+              <div className="flex items-center gap-3">
+                <span className="text-2xl">{getFlagEmoji(country.country_code)}</span>
+                <div>
+                  <p className="font-medium">
+                    {country.name} <strong>({zoneCount})</strong>
+                  </p>
+                  <p className="text-xs text-gray-500">{country.country_code}</p>
+                </div>
               </div>
-            </div>
-          </button>
-        ))}
+            </button>
+          );
+        })}
       </div>
     </div>
   );

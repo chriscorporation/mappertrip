@@ -3,6 +3,7 @@
 import { useRef, useEffect, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { BiDollar, BiShield, BiMapAlt, BiInfoCircle, BiMapPin } from 'react-icons/bi';
+import { useAuthStore } from '../store/authStore';
 
 export default function ZonesPanel({
   selectedCountry,
@@ -15,6 +16,8 @@ export default function ZonesPanel({
   highlightedPlace,
   onAddPlace
 }) {
+  const { isAuthenticated } = useAuthStore();
+  const isAdminMode = isAuthenticated;
   const [address, setAddress] = useState('');
   const [hoverEnabled, setHoverEnabled] = useState(false);
   const [notes, setNotes] = useState({});
@@ -25,6 +28,7 @@ export default function ZonesPanel({
   const inputRef = useRef(null);
   const autocompleteRef = useRef(null);
   const cardRefs = useRef({});
+  const perplexityPanelRef = useRef(null);
 
   useEffect(() => {
     const initAutocomplete = () => {
@@ -162,16 +166,18 @@ export default function ZonesPanel({
         <p className="text-xs text-gray-500 mt-1">{selectedCountry.name}</p>
       </div>
 
-      <div className="p-4 border-b border-gray-200">
-        <input
-          ref={inputRef}
-          type="text"
-          value={address}
-          onChange={(e) => setAddress(e.target.value)}
-          placeholder="Buscar zona o barrio..."
-          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
-        />
-      </div>
+      {isAdminMode && (
+        <div className="p-4 border-b border-gray-200">
+          <input
+            ref={inputRef}
+            type="text"
+            value={address}
+            onChange={(e) => setAddress(e.target.value)}
+            placeholder="Buscar zona o barrio..."
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+          />
+        </div>
+      )}
 
       <div className="px-4 py-2 border-b border-gray-200 bg-gray-50">
         <label className="flex items-center gap-2 text-xs text-gray-700 cursor-pointer">
@@ -216,6 +222,13 @@ export default function ZonesPanel({
                       setPerplexityData(data);
                       setSelectedZoneAddress(place.address);
                       setShowPerplexityPanel(true);
+
+                      // Scroll al inicio del panel
+                      setTimeout(() => {
+                        if (perplexityPanelRef.current) {
+                          perplexityPanelRef.current.scrollTop = 0;
+                        }
+                      }, 0);
                     } catch (error) {
                       console.error('Error loading perplexity data:', error);
                     }
@@ -235,32 +248,36 @@ export default function ZonesPanel({
                           <span className="mr-1">•</span>
                           <span>{note.note_text}</span>
                         </div>
-                        <button
-                          onClick={() => handleDeleteNote(note.id, place.id)}
-                          className="ml-2 opacity-0 group-hover:opacity-100 transition-opacity text-gray-400 hover:text-gray-600 cursor-pointer"
-                          title="Eliminar nota"
-                        >
-                          <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" viewBox="0 0 20 20" fill="currentColor">
-                            <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
-                          </svg>
-                        </button>
+                        {isAdminMode && (
+                          <button
+                            onClick={() => handleDeleteNote(note.id, place.id)}
+                            className="ml-2 opacity-0 group-hover:opacity-100 transition-opacity text-gray-400 hover:text-gray-600 cursor-pointer"
+                            title="Eliminar nota"
+                          >
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" viewBox="0 0 20 20" fill="currentColor">
+                              <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
+                            </svg>
+                          </button>
+                        )}
                       </li>
                     ))}
                   </ul>
                 )}
 
-                <input
-                  type="text"
-                  value={newNote[place.id] || ''}
-                  onChange={(e) => setNewNote(prev => ({ ...prev, [place.id]: e.target.value }))}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                      handleAddNote(place.id);
-                    }
-                  }}
-                  placeholder="Añadir nota..."
-                  className="w-full mt-2 px-2 py-1 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-transparent"
-                />
+                {isAdminMode && (
+                  <input
+                    type="text"
+                    value={newNote[place.id] || ''}
+                    onChange={(e) => setNewNote(prev => ({ ...prev, [place.id]: e.target.value }))}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        handleAddNote(place.id);
+                      }
+                    }}
+                    placeholder="Añadir nota..."
+                    className="w-full mt-2 px-2 py-1 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-transparent"
+                  />
+                )}
 
                 {place.polygon && (
                   <div className="mt-2">
@@ -270,59 +287,61 @@ export default function ZonesPanel({
                   </div>
                 )}
               </div>
-              <div className="flex justify-around items-center pt-2 border-t border-gray-200">
-                <select
-                  value={place.color}
-                  onChange={(e) => onColorChange(place.id, e.target.value)}
-                  className="text-xs px-2 py-1 border border-gray-300 rounded cursor-pointer"
-                  style={{ color: place.color }}
-                >
-                  <option value="#22c55e" style={{ color: '#22c55e' }}>🟢 Seguro</option>
-                  <option value="#3b82f6" style={{ color: '#3b82f6' }}>🔵 Medio</option>
-                  <option value="#f97316" style={{ color: '#f97316' }}>🟠 Regular</option>
-                  <option value="#eab308" style={{ color: '#eab308' }}>🟡 Precaución</option>
-                  <option value="#dc2626" style={{ color: '#dc2626' }}>🔴 Inseguro</option>
-                </select>
-                <button
-                  onClick={() => onStartDrawing(place.id)}
-                  className={`p-2 rounded hover:bg-gray-100 cursor-pointer ${place.isDrawing ? 'bg-blue-100' : ''}`}
-                  title="Delimitar zona"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                    <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
-                  </svg>
-                </button>
-                <div className="relative">
+              {isAdminMode && (
+                <div className="flex justify-around items-center pt-2 border-t border-gray-200">
+                  <select
+                    value={place.color}
+                    onChange={(e) => onColorChange(place.id, e.target.value)}
+                    className="text-xs px-2 py-1 border border-gray-300 rounded cursor-pointer"
+                    style={{ color: place.color }}
+                  >
+                    <option value="#22c55e" style={{ color: '#22c55e' }}>🟢 Seguro</option>
+                    <option value="#3b82f6" style={{ color: '#3b82f6' }}>🔵 Medio</option>
+                    <option value="#f97316" style={{ color: '#f97316' }}>🟠 Regular</option>
+                    <option value="#eab308" style={{ color: '#eab308' }}>🟡 Precaución</option>
+                    <option value="#dc2626" style={{ color: '#dc2626' }}>🔴 Inseguro</option>
+                  </select>
                   <button
-                    onClick={() => onDeletePlace(place.id)}
-                    className="p-2 rounded hover:bg-gray-100 text-gray-500 cursor-pointer"
-                    title="Eliminar"
+                    onClick={() => onStartDrawing(place.id)}
+                    className={`p-2 rounded hover:bg-gray-100 cursor-pointer ${place.isDrawing ? 'bg-blue-100' : ''}`}
+                    title="Delimitar zona"
                   >
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                      <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
+                      <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
                     </svg>
                   </button>
-                  {placeToDelete === place.id && (
-                    <div className="absolute bottom-full right-0 mb-2 bg-white rounded-lg shadow-xl p-3 w-48 z-10 border border-gray-200">
-                      <p className="text-xs text-gray-700 mb-3">¿Eliminar esta zona?</p>
-                      <div className="flex gap-2">
-                        <button
-                          onClick={() => onDeletePlace(null)}
-                          className="flex-1 px-2 py-1 text-xs text-gray-700 bg-gray-100 rounded hover:bg-gray-200 cursor-pointer"
-                        >
-                          Cancelar
-                        </button>
-                        <button
-                          onClick={() => onDeletePlace(place.id, true)}
-                          className="flex-1 px-2 py-1 text-xs text-white bg-red-600 rounded hover:bg-red-700 cursor-pointer"
-                        >
-                          Eliminar
-                        </button>
+                  <div className="relative">
+                    <button
+                      onClick={() => onDeletePlace(place.id)}
+                      className="p-2 rounded hover:bg-gray-100 text-gray-500 cursor-pointer"
+                      title="Eliminar"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                        <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
+                      </svg>
+                    </button>
+                    {placeToDelete === place.id && (
+                      <div className="absolute bottom-full right-0 mb-2 bg-white rounded-lg shadow-xl p-3 w-48 z-10 border border-gray-200">
+                        <p className="text-xs text-gray-700 mb-3">¿Eliminar esta zona?</p>
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => onDeletePlace(null)}
+                            className="flex-1 px-2 py-1 text-xs text-gray-700 bg-gray-100 rounded hover:bg-gray-200 cursor-pointer"
+                          >
+                            Cancelar
+                          </button>
+                          <button
+                            onClick={() => onDeletePlace(place.id, true)}
+                            className="flex-1 px-2 py-1 text-xs text-white bg-red-600 rounded hover:bg-red-700 cursor-pointer"
+                          >
+                            Eliminar
+                          </button>
+                        </div>
                       </div>
-                    </div>
-                  )}
+                    )}
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
           ))
         )}
@@ -332,60 +351,87 @@ export default function ZonesPanel({
 
       {/* Panel flotante de Perplexity */}
       {showPerplexityPanel && perplexityData && (
-        <div className="w-96 bg-white shadow-2xl border-l border-gray-300 overflow-y-auto">
+        <div
+          ref={perplexityPanelRef}
+          className="w-96 bg-white shadow-2xl border-l border-gray-300 overflow-y-auto"
+          role="complementary"
+          aria-label="Panel de información de la zona"
+        >
           <div className="sticky top-0 bg-white border-b border-gray-200 p-4 flex justify-between items-center">
-            <h2 className="text-lg font-bold">{selectedZoneAddress}</h2>
+            <h2 className="text-lg font-bold text-gray-400" title={`Información sobre ${selectedZoneAddress}`}>
+              {selectedZoneAddress}
+            </h2>
             <button
               onClick={() => setShowPerplexityPanel(false)}
               className="p-2 hover:bg-gray-100 rounded cursor-pointer"
-              title="Cerrar"
+              title="Cerrar panel de información"
+              aria-label="Cerrar panel de información"
             >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-5 w-5"
+                viewBox="0 0 20 20"
+                fill="currentColor"
+                aria-hidden="true"
+              >
                 <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
               </svg>
             </button>
           </div>
 
-          <div className="p-4 space-y-6">
+          <div className="p-4 space-y-6" role="region" aria-label="Información detallada de la zona">
             {/* Rent */}
             {perplexityData.rent && (
-              <div>
+              <div role="article" aria-labelledby="rent-heading">
                 <div className="flex items-center gap-2 mb-2">
-                  <BiDollar className="text-base text-gray-600 flex-shrink-0" />
-                  <h3 className="font-semibold text-sm text-gray-700">Costo de renta promedio</h3>
+                  <BiDollar className="text-base text-gray-600 flex-shrink-0" aria-hidden="true" />
+                  <h3 id="rent-heading" className="font-semibold text-sm text-gray-700">Costo de renta promedio</h3>
                 </div>
-                <p className="text-lg font-bold text-gray-800">${Math.round(perplexityData.rent)} USD/mes</p>
-                <p className="text-xs text-gray-500 mt-1">Monoambiente (máx. 2 personas)</p>
+                <span
+                  className="inline-block px-3 py-1.5 rounded-full text-xs font-semibold bg-gray-100 text-gray-800"
+                  title={`Costo promedio de renta mensual: $${Math.round(perplexityData.rent)} USD`}
+                  aria-label={`Costo de renta: ${Math.round(perplexityData.rent)} dólares por mes`}
+                >
+                  ${Math.round(perplexityData.rent)} USD/mes
+                </span>
+                <p className="text-xs text-gray-500 mt-2">Monoambiente (máx. 2 personas)</p>
               </div>
             )}
 
             {/* Secure */}
             {perplexityData.secure && (
-              <div>
+              <div role="article" aria-labelledby="security-heading">
                 <div className="flex items-center gap-2 mb-2">
-                  <BiShield className="text-lg text-blue-600" />
-                  <h3 className="font-semibold text-sm text-gray-700">Seguridad</h3>
+                  <BiShield className="text-lg text-blue-600" aria-hidden="true" />
+                  <h3 id="security-heading" className="font-semibold text-sm text-gray-700">Seguridad</h3>
                 </div>
-                <p className={`text-lg font-bold ${
-                  perplexityData.secure.toLowerCase().includes('buena') || perplexityData.secure.toLowerCase().includes('aceptable')
-                    ? 'text-green-700'
-                    : perplexityData.secure.toLowerCase().includes('media')
-                    ? 'text-orange-600'
-                    : 'text-red-600'
-                }`}>
+                <span
+                  className={`inline-block px-3 py-1.5 rounded-full text-xs font-semibold bg-gray-100 ${
+                    perplexityData.secure.toLowerCase().includes('buena') || perplexityData.secure.toLowerCase().includes('aceptable')
+                      ? 'text-green-700'
+                      : perplexityData.secure.toLowerCase().includes('media')
+                      ? 'text-orange-600'
+                      : 'text-red-600'
+                  }`}
+                  title={`Nivel de seguridad de la zona: ${perplexityData.secure}`}
+                  aria-label={`Seguridad: ${perplexityData.secure}`}
+                >
                   {perplexityData.secure}
-                </p>
+                </span>
               </div>
             )}
 
             {/* Tourism */}
             {perplexityData.tourism && (
-              <div>
+              <div role="article" aria-labelledby="tourism-heading">
                 <div className="flex items-center gap-2 mb-2">
-                  <BiMapAlt className="text-lg text-purple-600" />
-                  <h3 className="font-semibold text-sm text-gray-700">Turismo</h3>
+                  <BiMapAlt className="text-lg text-purple-600" aria-hidden="true" />
+                  <h3 id="tourism-heading" className="font-semibold text-sm text-gray-700">Turismo</h3>
                 </div>
-                <div className="text-xs text-gray-600 leading-relaxed prose prose-sm max-w-none">
+                <div
+                  className="text-xs text-gray-600 leading-relaxed prose prose-sm max-w-none"
+                  title="Información turística de la zona"
+                >
                   <ReactMarkdown>{perplexityData.tourism}</ReactMarkdown>
                 </div>
               </div>
@@ -393,12 +439,15 @@ export default function ZonesPanel({
 
             {/* Notes */}
             {perplexityData.notes && (
-              <div>
+              <div role="article" aria-labelledby="notes-heading">
                 <div className="flex items-center gap-2 mb-2">
-                  <BiInfoCircle className="text-lg text-gray-600" />
-                  <h3 className="font-semibold text-sm text-gray-700">Notas Generales</h3>
+                  <BiInfoCircle className="text-lg text-gray-600" aria-hidden="true" />
+                  <h3 id="notes-heading" className="font-semibold text-sm text-gray-700">Notas Generales</h3>
                 </div>
-                <div className="text-xs text-gray-600 leading-relaxed prose prose-sm max-w-none">
+                <div
+                  className="text-xs text-gray-600 leading-relaxed prose prose-sm max-w-none"
+                  title="Notas generales sobre la zona"
+                >
                   <ReactMarkdown>{perplexityData.notes}</ReactMarkdown>
                 </div>
               </div>
@@ -406,13 +455,42 @@ export default function ZonesPanel({
 
             {/* Places */}
             {perplexityData.places && (
-              <div>
+              <div role="article" aria-labelledby="places-heading">
                 <div className="flex items-center gap-2 mb-2">
-                  <BiMapPin className="text-lg text-red-600" />
-                  <h3 className="font-semibold text-sm text-gray-700">Lugares de Interés</h3>
+                  <BiMapPin className="text-lg text-red-600" aria-hidden="true" />
+                  <h3 id="places-heading" className="font-semibold text-sm text-gray-700">Lugares de Interés</h3>
                 </div>
-                <div className="text-xs text-gray-600 leading-relaxed prose prose-sm max-w-none">
-                  <ReactMarkdown>{perplexityData.places}</ReactMarkdown>
+                <div
+                  className="text-xs text-gray-600 leading-relaxed prose prose-sm max-w-none"
+                  title="Lugares de interés en la zona"
+                >
+                  <ReactMarkdown
+                    components={{
+                      strong: ({children, ...props}) => {
+                        const text = typeof children === 'string' ? children : children?.[0];
+                        if (typeof text === 'string') {
+                          const searchUrl = `https://www.google.com/maps/search/?q=${encodeURIComponent(text + ', ' + selectedZoneAddress)}`;
+                          return (
+                            <strong>
+                              <a
+                                href={searchUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-blue-600 hover:text-blue-800 hover:underline cursor-pointer"
+                                title={`Buscar ${text} en Google Maps`}
+                                aria-label={`Buscar ${text} en Google Maps, se abrirá en una nueva ventana`}
+                              >
+                                {text}
+                              </a>
+                            </strong>
+                          );
+                        }
+                        return <strong>{children}</strong>;
+                      }
+                    }}
+                  >
+                    {perplexityData.places}
+                  </ReactMarkdown>
                 </div>
               </div>
             )}

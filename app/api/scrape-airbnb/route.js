@@ -2,9 +2,16 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import puppeteer from 'puppeteer';
 
-const supabase = createClient(
+// Cliente para operaciones de lectura (ANON_KEY)
+const supabaseRead = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+);
+
+// Cliente para operaciones de escritura (SERVICE_ROLE_KEY)
+const supabaseWrite = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_ROLE_KEY
 );
 
 export async function POST(request) {
@@ -387,7 +394,7 @@ export async function POST(request) {
     }
 
     // Verificar si ya existe en la base de datos por id_room
-    const { data: existing } = await supabase
+    const { data: existing } = await supabaseRead
       .from('airbnb')
       .select('*')
       .eq('id_room', idRoom)
@@ -429,13 +436,13 @@ export async function POST(request) {
 
     if (existing) {
       // Actualizar registro existente
-      await supabase
+      await supabaseWrite
         .from('airbnb')
         .update(dataToSave)
         .eq('id_room', idRoom);
     } else {
       // Insertar nuevo registro
-      await supabase
+      await supabaseWrite
         .from('airbnb')
         .insert([dataToSave]);
     }
@@ -452,7 +459,7 @@ export async function POST(request) {
 
     // Guardar error en la base de datos si tenemos la URL
     if (request.body?.url) {
-      await supabase
+      await supabaseWrite
         .from('airbnb')
         .upsert([{
           url: request.body.url.split('?')[0],

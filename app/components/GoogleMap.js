@@ -1,8 +1,8 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useMemo } from 'react';
 
-export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocation, onSavePolygon, onPolygonClick }) {
+export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocation, onSavePolygon, onPolygonClick, onBoundsChanged, coworkingPlaces, instagramablePlaces }) {
   const mapRef = useRef(null);
   const [map, setMap] = useState(null);
   const [marker, setMarker] = useState(null);
@@ -11,6 +11,8 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
   const [currentPolygon, setCurrentPolygon] = useState(null);
   const polygonsRef = useRef({});
   const airbnbMarkersRef = useRef([]);
+  const animationFrameRef = useRef(null);
+  const boundsChangeTimeoutRef = useRef(null);
 
   useEffect(() => {
     const loadGoogleMaps = () => {
@@ -45,6 +47,22 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
       });
 
       setMap(newMap);
+
+      // Listener para cambios en los bounds del mapa con debounce
+      newMap.addListener('bounds_changed', () => {
+        // Limpiar timeout anterior
+        if (boundsChangeTimeoutRef.current) {
+          clearTimeout(boundsChangeTimeoutRef.current);
+        }
+
+        // Esperar 500ms después del último cambio antes de actualizar
+        boundsChangeTimeoutRef.current = setTimeout(() => {
+          const bounds = newMap.getBounds();
+          if (bounds && onBoundsChanged) {
+            onBoundsChanged(bounds);
+          }
+        }, 500);
+      });
 
       // Esperar a que la librería drawing esté disponible
       const waitForDrawing = () => {
@@ -136,9 +154,58 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
       lng: selectedPlace.lng,
     };
 
-    // Centrar el mapa en el lugar seleccionado
-    map.setCenter(position);
-    map.setZoom(13);
+    // Cancelar animación previa si existe
+    if (animationFrameRef.current) {
+      cancelAnimationFrame(animationFrameRef.current);
+    }
+
+    // Animación personalizada con aceleración
+    const start = map.getCenter();
+    const startLat = start.lat();
+    const startLng = start.lng();
+    const targetLat = position.lat;
+    const targetLng = position.lng;
+    const duration = 600; // 600ms de duración
+    const startTime = performance.now();
+
+    const easeInOutCubic = (t) => {
+      return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+    };
+
+    const animate = (currentTime) => {
+      const elapsed = currentTime - startTime;
+      const progress = Math.min(elapsed / duration, 1);
+      const eased = easeInOutCubic(progress);
+
+      const currentLat = startLat + (targetLat - startLat) * eased;
+      const currentLng = startLng + (targetLng - startLng) * eased;
+
+      map.setCenter({ lat: currentLat, lng: currentLng });
+
+      if (progress < 1) {
+        animationFrameRef.current = requestAnimationFrame(animate);
+      } else {
+        animationFrameRef.current = null;
+      }
+    };
+
+    animationFrameRef.current = requestAnimationFrame(animate);
+
+    // Determinar el tipo de lugar primero
+    const isCoworking = coworkingPlaces?.some(p => p.id === selectedPlace.id);
+    const isInstagramable = instagramablePlaces?.some(p => p.id === selectedPlace.id);
+
+    // Ajustar zoom según el tipo de lugar
+    const currentZoom = map.getZoom();
+    let targetZoom = 13; // Zoom por defecto para zonas y Airbnb
+
+    if (isCoworking || isInstagramable) {
+      targetZoom = 17; // Zoom mucho mayor para coworking e instagramable
+    }
+
+    if (currentZoom !== targetZoom) {
+      map.setZoom(targetZoom);
+    }
 
     // Forzar redibujado de overlays después de centrar
     setTimeout(() => {
@@ -150,12 +217,51 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
       marker.setMap(null);
     }
 
-    // Crear un marcador en el centro
+    // Determinar el icono según el tipo de lugar
+    let iconConfig;
+
+    if (isCoworking) {
+      // Icono de café/comunidad para coworking
+      iconConfig = {
+        path: 'M2 21h19v-3H2v3m16-6c1.66 0 3-1.34 3-3V4c0-1.66-1.34-3-3-3h-3c-1.66 0-3 1.34-3 3v8c0 1.66 1.34 3 3 3m-9-8c1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3 1.34 3 3 3m0 1c-2 0-6 1-6 3v3h12v-3c0-2-4-3-6-3z',
+        fillColor: '#8b5cf6',
+        fillOpacity: 1,
+        strokeColor: '#6d28d9',
+        strokeWeight: 2,
+        scale: 1.2,
+        anchor: new window.google.maps.Point(12, 24),
+      };
+    } else if (isInstagramable) {
+      // Icono de cámara para instagramable
+      iconConfig = {
+        path: 'M4 4h3l2-2h6l2 2h3c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2m8 3c-2.76 0-5 2.24-5 5s2.24 5 5 5 5-2.24 5-5-2.24-5-5-5m0 1.8c1.77 0 3.2 1.43 3.2 3.2s-1.43 3.2-3.2 3.2S8.8 13.77 8.8 12s1.43-3.2 3.2-3.2z',
+        fillColor: '#ec4899',
+        fillOpacity: 1,
+        strokeColor: '#be185d',
+        strokeWeight: 2,
+        scale: 1.2,
+        anchor: new window.google.maps.Point(12, 24),
+      };
+    } else {
+      // Icono de casa por defecto (para Airbnb y zonas)
+      iconConfig = {
+        path: 'M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z',
+        fillColor: '#ffffff',
+        fillOpacity: 1,
+        strokeColor: '#3b82f6',
+        strokeWeight: 2,
+        scale: 1.5,
+        anchor: new window.google.maps.Point(12, 24),
+      };
+    }
+
+    // Crear el marcador en el centro
     const newMarker = new window.google.maps.Marker({
       position: position,
       map: map,
-      title: selectedPlace.address,
+      title: selectedPlace.address || selectedPlace.title || selectedPlace.description,
       animation: window.google.maps.Animation.DROP,
+      icon: iconConfig
     });
 
     setMarker(newMarker);
@@ -367,6 +473,12 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
     onSavePolygon(placeId, coordinates);
   };
 
+  // Crear una clave única basada en los IDs de airbnbs para evitar recreaciones innecesarias
+  const airbnbsKey = useMemo(() => {
+    if (!airbnbs) return '';
+    return airbnbs.map(a => a.id).sort().join(',');
+  }, [airbnbs]);
+
   // Renderizar marcadores de Airbnb
   useEffect(() => {
     if (!map) return;
@@ -477,7 +589,7 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
       airbnbMarkersRef.current.forEach(m => m.setMap(null));
       airbnbMarkersRef.current = [];
     };
-  }, [map, airbnbs]);
+  }, [map, airbnbsKey]);
 
   return <div ref={mapRef} className="w-full h-full" />;
 }

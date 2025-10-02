@@ -1,9 +1,16 @@
-import { createClient } from '@supabase/supabase-js';
 import Perplexity from '@perplexity-ai/perplexity_ai';
+import { createClient } from '@supabase/supabase-js';
 
-const supabase = createClient(
+// Cliente para operaciones de lectura (ANON_KEY)
+const supabaseRead = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+);
+
+// Cliente para operaciones de escritura (SERVICE_ROLE_KEY)
+const supabaseWrite = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_ROLE_KEY
 );
 
 const client = new Perplexity({
@@ -47,7 +54,7 @@ export async function POST(request) {
     }
 
     // Obtener información de la zona
-    const { data: zone, error: zoneError } = await supabase
+    const { data: zone, error: zoneError } = await supabaseRead
       .from('geoplaces')
       .select('id, address, country_code')
       .eq('id', zone_id)
@@ -61,7 +68,7 @@ export async function POST(request) {
     }
 
     // Obtener nombre del país
-    const { data: country } = await supabase
+    const { data: country } = await supabaseRead
       .from('countries')
       .select('name')
       .eq('country_code', zone.country_code)
@@ -78,7 +85,7 @@ export async function POST(request) {
           content: prompt
         }
       ],
-      model: 'sonar-pro',
+      model: 'sonar',
       web_search_options: {
         search_recency_filter: 'month'
       }
@@ -156,7 +163,7 @@ export async function POST(request) {
     }
 
     // Verificar si ya existe un registro para esta zona
-    const { data: existing } = await supabase
+    const { data: existing } = await supabaseRead
       .from('perplexity_notes')
       .select('id')
       .eq('zone_id', zone_id)
@@ -165,7 +172,7 @@ export async function POST(request) {
     let result;
     if (existing) {
       // Actualizar registro existente
-      const { data: updated, error: updateError } = await supabase
+      const { data: updated, error: updateError } = await supabaseWrite
         .from('perplexity_notes')
         .update({
           [search_type]: aiResponse,
@@ -179,7 +186,7 @@ export async function POST(request) {
       result = updated;
     } else {
       // Crear nuevo registro
-      const { data: created, error: createError } = await supabase
+      const { data: created, error: createError } = await supabaseWrite
         .from('perplexity_notes')
         .insert({
           zone_id: zone_id,

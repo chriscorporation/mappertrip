@@ -6,18 +6,28 @@ import Sidebar from './components/Sidebar';
 import CountriesPanel from './components/CountriesPanel';
 import ZonesPanel from './components/ZonesPanel';
 import AirbnbPanel from './components/AirbnbPanel';
+import CoWorkingPanel from './components/CoWorkingPanel';
+import InstagramablePlacesPanel from './components/InstagramablePlacesPanel';
+import Header from './components/Header';
+import { useAuthStore } from './store/authStore';
 
 export default function Home() {
+  const { isAuthenticated } = useAuthStore();
+  const isAdminMode = isAuthenticated;
+
   const [address, setAddress] = useState('');
   const [airbnbLink, setAirbnbLink] = useState('');
   const [airbnbLocation, setAirbnbLocation] = useState(null);
   const [selectedPlace, setSelectedPlace] = useState(null);
   const [places, setPlaces] = useState([]);
   const [airbnbs, setAirbnbs] = useState([]);
+  const [coworkingPlaces, setCoworkingPlaces] = useState([]);
+  const [instagramablePlaces, setInstagramablePlaces] = useState([]);
   const [placeToDelete, setPlaceToDelete] = useState(null);
   const [selectedTab, setSelectedTab] = useState('countries');
   const [selectedCountry, setSelectedCountry] = useState(null);
   const [highlightedPlace, setHighlightedPlace] = useState(null);
+  const [mapBounds, setMapBounds] = useState(null);
   const inputRef = useRef(null);
   const autocompleteRef = useRef(null);
 
@@ -214,7 +224,7 @@ export default function Home() {
     }
   };
 
-  // Cargar lugares y airbnbs desde Supabase al iniciar
+  // Cargar lugares, airbnbs y coworking places desde Supabase al iniciar
   useEffect(() => {
     let isMounted = true;
 
@@ -254,8 +264,34 @@ export default function Home() {
       }
     };
 
+    const loadCoworkingPlaces = async () => {
+      try {
+        const response = await fetch('/api/coworking');
+        const loadedCoworking = await response.json();
+        if (isMounted && loadedCoworking) {
+          setCoworkingPlaces(loadedCoworking);
+        }
+      } catch (error) {
+        console.error('Error loading coworking places:', error);
+      }
+    };
+
+    const loadInstagramablePlaces = async () => {
+      try {
+        const response = await fetch('/api/instagramable');
+        const loadedInstagramable = await response.json();
+        if (isMounted && loadedInstagramable) {
+          setInstagramablePlaces(loadedInstagramable);
+        }
+      } catch (error) {
+        console.error('Error loading instagramable places:', error);
+      }
+    };
+
     loadPlaces();
     loadAirbnbs();
+    loadCoworkingPlaces();
+    loadInstagramablePlaces();
 
     return () => {
       isMounted = false;
@@ -300,10 +336,69 @@ export default function Home() {
     }
   };
 
+  const handleAddCoworkingPlace = async (placeData) => {
+    try {
+      const response = await fetch('/api/coworking', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(placeData)
+      });
+
+      if (response.ok) {
+        const savedPlace = await response.json();
+        setCoworkingPlaces(prev => [savedPlace, ...prev]);
+        setSelectedPlace(savedPlace);
+      }
+    } catch (error) {
+      console.error('Error adding coworking place:', error);
+    }
+  };
+
+  const handleDeleteCoworkingPlace = async (placeId) => {
+    try {
+      await fetch(`/api/coworking?id=${placeId}`, { method: 'DELETE' });
+      setCoworkingPlaces(prev => prev.filter(p => p.id !== placeId));
+    } catch (error) {
+      console.error('Error deleting coworking place:', error);
+    }
+  };
+
+  const handleAddInstagramablePlace = async (placeData) => {
+    try {
+      const response = await fetch('/api/instagramable', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(placeData)
+      });
+
+      if (response.ok) {
+        const savedPlace = await response.json();
+        setInstagramablePlaces(prev => [savedPlace, ...prev]);
+        setSelectedPlace(savedPlace);
+      }
+    } catch (error) {
+      console.error('Error adding instagramable place:', error);
+    }
+  };
+
+  const handleDeleteInstagramablePlace = async (placeId) => {
+    try {
+      await fetch(`/api/instagramable?id=${placeId}`, { method: 'DELETE' });
+      setInstagramablePlaces(prev => prev.filter(p => p.id !== placeId));
+    } catch (error) {
+      console.error('Error deleting instagramable place:', error);
+    }
+  };
+
   return (
-    <div className="flex h-screen">
-      {/* Sidebar con tabs */}
-      <Sidebar
+    <div className="flex flex-col h-screen">
+      {/* Header */}
+      <Header isAdminMode={isAdminMode} />
+
+      {/* Contenido principal */}
+      <div className="flex flex-1 overflow-hidden">
+        {/* Sidebar con tabs */}
+        <Sidebar
         selectedTab={selectedTab}
         onTabChange={setSelectedTab}
         selectedCountry={selectedCountry}
@@ -315,6 +410,7 @@ export default function Home() {
         <CountriesPanel
           selectedCountry={selectedCountry}
           onSelectCountry={handleSelectCountry}
+          places={places}
         />
       )}
 
@@ -339,6 +435,28 @@ export default function Home() {
         <AirbnbPanel
           onGoToLocation={setSelectedPlace}
           selectedCountry={selectedCountry}
+        />
+      )}
+
+      {selectedTab === 'coworking' && (
+        <CoWorkingPanel
+          selectedCountry={selectedCountry}
+          coworkingPlaces={coworkingPlaces}
+          onAddCoworkingPlace={handleAddCoworkingPlace}
+          onDeleteCoworkingPlace={handleDeleteCoworkingPlace}
+          onGoToPlace={handleGoToPlace}
+          mapBounds={mapBounds}
+        />
+      )}
+
+      {selectedTab === 'instagramable' && (
+        <InstagramablePlacesPanel
+          selectedCountry={selectedCountry}
+          instagramablePlaces={instagramablePlaces}
+          onAddInstagramablePlace={handleAddInstagramablePlace}
+          onDeleteInstagramablePlace={handleDeleteInstagramablePlace}
+          onGoToPlace={handleGoToPlace}
+          mapBounds={mapBounds}
         />
       )}
 
@@ -459,7 +577,7 @@ export default function Home() {
       </div>
 
       {/* Panel derecho - Mapa de Google */}
-      <div className="w-2/3">
+      <div className="flex-1">
         <GoogleMap
           selectedPlace={selectedPlace}
           places={places}
@@ -470,7 +588,11 @@ export default function Home() {
             setHighlightedPlace(placeId);
             setSelectedTab('zones');
           }}
+          onBoundsChanged={setMapBounds}
+          coworkingPlaces={coworkingPlaces}
+          instagramablePlaces={instagramablePlaces}
         />
+      </div>
       </div>
 
     </div>
