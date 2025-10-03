@@ -9,6 +9,8 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
   const [airbnbMarker, setAirbnbMarker] = useState(null);
   const [drawingManager, setDrawingManager] = useState(null);
   const [currentPolygon, setCurrentPolygon] = useState(null);
+  const [vertexToDelete, setVertexToDelete] = useState(null);
+  const [deleteModalPosition, setDeleteModalPosition] = useState(null);
   const polygonsRef = useRef({});
   const airbnbMarkersRef = useRef([]);
   const animationFrameRef = useRef(null);
@@ -397,10 +399,17 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
           if (event.vertex !== undefined && polygon.getEditable()) {
             const path = polygon.getPath();
             if (path.getLength() > 3) { // Mantener al menos 3 puntos
-              if (confirm('¿Eliminar este punto del polígono?')) {
-                path.removeAt(event.vertex);
-                selectedVertex = null;
-              }
+              // Obtener posición en pantalla del evento
+              const projection = map.getProjection();
+              const point = projection.fromLatLngToPoint(event.latLng);
+              const scale = Math.pow(2, map.getZoom());
+              const pixelPosition = {
+                x: Math.floor(point.x * scale),
+                y: Math.floor(point.y * scale)
+              };
+
+              setVertexToDelete({ polygon, vertex: event.vertex, path });
+              setDeleteModalPosition(pixelPosition);
             } else {
               alert('El polígono debe tener al menos 3 puntos');
             }
@@ -693,5 +702,46 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
     };
   }, [map, mapClickMode, onMapClick]);
 
-  return <div ref={mapRef} className="w-full h-full" />;
+  return (
+    <>
+      <div ref={mapRef} className="w-full h-full" />
+
+      {/* Modal de confirmación para eliminar punto */}
+      {vertexToDelete && deleteModalPosition && (
+        <div
+          className="fixed bg-white rounded-lg shadow-xl p-3 w-48 z-50 border border-gray-200"
+          style={{
+            left: `${deleteModalPosition.x}px`,
+            top: `${deleteModalPosition.y}px`,
+            transform: 'translate(-50%, -100%) translateY(-10px)'
+          }}
+        >
+          <p className="text-xs text-gray-700 mb-3">¿Eliminar este punto?</p>
+          <div className="flex gap-2">
+            <button
+              onClick={() => {
+                setVertexToDelete(null);
+                setDeleteModalPosition(null);
+              }}
+              className="flex-1 px-2 py-1 text-xs text-gray-700 bg-gray-100 rounded hover:bg-gray-200"
+            >
+              Cancelar
+            </button>
+            <button
+              onClick={() => {
+                if (vertexToDelete) {
+                  vertexToDelete.path.removeAt(vertexToDelete.vertex);
+                  setVertexToDelete(null);
+                  setDeleteModalPosition(null);
+                }
+              }}
+              className="flex-1 px-2 py-1 text-xs text-white bg-red-500 rounded hover:bg-red-600"
+            >
+              Eliminar
+            </button>
+          </div>
+        </div>
+      )}
+    </>
+  );
 }
