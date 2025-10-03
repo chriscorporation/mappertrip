@@ -99,6 +99,10 @@ function HomeContent() {
   }, []);
 
   const handleStartDrawing = (placeId) => {
+    // Limpiar selección del mapa al iniciar dibujo
+    setSelectedPlace(null);
+    setHighlightedPlace(null);
+
     setPlaces(prev => prev.map(p => {
       if (p.id === placeId) {
         return { ...p, isDrawing: !p.isDrawing };
