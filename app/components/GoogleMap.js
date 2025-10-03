@@ -418,22 +418,18 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
           }
         };
 
+        // Listener para detectar tecla Enter para guardar
+        const handleKeyDownSave = (e) => {
+          if (e.key === 'Enter' && polygon.getEditable()) {
+            savePolygonEdit(place.id, polygon);
+            polygon.setEditable(false);
+          }
+        };
+
         document.addEventListener('keydown', handleKeyDown);
+        document.addEventListener('keydown', handleKeyDownSave);
         polygon.keydownListener = handleKeyDown;
-
-        // Listener para guardar cambios cuando se edita
-        window.google.maps.event.addListener(polygon.getPath(), 'set_at', () => {
-          savePolygonEdit(place.id, polygon);
-        });
-
-        window.google.maps.event.addListener(polygon.getPath(), 'insert_at', () => {
-          savePolygonEdit(place.id, polygon);
-        });
-
-        // Listener para eliminar vértices
-        window.google.maps.event.addListener(polygon.getPath(), 'remove_at', () => {
-          savePolygonEdit(place.id, polygon);
-        });
+        polygon.keydownSaveListener = handleKeyDownSave;
 
         polygonsRef.current[place.id] = polygon;
       } else if (place.polygon && polygonsRef.current[place.id]) {
@@ -450,9 +446,12 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
       if (!places.find(p => p.id === parseInt(placeId))) {
         const polygon = polygonsRef.current[placeId];
         polygon.setMap(null);
-        // Limpiar listener de teclado
+        // Limpiar listeners de teclado
         if (polygon.keydownListener) {
           document.removeEventListener('keydown', polygon.keydownListener);
+        }
+        if (polygon.keydownSaveListener) {
+          document.removeEventListener('keydown', polygon.keydownSaveListener);
         }
         delete polygonsRef.current[placeId];
       }
