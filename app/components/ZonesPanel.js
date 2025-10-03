@@ -38,6 +38,32 @@ export default function ZonesPanel({
   const autocompleteRef = useRef(null);
   const cardRefs = useRef({});
   const perplexityPanelRef = useRef(null);
+  const scrollContainerRef = useRef(null);
+  const previousPlacesCountRef = useRef(places.length);
+
+  // Detectar cuando se agrega una nueva zona y hacer scroll + seleccionar
+  useEffect(() => {
+    const countryPlaces = places.filter(p => p.country_code === selectedCountry?.country_code);
+    const previousCount = previousPlacesCountRef.current;
+
+    // Si se agregó una nueva zona
+    if (countryPlaces.length > previousCount) {
+      // Hacer scroll al inicio
+      if (scrollContainerRef.current) {
+        scrollContainerRef.current.scrollTop = 0;
+      }
+
+      // Seleccionar la primera zona (más reciente)
+      if (countryPlaces.length > 0) {
+        const newestPlace = countryPlaces[0];
+        setTimeout(() => {
+          onGoToPlace(newestPlace);
+        }, 100);
+      }
+    }
+
+    previousPlacesCountRef.current = countryPlaces.length;
+  }, [places, selectedCountry, onGoToPlace]);
 
   // Notificar cuando cambia el modo de clic del mapa
   useEffect(() => {
@@ -232,7 +258,7 @@ export default function ZonesPanel({
         </label>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-3 space-y-3">
+      <div ref={scrollContainerRef} className="flex-1 overflow-y-auto p-3 space-y-3">
         {pendingPlace && (
           <div className="p-3 bg-blue-50 rounded-lg border-2 border-blue-400">
             <input
