@@ -499,7 +499,7 @@ export default function ZonesPanel({
       </div>
 
       {/* Panel flotante de Perplexity */}
-      {showPerplexityPanel && perplexityData && (
+      {showPerplexityPanel && (
         <div
           ref={perplexityPanelRef}
           className="w-96 bg-white shadow-2xl border-l border-gray-300 overflow-y-auto"
