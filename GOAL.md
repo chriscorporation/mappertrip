@@ -4,6 +4,10 @@
 
 MapTrips is a **safety-focused travel mapping platform** designed to inform travelers, particularly foreigners and digital nomads, about risk zones and safe areas across Latin American cities.
 
+## Platform Objective
+
+Become the **most reliable, fastest, and incredibly user-friendly platform** for travelers seeking safety information in Latin America.
+
 ## Core Functionality
 
 ### Safety Zone Mapping
@@ -43,12 +47,23 @@ MapTrips is a **safety-focused travel mapping platform** designed to inform trav
 
 ## When Making Incremental Improvements
 
-Any changes or enhancements should:
+Any changes or enhancements should align with our three pillars:
+
+### 1. Reliability
 - **Prioritize user safety**: Ensure risk information is clear and prominent
 - **Maintain data integrity**: Respect the manual validation process
-- **Enhance usability**: Make it easier for travelers to find and understand safety information
+- **Preserve accuracy**: All safety data must remain trustworthy and ground-validated
+
+### 2. Speed & Performance
+- **Optimize load times**: Ensure maps and data load quickly
+- **Minimize delays**: Reduce any friction in user interactions
+- **Efficient rendering**: Keep the application responsive even with large datasets
+
+### 3. Incredible Usability
+- **Enhance user experience**: Make it easier for travelers to find and understand safety information
+- **Intuitive interface**: Every feature should be self-explanatory and easy to use
 - **Support scalability**: Allow easy addition of new countries, cities, and zones
 - **Preserve visualization**: Keep the color-coding system consistent and intuitive
 - **Improve decision-making**: Help users quickly identify where it's safe to stay, visit, and explore
 
-The ultimate goal is to **protect travelers** by providing accurate, ground-validated safety information for Latin American cities.
+The ultimate goal is to **protect travelers** by providing accurate, ground-validated safety information through the most reliable, fastest, and user-friendly platform in Latin America.
