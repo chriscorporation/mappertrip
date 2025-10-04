@@ -1,0 +1,21 @@
+name: Reopen Issue 7
+
+on:
+  schedule:
+    # Ejecutar cada 2 horas
+    - cron: '0 */2 * * *'
+  workflow_dispatch: # Permite ejecución manual
+
+jobs:
+  reopen-issue:
+    runs-on: ubuntu-latest
+
+    permissions:
+      issues: write
+
+    steps:
+      - name: Reopen issue #7
+        run: |
+          gh issue reopen 7 --repo ${{ github.repository }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
