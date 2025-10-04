@@ -1,0 +1,2 @@
+# No mergear workflows de main a otras ramas
+.github/workflows/* merge=ours
