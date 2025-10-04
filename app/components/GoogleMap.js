@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, useMemo } from 'react';
 import CountryQuickSelector from './CountryQuickSelector';
+import QuickStatsPanel from './QuickStatsPanel';
 
 // Estilos de mapa predefinidos
 const MAP_STYLES = {
@@ -1441,6 +1442,14 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
               places={places}
             />
           </div>
+        )}
+
+        {/* Quick Stats Panel - Bottom right */}
+        {!isMapLoading && (
+          <QuickStatsPanel
+            places={places}
+            selectedCountry={selectedCountry}
+          />
         )}
       </div>
 
