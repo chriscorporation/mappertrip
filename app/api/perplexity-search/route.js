@@ -1,5 +1,6 @@
 import Perplexity from '@perplexity-ai/perplexity_ai';
 import { createClient } from '@supabase/supabase-js';
+import { PERPLEXITY_PROMPTS, PERPLEXITY_RESPONSE_SCHEMAS } from '../../utils/perplexityPrompts';
 
 // Cliente para operaciones de lectura (ANON_KEY)
 const supabaseRead = createClient(
@@ -16,23 +17,6 @@ const supabaseWrite = createClient(
 const client = new Perplexity({
   apiKey: process.env.PERPLEXITY_API_KEY
 });
-
-const PROMPTS = {
-  notes: (address, country) =>
-    `Busca información confiable y reciente de la zona de "${address}, ${country}". Analiza opiniones de policía, viajeros, turistas, locales y extranjeros. Evalúa si esta zona es viable para rentar como turista extranjero: ¿se recomienda o hay que tener precaución? Compara diferentes perspectivas y resume en máximo 60 palabras. Usa formato Markdown para resaltar palabras importantes con negritas. Sin incluir referencias, números entre corchetes ni links.`,
-
-  rent: (address, country) =>
-    `Busca opiniones recientes (últimos 6 meses) sobre costos de renta en "${address}, ${country}". Consulta perspectivas de locales, extranjeros que se mudaron recientemente, corredores de rentas e inmobiliarias. Proporciona ÚNICAMENTE el costo promedio mensual en USD para un monoambiente o departamento pequeño (máximo 2 personas). Responde solo con el número promedio, sin rangos.`,
-
-  tourism: (address, country) =>
-    `Busca información de agencias de viajes, locales, turistas, extranjeros y policía sobre "${address}, ${country}". Evalúa si esta zona es segura para turistas extranjeros o si debe evitarse. Resume en formato Markdown con máximo 30 palabras. Usa negritas para resaltar palabras importantes. Sin incluir referencias, números entre corchetes ni links.`,
-
-  secure: (address, country) =>
-    `Busca información reciente sobre seguridad en "${address}, ${country}". Analiza opiniones de locales, extranjeros residentes, policía y viajeros frecuentes. Responde ÚNICAMENTE con una de estas frases exactas: "Seguridad buena", "Seguridad aceptable", "Seguridad media", "Seguridad baja", o "Sin seguridad".`,
-
-  places: (address, country) =>
-    `Busca opiniones, comentarios y recomendaciones de lugares representativos que existan en "${address}, ${country}" o cercanos para visitar. Si no hay atracciones principales, sugiere restaurantes populares, mercados de fin de semana, o eventos importantes que ocurran en la zona. Recomienda al menos 3 a 5 lugares con sus nombres específicos. IMPORTANTE: Usa formato Markdown para poner en negritas **todos los nombres de lugares de interés, atracciones, restaurantes, mercados o eventos**. No debe superar los 200 palabras la respuesta. Sin incluir referencias, números entre corchetes ni links.`
-};
 
 export async function POST(request) {
   try {
@@ -95,7 +79,7 @@ export async function POST(request) {
       });
     }
 
-    const prompt = PROMPTS[search_type](zone.address, countryName);
+    const prompt = PERPLEXITY_PROMPTS[search_type](zone.address, countryName);
 
     // Configuración base para Perplexity
     const completionConfig = {
@@ -112,37 +96,8 @@ export async function POST(request) {
     };
 
     // Para "secure" y "rent" agregamos response_format con JSON schema
-    if (search_type === 'secure') {
-      completionConfig.response_format = {
-        type: 'json_schema',
-        json_schema: {
-          schema: {
-            type: 'object',
-            properties: {
-              seguridad: {
-                type: 'string',
-                enum: ["Seguridad buena", "Seguridad aceptable", "Seguridad media", "Seguridad baja", "Sin seguridad"]
-              }
-            },
-            required: ["seguridad"]
-          }
-        }
-      };
-    } else if (search_type === 'rent') {
-      completionConfig.response_format = {
-        type: 'json_schema',
-        json_schema: {
-          schema: {
-            type: 'object',
-            properties: {
-              rent: {
-                type: 'number'
-              }
-            },
-            required: ["rent"]
-          }
-        }
-      };
+    if (PERPLEXITY_RESPONSE_SCHEMAS[search_type]) {
+      completionConfig.response_format = PERPLEXITY_RESPONSE_SCHEMAS[search_type];
     }
 
     // Llamar a Perplexity API

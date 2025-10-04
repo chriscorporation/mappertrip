@@ -17,7 +17,16 @@ export default function ZonesPanel({
   placeToDelete,
   highlightedPlace,
   onAddPlace,
-  onMapClickModeChange
+  onMapClickModeChange,
+  pendingCircle,
+  setPendingCircle,
+  circleRadius,
+  setCircleRadius,
+  editingCircleId,
+  setEditingCircleId,
+  editingRadius,
+  setEditingRadius,
+  onUpdatePlace
 }) {
   const { isAuthenticated } = useAuthStore();
   const isAdminMode = isAuthenticated;
@@ -32,14 +41,18 @@ export default function ZonesPanel({
   const [loadingAI, setLoadingAI] = useState({});
   const [duplicateError, setDuplicateError] = useState('');
   const [mapClickMode, setMapClickMode] = useState(false);
+  const [circleMode, setCircleMode] = useState(false);
   const [pendingPlace, setPendingPlace] = useState(null);
   const [pendingPlaceName, setPendingPlaceName] = useState('');
+  const [editingTitleId, setEditingTitleId] = useState(null);
+  const [tempTitle, setTempTitle] = useState('');
   const inputRef = useRef(null);
   const autocompleteRef = useRef(null);
   const cardRefs = useRef({});
   const perplexityPanelRef = useRef(null);
   const scrollContainerRef = useRef(null);
   const previousPlacesCountRef = useRef(places.length);
+  const pollingIntervalRef = useRef(null);
 
   // Detectar cuando se agrega una nueva zona y hacer scroll + seleccionar
   useEffect(() => {
@@ -65,14 +78,35 @@ export default function ZonesPanel({
     previousPlacesCountRef.current = countryPlaces.length;
   }, [places, selectedCountry, onGoToPlace]);
 
+  // Cleanup polling interval on unmount or panel close
+  useEffect(() => {
+    return () => {
+      if (pollingIntervalRef.current) {
+        clearInterval(pollingIntervalRef.current);
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!showPerplexityPanel && pollingIntervalRef.current) {
+      clearInterval(pollingIntervalRef.current);
+      pollingIntervalRef.current = null;
+    }
+  }, [showPerplexityPanel]);
+
   // Notificar cuando cambia el modo de clic del mapa
   useEffect(() => {
     if (onMapClickModeChange) {
-      onMapClickModeChange(mapClickMode, (lat, lng) => {
-        setPendingPlace({ lat, lng });
+      const isActive = mapClickMode || circleMode;
+      onMapClickModeChange(isActive, (lat, lng) => {
+        if (circleMode) {
+          setPendingCircle({ lat, lng });
+        } else if (mapClickMode) {
+          setPendingPlace({ lat, lng });
+        }
       });
     }
-  }, [mapClickMode]);
+  }, [mapClickMode, circleMode]);
 
   useEffect(() => {
     const initAutocomplete = () => {
@@ -93,7 +127,7 @@ export default function ZonesPanel({
           const place = autocompleteRef.current.getPlace();
 
           if (place.geometry) {
-            // Verificar si ya existe una zona con la misma dirección
+            // Verificar si ya existe una zona con la misma dirección en el estado local
             const countryPlaces = places.filter(p => p.country_code === selectedCountry.country_code);
             const isDuplicate = countryPlaces.some(p =>
               p.address.toLowerCase() === place.formatted_address.toLowerCase() ||
@@ -197,6 +231,55 @@ export default function ZonesPanel({
     }
   };
 
+  const handleUpdateRadius = async (placeId, newRadius) => {
+    try {
+      await fetch('/api/places', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: placeId,
+          circle_radius: newRadius
+        })
+      });
+
+      // Actualizar el estado del padre
+      if (onUpdatePlace) {
+        onUpdatePlace(placeId, { circle_radius: newRadius });
+      }
+
+      setEditingCircleId(null);
+    } catch (error) {
+      console.error('Error updating radius:', error);
+    }
+  };
+
+  const handleUpdateTitle = async (placeId, newTitle) => {
+    if (!newTitle.trim()) {
+      setEditingTitleId(null);
+      return;
+    }
+
+    try {
+      await fetch('/api/places', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: placeId,
+          address: newTitle.trim()
+        })
+      });
+
+      // Actualizar el estado del padre
+      if (onUpdatePlace) {
+        onUpdatePlace(placeId, { address: newTitle.trim() });
+      }
+
+      setEditingTitleId(null);
+    } catch (error) {
+      console.error('Error updating title:', error);
+    }
+  };
+
   if (!selectedCountry) {
     return (
       <div className="w-80 bg-white border-r border-gray-300 p-4">
@@ -228,12 +311,27 @@ export default function ZonesPanel({
               className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
             />
             <button
-              onClick={() => setMapClickMode(!mapClickMode)}
+              onClick={() => {
+                setMapClickMode(!mapClickMode);
+                if (circleMode) setCircleMode(false);
+              }}
               className={`p-2 rounded-lg border ${mapClickMode ? 'bg-blue-100 border-blue-500' : 'border-gray-300 hover:bg-gray-100'} cursor-pointer`}
               title="Seleccionar ubicación en el mapa"
             >
               <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                 <path fillRule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" />
+              </svg>
+            </button>
+            <button
+              onClick={() => {
+                setCircleMode(!circleMode);
+                if (mapClickMode) setMapClickMode(false);
+              }}
+              className={`p-2 rounded-lg border ${circleMode ? 'bg-purple-100 border-purple-500' : 'border-gray-300 hover:bg-gray-100'} cursor-pointer`}
+              title="Crear zona circular"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                <circle cx="10" cy="10" r="8" stroke="currentColor" strokeWidth="2" fill="none"/>
               </svg>
             </button>
           </div>
@@ -242,6 +340,9 @@ export default function ZonesPanel({
           )}
           {mapClickMode && (
             <p className="text-xs text-blue-600 mt-1">Haz clic en el mapa para seleccionar una ubicación</p>
+          )}
+          {circleMode && (
+            <p className="text-xs text-purple-600 mt-1">Haz clic en el mapa para crear una zona circular</p>
           )}
         </div>
       )}
@@ -293,6 +394,53 @@ export default function ZonesPanel({
             </p>
           </div>
         )}
+        {pendingCircle && (
+          <div className="p-3 bg-purple-50 rounded-lg border-2 border-purple-400">
+            <input
+              type="text"
+              value={pendingPlaceName}
+              onChange={(e) => setPendingPlaceName(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && pendingPlaceName.trim()) {
+                  const placeData = {
+                    id: Date.now(),
+                    address: pendingPlaceName.trim(),
+                    lat: pendingCircle.lat,
+                    lng: pendingCircle.lng,
+                    placeId: null,
+                    polygon: null,
+                    circle_radius: circleRadius,
+                    isDrawing: false,
+                    color: '#8b5cf6',
+                    country_code: selectedCountry.country_code,
+                  };
+                  onAddPlace(placeData);
+                  setPendingCircle(null);
+                  setPendingPlaceName('');
+                  setCircleMode(false);
+                }
+              }}
+              placeholder="Título de la zona circular..."
+              className="w-full px-3 py-2 border border-purple-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm mb-3"
+              autoFocus
+            />
+            <label className="block text-xs text-gray-700 mb-1">
+              Radio: {(circleRadius / 1000).toFixed(1)}km
+            </label>
+            <input
+              type="range"
+              min="1000"
+              max="3000"
+              step="100"
+              value={circleRadius}
+              onChange={(e) => setCircleRadius(parseInt(e.target.value))}
+              className="w-full h-2 bg-purple-200 rounded-lg appearance-none cursor-pointer"
+            />
+            <p className="text-xs text-gray-600 mt-2">
+              Lat: {pendingCircle.lat.toFixed(6)}, Lng: {pendingCircle.lng.toFixed(6)}
+            </p>
+          </div>
+        )}
         {countryPlaces.length === 0 && !pendingPlace ? (
           <p className="text-gray-500 text-sm text-center mt-4">
             No hay zonas creadas para {selectedCountry.name}
@@ -310,9 +458,38 @@ export default function ZonesPanel({
               onMouseEnter={() => hoverEnabled && onGoToPlace(place)}
             >
               <div className="mb-2">
-                <h3
-                  className="font-semibold text-sm mb-1 cursor-pointer hover:text-blue-600 transition-colors"
-                  onClick={async () => {
+                <div className="flex items-start justify-between">
+                  {editingTitleId === place.id ? (
+                    <input
+                      type="text"
+                      value={tempTitle}
+                      onChange={(e) => setTempTitle(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          handleUpdateTitle(place.id, tempTitle);
+                        } else if (e.key === 'Escape') {
+                          setEditingTitleId(null);
+                        }
+                      }}
+                      onBlur={() => handleUpdateTitle(place.id, tempTitle)}
+                      className="flex-1 px-2 py-1 text-sm font-semibold border border-blue-500 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      autoFocus
+                    />
+                  ) : (
+                    <h3
+                      className="font-semibold text-sm mb-1 cursor-pointer hover:text-blue-600 transition-colors flex-1"
+                      onDoubleClick={(e) => {
+                        e.stopPropagation();
+                        setEditingTitleId(place.id);
+                        setTempTitle(place.address);
+                      }}
+                      onClick={async () => {
+                    // Limpiar intervalo previo si existe
+                    if (pollingIntervalRef.current) {
+                      clearInterval(pollingIntervalRef.current);
+                      pollingIntervalRef.current = null;
+                    }
+
                     // Posicionar en el mapa
                     onGoToPlace(place);
 
@@ -320,31 +497,72 @@ export default function ZonesPanel({
                     setLoadingPerplexity(true);
                     setShowPerplexityPanel(true);
                     setSelectedZoneAddress(place.address);
+                    setPerplexityData(null);
 
                     try {
                       // Cargar notas primero
                       await loadNotesForPlace(place.id);
 
-                      // Luego cargar datos de Perplexity
-                      const response = await fetch(`/api/perplexity-notes?zone_id=${place.id}`);
-                      const data = await response.json();
-                      setPerplexityData(data);
+                      // Función para cargar datos de Perplexity
+                      const loadPerplexityData = async () => {
+                        const response = await fetch(`/api/perplexity-notes?zone_id=${place.id}`);
+                        const data = await response.json();
 
-                      // Scroll al inicio del panel
-                      setTimeout(() => {
-                        if (perplexityPanelRef.current) {
-                          perplexityPanelRef.current.scrollTop = 0;
+                        // Verificar si hay datos disponibles
+                        const hasData = data && (data.notes || data.rent || data.tourism || data.secure || data.places);
+
+                        if (hasData) {
+                          setPerplexityData(data);
+                          setLoadingPerplexity(false);
+
+                          // Limpiar el intervalo
+                          if (pollingIntervalRef.current) {
+                            clearInterval(pollingIntervalRef.current);
+                            pollingIntervalRef.current = null;
+                          }
+
+                          // Scroll al inicio del panel
+                          setTimeout(() => {
+                            if (perplexityPanelRef.current) {
+                              perplexityPanelRef.current.scrollTop = 0;
+                            }
+                          }, 0);
                         }
-                      }, 0);
+
+                        return hasData;
+                      };
+
+                      // Intentar cargar datos inmediatamente
+                      const hasData = await loadPerplexityData();
+
+                      // Si no hay datos, iniciar polling cada 5 segundos
+                      if (!hasData) {
+                        pollingIntervalRef.current = setInterval(async () => {
+                          await loadPerplexityData();
+                        }, 5000);
+                      }
                     } catch (error) {
                       console.error('Error loading perplexity data:', error);
-                    } finally {
                       setLoadingPerplexity(false);
                     }
                   }}
-                >
-                  {place.address}
-                </h3>
+                    >
+                      {place.address}
+                    </h3>
+                  )}
+                  <a
+                    href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(place.address)}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="ml-2 text-gray-400 hover:text-blue-600 transition-colors"
+                    title="Ver en Google Maps"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                      <path fillRule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" />
+                    </svg>
+                  </a>
+                </div>
                 <p className="text-xs text-gray-500">
                   Lat: {place.lat?.toFixed(6)}, Lng: {place.lng?.toFixed(6)}
                 </p>
@@ -388,13 +606,81 @@ export default function ZonesPanel({
                   />
                 )}
 
-                {place.polygon && (
-                  <div className="mt-2">
-                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                <div className="mt-2 flex gap-2 flex-col">
+                  {place.polygon && !place.isDrawing && (
+                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 w-fit">
                       ✓ Zona delimitada
                     </span>
-                  </div>
-                )}
+                  )}
+                  {place.isDrawing && (
+                    <div className="w-full">
+                      <p className="text-xs text-purple-600 mb-2">Editando polígono...</p>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => onStartDrawing(null)}
+                          className="flex-1 px-2 py-1 text-xs text-gray-700 bg-gray-100 rounded hover:bg-gray-200 cursor-pointer"
+                        >
+                          Cancelar
+                        </button>
+                        <button
+                          onClick={() => {
+                            // Trigger save via Enter key simulation
+                            const event = new KeyboardEvent('keydown', { key: 'Enter' });
+                            document.dispatchEvent(event);
+                          }}
+                          className="flex-1 px-2 py-1 text-xs text-white bg-purple-600 rounded hover:bg-purple-700 cursor-pointer"
+                        >
+                          Guardar
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                  {place.circle_radius && (
+                    <>
+                      {editingCircleId === place.id ? (
+                        <div
+                          className="w-full"
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              handleUpdateRadius(place.id, editingRadius);
+                            }
+                          }}
+                        >
+                          <label className="block text-xs text-gray-700 mb-1">
+                            Radio: {(editingRadius / 1000).toFixed(1)}km
+                          </label>
+                          <input
+                            type="range"
+                            min="1000"
+                            max="3000"
+                            step="100"
+                            value={editingRadius}
+                            onChange={(e) => setEditingRadius(parseInt(e.target.value))}
+                            className="w-full h-2 bg-purple-200 rounded-lg appearance-none cursor-pointer"
+                          />
+                          <div className="flex gap-2 mt-2">
+                            <button
+                              onClick={() => setEditingCircleId(null)}
+                              className="flex-1 px-2 py-1 text-xs text-gray-700 bg-gray-100 rounded hover:bg-gray-200 cursor-pointer"
+                            >
+                              Cancelar
+                            </button>
+                            <button
+                              onClick={() => handleUpdateRadius(place.id, editingRadius)}
+                              className="flex-1 px-2 py-1 text-xs text-white bg-purple-600 rounded hover:bg-purple-700 cursor-pointer"
+                            >
+                              Guardar
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800 w-fit">
+                          ⭕ Radio: {(place.circle_radius / 1000).toFixed(1)}km
+                        </span>
+                      )}
+                    </>
+                  )}
+                </div>
               </div>
               {isAdminMode && (
                 <div className="flex justify-around items-center pt-2 border-t border-gray-200">
@@ -410,15 +696,30 @@ export default function ZonesPanel({
                     <option value="#eab308" style={{ color: '#eab308' }}>🟡 Precaución</option>
                     <option value="#dc2626" style={{ color: '#dc2626' }}>🔴 Inseguro</option>
                   </select>
-                  <button
-                    onClick={() => onStartDrawing(place.id)}
-                    className={`p-2 rounded hover:bg-gray-100 cursor-pointer ${place.isDrawing ? 'bg-blue-100' : ''}`}
-                    title="Delimitar zona"
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                      <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
-                    </svg>
-                  </button>
+                  {place.circle_radius ? (
+                    <button
+                      onClick={() => {
+                        setEditingCircleId(editingCircleId === place.id ? null : place.id);
+                        setEditingRadius(place.circle_radius);
+                      }}
+                      className={`p-2 rounded hover:bg-purple-100 text-purple-600 cursor-pointer ${editingCircleId === place.id ? 'bg-purple-100' : ''}`}
+                      title="Editar radio"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                        <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
+                      </svg>
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => onStartDrawing(place.id)}
+                      className={`p-2 rounded hover:bg-gray-100 cursor-pointer ${place.isDrawing ? 'bg-blue-100' : ''}`}
+                      title="Delimitar zona"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                        <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
+                      </svg>
+                    </button>
+                  )}
                   <label
                     className="flex items-center p-2 rounded hover:bg-gray-100 cursor-pointer"
                     title="Lugar turístico"
@@ -532,7 +833,7 @@ export default function ZonesPanel({
             {loadingPerplexity ? (
               <div className="flex flex-col items-center justify-center py-12">
                 <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-                <p className="mt-4 text-sm text-gray-500">Cargando información...</p>
+                <p className="mt-4 text-sm text-gray-500">Esperando respuesta...</p>
               </div>
             ) : (
               <>

@@ -1,0 +1,151 @@
+{
+  "colors": {
+    "primary": {
+      "blue": "#3b82f6",
+      "blue_dark": "#2563eb",
+      "blue_light": "#60a5fa"
+    },
+    "zones": {
+      "seguro": "#22c55e",
+      "medio": "#3b82f6",
+      "regular": "#f97316",
+      "precaucion": "#eab308",
+      "inseguro": "#dc2626"
+    },
+    "gray": {
+      "50": "#f9fafb",
+      "100": "#f3f4f6",
+      "200": "#e5e7eb",
+      "300": "#d1d5db",
+      "400": "#9ca3af",
+      "500": "#6b7280",
+      "600": "#4b5563",
+      "700": "#374151",
+      "800": "#1f2937",
+      "900": "#111827"
+    },
+    "icons": {
+      "default": "#3c3c3c",
+      "selected": "#7a7a7a",
+      "white": "#ffffff",
+      "background": "transparent"
+    },
+    "ui": {
+      "background": "#ffffff",
+      "sidebar": "#f3f4f6",
+      "border": "#d1d5db",
+      "hover": "#e5e7eb",
+      "selected": "#ffffff",
+      "disabled": "#f9fafb",
+      "text_disabled": "#d1d5db"
+    },
+    "map": {
+      "airbnb_marker_bg": "#374151",
+      "airbnb_marker_text": "#ffffff",
+      "polygon_editing": "#a855f7",
+      "polygon_default": "#eb4034"
+    }
+  },
+  "typography": {
+    "fonts": {
+      "primary": "system-ui, -apple-system, sans-serif"
+    },
+    "sizes": {
+      "xs": "0.75rem",
+      "sm": "0.875rem",
+      "base": "1rem",
+      "lg": "1.125rem",
+      "xl": "1.25rem",
+      "2xl": "1.5rem"
+    }
+  },
+  "spacing": {
+    "sidebar_width": "100px",
+    "panel_width": "320px",
+    "panel_padding": "1rem",
+    "card_gap": "0.75rem"
+  },
+  "borders": {
+    "radius": {
+      "sm": "0.25rem",
+      "md": "0.375rem",
+      "lg": "0.5rem",
+      "xl": "0.75rem",
+      "full": "9999px"
+    },
+    "width": {
+      "default": "1px",
+      "thick": "2px",
+      "selected": "4px"
+    }
+  },
+  "icons": {
+    "directory": "/public/icons",
+    "format": "svg",
+    "color_default": "#3c3c3c",
+    "color_selected": "#7a7a7a",
+    "size_default": "24px",
+    "files": {
+      "zones": "arrow-down-right-square-svgrepo-com.svg",
+      "airbnb": "home-alt-svgrepo-com.svg",
+      "coworking": "people-nearby-svgrepo-com.svg",
+      "instagramable": "camera-svgrepo-com.svg",
+      "countries": "world-2-svgrepo-com.svg"
+    }
+  },
+  "components": {
+    "buttons": {
+      "primary": {
+        "bg": "#3b82f6",
+        "text": "#ffffff",
+        "hover_bg": "#2563eb"
+      },
+      "secondary": {
+        "bg": "#6b7280",
+        "text": "#ffffff",
+        "hover_bg": "#4b5563"
+      },
+      "danger": {
+        "bg": "#dc2626",
+        "text": "#ffffff",
+        "hover_bg": "#b91c1c"
+      },
+      "ghost": {
+        "bg": "transparent",
+        "text": "#374151",
+        "hover_bg": "#f3f4f6"
+      }
+    },
+    "cards": {
+      "bg": "#ffffff",
+      "border": "#e5e7eb",
+      "hover_border": "#3b82f6",
+      "shadow": "0 1px 3px 0 rgb(0 0 0 / 0.1)"
+    },
+    "inputs": {
+      "bg": "#ffffff",
+      "border": "#d1d5db",
+      "focus_border": "#3b82f6",
+      "text": "#111827",
+      "placeholder": "#9ca3af"
+    }
+  },
+  "animations": {
+    "transition_speed": "150ms",
+    "easing": "cubic-bezier(0.4, 0, 0.2, 1)"
+  },
+  "rules": [
+    "ALWAYS use colors from this file instead of hardcoded values",
+    "All SVG icons must have fill='#3c3c3c' (icons.color_default)",
+    "Selected tab icons should use fill='#7a7a7a' (icons.color_selected)",
+    "Icons with white interior elements should use fill='#ffffff'",
+    "All icons must have transparent background (remove white rect elements)",
+    "Map markers use the same icon colors as sidebar tabs",
+    "Sidebar width is fixed at 100px",
+    "Content panels are fixed at 320px width",
+    "Use cursor-pointer on ALL clickable elements",
+    "Buttons should have hover states defined in components.buttons",
+    "Cards should have consistent border and shadow",
+    "Use Tailwind CSS classes when possible, reference these values"
+  ]
+}

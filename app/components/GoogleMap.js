@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, useMemo } from 'react';
 
-export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocation, onSavePolygon, onPolygonClick, onBoundsChanged, coworkingPlaces, instagramablePlaces, mapClickMode, onMapClick, highlightedPlace }) {
+export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocation, onSavePolygon, onPolygonClick, onBoundsChanged, coworkingPlaces, instagramablePlaces, mapClickMode, onMapClick, highlightedPlace, pendingCircle, circleRadius, editingCircleId, editingRadius }) {
   const mapRef = useRef(null);
   const [map, setMap] = useState(null);
   const [marker, setMarker] = useState(null);
@@ -12,6 +12,8 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
   const [vertexToDelete, setVertexToDelete] = useState(null);
   const [deleteModalPosition, setDeleteModalPosition] = useState(null);
   const polygonsRef = useRef({});
+  const circlesRef = useRef({});
+  const tempCircleRef = useRef(null);
   const airbnbMarkersRef = useRef([]);
   const animationFrameRef = useRef(null);
   const boundsChangeTimeoutRef = useRef(null);
@@ -136,20 +138,99 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
 
     // Si es fitBounds, ajustar para ver todos los puntos
     if (selectedPlace.fitBounds && selectedPlace.places) {
-      const bounds = new window.google.maps.LatLngBounds();
-      selectedPlace.places.forEach(place => {
-        bounds.extend({ lat: place.lat, lng: place.lng });
+      // Función para intentar fitBounds
+      const attemptFitBounds = () => {
+        const bounds = new window.google.maps.LatLngBounds();
+        let hasValidBounds = false;
+
+        selectedPlace.places.forEach(place => {
+          // Siempre extender con el punto central
+          bounds.extend({ lat: place.lat, lng: place.lng });
+          hasValidBounds = true;
+
+          // Si la zona tiene un círculo, extender bounds con los bordes del círculo
+          if (place.circle_radius && circlesRef.current[place.id]) {
+            const circle = circlesRef.current[place.id];
+            const circleBounds = circle.getBounds();
+            if (circleBounds) {
+              bounds.extend(circleBounds.getNorthEast());
+              bounds.extend(circleBounds.getSouthWest());
+            }
+          }
+
+          // Si la zona tiene un polígono, extender bounds con todos los vértices
+          if (place.polygon && polygonsRef.current[place.id]) {
+            const polygon = polygonsRef.current[place.id];
+            const path = polygon.getPath();
+            if (path) {
+              for (let i = 0; i < path.getLength(); i++) {
+                bounds.extend(path.getAt(i));
+              }
+            }
+          }
+        });
+
+        if (hasValidBounds) {
+          // Aplicar bounds con padding
+          const padding = { top: 50, right: 50, bottom: 50, left: 50 };
+          map.fitBounds(bounds, padding);
+
+          // Forzar redibujado de overlays después de fitBounds
+          setTimeout(() => {
+            window.google.maps.event.trigger(map, 'resize');
+          }, 100);
+        }
+      };
+
+      // Verificar si todas las formas (polígonos/círculos) están renderizadas
+      const allShapesRendered = selectedPlace.places.every(place => {
+        if (place.polygon) {
+          return polygonsRef.current[place.id] !== undefined;
+        }
+        if (place.circle_radius) {
+          return circlesRef.current[place.id] !== undefined;
+        }
+        return true; // Si no tiene ninguna forma, considerar como renderizado
       });
-      map.fitBounds(bounds);
 
-      // Añadir padding para que no queden pegados a los bordes
-      const padding = { top: 50, right: 50, bottom: 50, left: 50 };
-      map.fitBounds(bounds, padding);
+      console.log('[GoogleMap] fitBounds requested for', selectedPlace.places.length, 'places');
+      console.log('[GoogleMap] All shapes rendered:', allShapesRendered);
+      console.log('[GoogleMap] Polygons ref:', Object.keys(polygonsRef.current).length);
+      console.log('[GoogleMap] Circles ref:', Object.keys(circlesRef.current).length);
 
-      // Forzar redibujado de overlays después de fitBounds
-      setTimeout(() => {
-        window.google.maps.event.trigger(map, 'resize');
-      }, 100);
+      if (allShapesRendered) {
+        // Si todas las formas están listas, ejecutar fitBounds inmediatamente
+        console.log('[GoogleMap] Executing fitBounds immediately');
+        attemptFitBounds();
+      } else {
+        // Si no todas las formas están listas, esperar un poco más
+        // Intentar múltiples veces con delays incrementales
+        console.log('[GoogleMap] Waiting for shapes to render...');
+        let attempts = 0;
+        const maxAttempts = 5;
+        const attemptInterval = setInterval(() => {
+          attempts++;
+          const nowAllShapesRendered = selectedPlace.places.every(place => {
+            if (place.polygon) {
+              return polygonsRef.current[place.id] !== undefined;
+            }
+            if (place.circle_radius) {
+              return circlesRef.current[place.id] !== undefined;
+            }
+            return true;
+          });
+
+          console.log(`[GoogleMap] Attempt ${attempts}/${maxAttempts}, shapes rendered:`, nowAllShapesRendered);
+
+          if (nowAllShapesRendered || attempts >= maxAttempts) {
+            clearInterval(attemptInterval);
+            console.log('[GoogleMap] Executing fitBounds after', attempts, 'attempts');
+            attemptFitBounds();
+          }
+        }, 200); // Intentar cada 200ms
+
+        return () => clearInterval(attemptInterval);
+      }
       return;
     }
 
@@ -225,37 +306,25 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
     let iconConfig;
 
     if (isCoworking) {
-      // Icono de café/comunidad para coworking
+      // Icono de personas para coworking
       iconConfig = {
-        path: 'M2 21h19v-3H2v3m16-6c1.66 0 3-1.34 3-3V4c0-1.66-1.34-3-3-3h-3c-1.66 0-3 1.34-3 3v8c0 1.66 1.34 3 3 3m-9-8c1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3 1.34 3 3 3m0 1c-2 0-6 1-6 3v3h12v-3c0-2-4-3-6-3z',
-        fillColor: '#8b5cf6',
-        fillOpacity: 1,
-        strokeColor: '#6d28d9',
-        strokeWeight: 2,
-        scale: 1.2,
-        anchor: new window.google.maps.Point(12, 24),
+        url: '/icons/people-nearby-svgrepo-com.svg',
+        scaledSize: new window.google.maps.Size(32, 32),
+        anchor: new window.google.maps.Point(16, 32),
       };
     } else if (isInstagramable) {
       // Icono de cámara para instagramable
       iconConfig = {
-        path: 'M4 4h3l2-2h6l2 2h3c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2m8 3c-2.76 0-5 2.24-5 5s2.24 5 5 5 5-2.24 5-5-2.24-5-5-5m0 1.8c1.77 0 3.2 1.43 3.2 3.2s-1.43 3.2-3.2 3.2S8.8 13.77 8.8 12s1.43-3.2 3.2-3.2z',
-        fillColor: '#ec4899',
-        fillOpacity: 1,
-        strokeColor: '#be185d',
-        strokeWeight: 2,
-        scale: 1.2,
-        anchor: new window.google.maps.Point(12, 24),
+        url: '/icons/camera-svgrepo-com.svg',
+        scaledSize: new window.google.maps.Size(32, 32),
+        anchor: new window.google.maps.Point(16, 32),
       };
     } else {
-      // Icono de casa por defecto (para Airbnb y zonas)
+      // Icono de flecha por defecto (para Airbnb y zonas)
       iconConfig = {
-        path: 'M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z',
-        fillColor: '#ffffff',
-        fillOpacity: 1,
-        strokeColor: '#3b82f6',
-        strokeWeight: 2,
-        scale: 1.5,
-        anchor: new window.google.maps.Point(12, 24),
+        url: '/icons/arrow-down-right-square-svgrepo-com.svg',
+        scaledSize: new window.google.maps.Size(32, 32),
+        anchor: new window.google.maps.Point(16, 32),
       };
     }
 
@@ -310,6 +379,11 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
     const drawingPlace = places.find(p => p.isDrawing);
 
     if (drawingPlace) {
+      // Cambiar cursor a crosshair
+      if (mapRef.current) {
+        mapRef.current.style.cursor = 'crosshair';
+      }
+
       // Si ya tiene polígono, solo hacerlo editable sin borrar
       if (drawingPlace.polygon && polygonsRef.current[drawingPlace.id]) {
         polygonsRef.current[drawingPlace.id].setEditable(true);
@@ -338,13 +412,18 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
         drawingManager.setDrawingMode(window.google.maps.drawing.OverlayType.POLYGON);
       }
     } else {
+      // Restaurar cursor normal solo si no está en mapClickMode
+      if (mapRef.current && !mapClickMode) {
+        mapRef.current.style.cursor = '';
+      }
+
       // Desactivar modo de dibujo y edición en todos los polígonos
       drawingManager.setDrawingMode(null);
       Object.values(polygonsRef.current).forEach(polygon => {
         if (polygon) polygon.setEditable(false);
       });
     }
-  }, [places, drawingManager]);
+  }, [places, drawingManager, mapClickMode]);
 
   // Guardar el polígono cuando se completa
   useEffect(() => {
@@ -364,8 +443,19 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
     if (!map || !places) return;
 
     places.forEach(place => {
-      // Si el lugar tiene un polígono guardado pero no está renderizado
-      if (place.polygon && !polygonsRef.current[place.id]) {
+      // Si el lugar tiene un polígono guardado
+      if (place.polygon) {
+        // Si ya está renderizado, solo actualizar opciones
+        if (polygonsRef.current[place.id]) {
+          const existingPolygon = polygonsRef.current[place.id];
+          existingPolygon.setOptions({
+            fillColor: place.color || '#eb4034',
+            strokeColor: place.color || '#eb4034',
+          });
+          return;
+        }
+
+        // Si no está renderizado, crearlo
         const coordinates = place.polygon.map(coord => ({
           lat: coord[1],
           lng: coord[0]
@@ -399,17 +489,22 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
           if (event.vertex !== undefined && polygon.getEditable()) {
             const path = polygon.getPath();
             if (path.getLength() > 3) { // Mantener al menos 3 puntos
-              // Obtener posición en pantalla del evento
-              const projection = map.getProjection();
-              const point = projection.fromLatLngToPoint(event.latLng);
-              const scale = Math.pow(2, map.getZoom());
-              const pixelPosition = {
-                x: Math.floor(point.x * scale),
-                y: Math.floor(point.y * scale)
-              };
+              // Obtener posición en píxeles de la pantalla
+              const overlay = new window.google.maps.OverlayView();
+              overlay.draw = function() {};
+              overlay.setMap(map);
 
-              setVertexToDelete({ polygon, vertex: event.vertex, path });
-              setDeleteModalPosition(pixelPosition);
+              // Esperar a que el overlay esté listo
+              window.google.maps.event.addListenerOnce(overlay, 'projection_changed', () => {
+                const projection = overlay.getProjection();
+                const point = projection.fromLatLngToContainerPixel(event.latLng);
+
+                setVertexToDelete({ polygon, vertex: event.vertex, path });
+                setDeleteModalPosition({ x: point.x, y: point.y });
+
+                // Limpiar el overlay
+                overlay.setMap(null);
+              });
             } else {
               alert('El polígono debe tener al menos 3 puntos');
             }
@@ -441,12 +536,6 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
         polygon.keydownSaveListener = handleKeyDownSave;
 
         polygonsRef.current[place.id] = polygon;
-      } else if (place.polygon && polygonsRef.current[place.id]) {
-        // Actualizar el color si el polígono ya existe
-        polygonsRef.current[place.id].setOptions({
-          fillColor: place.color || '#eb4034',
-          strokeColor: place.color || '#eb4034',
-        });
       }
     });
 
@@ -480,15 +569,100 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
       if (!place) return;
 
       const isHighlighted = highlightedPlace === parseInt(placeId);
+      const isEditing = place.isDrawing;
 
       polygon.setOptions({
-        strokeWeight: isHighlighted ? 5 : 3,
+        strokeWeight: isHighlighted || isEditing ? 5 : 3,
         strokeOpacity: 1,
-        strokeColor: isHighlighted ? '#FFEB3B' : (place.color || '#eb4034'),
-        fillOpacity: isHighlighted ? 0.25 : 0.15,
+        strokeColor: isEditing ? '#8b5cf6' : (isHighlighted ? '#FFEB3B' : (place.color || '#eb4034')),
+        fillOpacity: isHighlighted || isEditing ? 0.25 : 0.15,
       });
     });
   }, [highlightedPlace, places, map]);
+
+  // Ocultar/mostrar polígonos según mapClickMode
+  useEffect(() => {
+    if (!map) return;
+
+    Object.values(polygonsRef.current).forEach(polygon => {
+      if (!polygon) return;
+      polygon.setVisible(!mapClickMode);
+    });
+  }, [mapClickMode, map]);
+
+  // Renderizar círculos
+  useEffect(() => {
+    if (!map || !places) return;
+
+    places.forEach(place => {
+      // Si el lugar tiene circle_radius
+      if (place.circle_radius) {
+        // Determinar el radio a usar (editingRadius si se está editando, o el radio guardado)
+        const radiusToUse = editingCircleId === place.id ? editingRadius : place.circle_radius;
+
+        // Si ya está renderizado, solo actualizar opciones
+        if (circlesRef.current[place.id]) {
+          const existingCircle = circlesRef.current[place.id];
+          existingCircle.setOptions({
+            fillColor: place.color || '#8b5cf6',
+            strokeColor: place.color || '#8b5cf6',
+            radius: radiusToUse,
+          });
+          return;
+        }
+
+        // Si no está renderizado, crearlo
+        const circle = new window.google.maps.Circle({
+          strokeColor: place.color || '#8b5cf6',
+          strokeOpacity: 0.8,
+          strokeWeight: 2,
+          fillColor: place.color || '#8b5cf6',
+          fillOpacity: 0.35,
+          map: map,
+          center: { lat: place.lat, lng: place.lng },
+          radius: radiusToUse,
+        });
+
+        circlesRef.current[place.id] = circle;
+      }
+    });
+
+    // Limpiar círculos de lugares eliminados
+    Object.keys(circlesRef.current).forEach(placeId => {
+      if (!places.find(p => p.id === parseInt(placeId))) {
+        const circle = circlesRef.current[placeId];
+        circle.setMap(null);
+        delete circlesRef.current[placeId];
+      }
+    });
+  }, [places, map, editingCircleId, editingRadius]);
+
+  // Renderizar círculo temporal mientras se ajusta el radio
+  useEffect(() => {
+    if (!map) return;
+
+    // Limpiar círculo temporal anterior
+    if (tempCircleRef.current) {
+      tempCircleRef.current.setMap(null);
+      tempCircleRef.current = null;
+    }
+
+    // Crear nuevo círculo temporal si hay pendingCircle
+    if (pendingCircle) {
+      const circle = new window.google.maps.Circle({
+        strokeColor: '#8b5cf6',
+        strokeOpacity: 0.8,
+        strokeWeight: 2,
+        fillColor: '#8b5cf6',
+        fillOpacity: 0.35,
+        map: map,
+        center: { lat: pendingCircle.lat, lng: pendingCircle.lng },
+        radius: circleRadius,
+      });
+
+      tempCircleRef.current = circle;
+    }
+  }, [pendingCircle, circleRadius, map]);
 
   // Función para guardar ediciones del polígono
   const savePolygonEdit = (placeId, polygon) => {
@@ -537,6 +711,16 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
         align-items: center;
       `;
 
+      // Crear el ícono de casa
+      const homeIcon = document.createElement('img');
+      homeIcon.src = '/icons/home-alt-svgrepo-com.svg';
+      homeIcon.style.cssText = `
+        width: 24px;
+        height: 24px;
+        margin-bottom: 4px;
+        filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
+      `;
+
       // Crear el div de precio
       const priceDiv = document.createElement('div');
       priceDiv.style.cssText = `
@@ -565,6 +749,7 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
         margin-top: -1px;
       `;
 
+      container.appendChild(homeIcon);
       container.appendChild(priceDiv);
       container.appendChild(pointer);
 

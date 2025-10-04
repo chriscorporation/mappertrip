@@ -31,50 +31,27 @@ export async function GET() {
 export async function POST(request) {
   const body = await request.json();
 
-  // Primero verificar si ya existe
-  const { data: existing } = await supabaseRead
-    .from('geoplaces')
-    .select('id')
-    .eq('address', body.address)
-    .single();
+  // Insertar directamente sin verificar duplicados
+  // La validación de duplicados se hace en el cliente
+  const insertData = {
+    address: body.address,
+    lat: parseFloat(body.lat),
+    lng: parseFloat(body.lng),
+    place_id: body.placeId,
+    polygon: body.polygon,
+    color: body.color || '#22c55e',
+    country_code: body.country_code || 'AR',
+    is_turistic: body.is_turistic || false
+  };
 
-  if (existing) {
-    // Si ya existe, hacer un update en lugar de insert
-    const { data, error } = await supabaseWrite
-      .from('geoplaces')
-      .update({
-        lat: parseFloat(body.lat),
-        lng: parseFloat(body.lng),
-        place_id: body.placeId,
-        polygon: body.polygon,
-        color: body.color || '#22c55e',
-        country_code: body.country_code || 'AR',
-        is_turistic: body.is_turistic || false
-      })
-      .eq('id', existing.id)
-      .select()
-      .single();
-
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
-    }
-
-    return NextResponse.json(data);
+  // Agregar circle_radius solo si está definido
+  if (body.circle_radius !== undefined) {
+    insertData.circle_radius = body.circle_radius;
   }
 
-  // Si no existe, hacer insert normal
   const { data, error } = await supabaseWrite
     .from('geoplaces')
-    .insert([{
-      address: body.address,
-      lat: parseFloat(body.lat),
-      lng: parseFloat(body.lng),
-      place_id: body.placeId,
-      polygon: body.polygon,
-      color: body.color || '#22c55e',
-      country_code: body.country_code || 'AR',
-      is_turistic: body.is_turistic || false
-    }])
+    .insert([insertData])
     .select()
     .single();
 
@@ -89,17 +66,21 @@ export async function POST(request) {
 export async function PUT(request) {
   const body = await request.json();
 
+  // Construir objeto de actualización solo con campos definidos
+  const updateData = {};
+
+  if (body.address !== undefined) updateData.address = body.address;
+  if (body.lat !== undefined) updateData.lat = parseFloat(body.lat);
+  if (body.lng !== undefined) updateData.lng = parseFloat(body.lng);
+  if (body.placeId !== undefined) updateData.place_id = body.placeId;
+  if (body.polygon !== undefined) updateData.polygon = body.polygon;
+  if (body.color !== undefined) updateData.color = body.color;
+  if (body.is_turistic !== undefined) updateData.is_turistic = body.is_turistic;
+  if (body.circle_radius !== undefined) updateData.circle_radius = body.circle_radius;
+
   const { data, error } = await supabaseWrite
     .from('geoplaces')
-    .update({
-      address: body.address,
-      lat: parseFloat(body.lat),
-      lng: parseFloat(body.lng),
-      place_id: body.placeId,
-      polygon: body.polygon,
-      color: body.color,
-      is_turistic: body.is_turistic
-    })
+    .update(updateData)
     .eq('id', body.id)
     .select()
     .single();
