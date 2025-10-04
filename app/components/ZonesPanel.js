@@ -458,7 +458,7 @@ export default function ZonesPanel({
               onMouseEnter={() => hoverEnabled && onGoToPlace(place)}
             >
               <div className="mb-2">
-                <div className="flex items-start justify-between">
+                <div className="flex items-start justify-between mb-2">
                   {editingTitleId === place.id ? (
                     <input
                       type="text"
@@ -563,6 +563,36 @@ export default function ZonesPanel({
                     </svg>
                   </a>
                 </div>
+
+                {/* Safety Status Badge */}
+                <div className="mb-2">
+                  {place.color === '#22c55e' && (
+                    <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-800 border border-green-200">
+                      🟢 Zona Segura
+                    </span>
+                  )}
+                  {place.color === '#3b82f6' && (
+                    <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-blue-100 text-blue-800 border border-blue-200">
+                      🔵 Seguridad Media
+                    </span>
+                  )}
+                  {place.color === '#f97316' && (
+                    <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-orange-100 text-orange-800 border border-orange-200">
+                      🟠 Seguridad Regular
+                    </span>
+                  )}
+                  {place.color === '#eab308' && (
+                    <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-yellow-100 text-yellow-800 border border-yellow-200">
+                      🟡 Precaución
+                    </span>
+                  )}
+                  {place.color === '#dc2626' && (
+                    <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-red-100 text-red-800 border border-red-200">
+                      🔴 Zona Insegura
+                    </span>
+                  )}
+                </div>
+
                 <p className="text-xs text-gray-500">
                   Lat: {place.lat?.toFixed(6)}, Lng: {place.lng?.toFixed(6)}
                 </p>
