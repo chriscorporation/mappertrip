@@ -43,4 +43,10 @@ jobs:
             - Push changes directly to 'claude_bot'
             - Never modify main, master, or any other branch
 
+            WORKFLOW:
+            1. Analyze the issue and implement the solution
+            2. Make commits directly to 'claude_bot'
+            3. Add a comment to the issue summarizing what you did
+            4. Close the issue when completed
+
             Now, address the issue or request provided.
