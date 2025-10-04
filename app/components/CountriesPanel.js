@@ -31,11 +31,31 @@ export default function CountriesPanel({ selectedCountry, onSelectCountry, place
     loadCountries();
   }, []);
 
+  // Skeleton loader component con animación shimmer al estilo Airbnb
+  const SkeletonCard = () => (
+    <div className="w-full px-4 py-3 border-b border-gray-100">
+      <div className="flex items-center gap-3">
+        <div className="w-8 h-8 rounded-full shimmer"></div>
+        <div className="flex-1 space-y-2">
+          <div className="h-4 rounded w-3/4 shimmer"></div>
+          <div className="h-3 rounded w-1/4 shimmer"></div>
+        </div>
+      </div>
+    </div>
+  );
+
   if (loading) {
     return (
-      <div className="w-80 bg-white border-r border-gray-300 p-4">
-        <h2 className="text-xl font-bold mb-4">Countries</h2>
-        <p className="text-gray-500">Cargando...</p>
+      <div className="w-80 bg-white border-r border-gray-300 flex flex-col">
+        <div className="p-4 border-b border-gray-200">
+          <h2 className="text-xl font-bold">Countries</h2>
+          <p className="text-xs text-gray-500 mt-1">Cargando países...</p>
+        </div>
+        <div className="flex-1 overflow-y-auto">
+          {[...Array(8)].map((_, i) => (
+            <SkeletonCard key={i} />
+          ))}
+        </div>
       </div>
     );
   }
