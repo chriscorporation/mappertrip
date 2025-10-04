@@ -1,6 +1,7 @@
 import Header from '../components/Header';
 import AnimatedImage from '../components/AnimatedImage';
 import ExploreButton from '../components/ExploreButton';
+import Breadcrumbs from '../components/Breadcrumbs';
 
 export const metadata = {
   title: 'Herramientas para Nómadas Digitales - Viaja Informado y Seguro',
@@ -15,6 +16,7 @@ export default function NomadasDigitales() {
   return (
     <div className="flex flex-col h-screen overflow-y-auto">
       <Header isAdminMode={false} />
+      <Breadcrumbs />
 
       <section className="pt-6 pb-20 bg-gray-50">
         <div className="container mx-auto px-4">
