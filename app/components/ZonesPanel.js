@@ -9,6 +9,7 @@ import MapPreview from './MapPreview';
 import SkeletonLoader from './SkeletonLoader';
 import ZoneComparison from './ZoneComparison';
 import PullToRefresh from './PullToRefresh';
+import QuickGuides from './QuickGuides';
 import { useToastStore } from '../store/toastStore';
 
 export default function ZonesPanel({
@@ -56,6 +57,7 @@ export default function ZonesPanel({
   const [initialLoading, setInitialLoading] = useState(true);
   const [selectedZonesForComparison, setSelectedZonesForComparison] = useState([]);
   const [showComparison, setShowComparison] = useState(false);
+  const [selectedZoneForGuides, setSelectedZoneForGuides] = useState(null);
   const inputRef = useRef(null);
   const autocompleteRef = useRef(null);
   const cardRefs = useRef({});
@@ -586,7 +588,32 @@ export default function ZonesPanel({
                     className="w-5 h-5 text-purple-600 rounded focus:ring-purple-500 cursor-pointer"
                   />
                 </label>
+                {/* Botón de Guías Rápidas en la esquina inferior derecha */}
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setSelectedZoneForGuides(selectedZoneForGuides?.id === place.id ? null : place);
+                  }}
+                  className={`absolute bottom-3 right-3 flex items-center gap-1.5 px-3 py-1.5 rounded-full shadow-md transition-all duration-200 hover:scale-105 ${
+                    selectedZoneForGuides?.id === place.id
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-white text-gray-700 hover:bg-gray-50'
+                  }`}
+                  title="Ver guías rápidas de seguridad"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                    <path d="M9 4.804A7.968 7.968 0 005.5 4c-1.255 0-2.443.29-3.5.804v10A7.969 7.969 0 015.5 14c1.669 0 3.218.51 4.5 1.385A7.962 7.962 0 0114.5 14c1.255 0 2.443.29 3.5.804v-10A7.968 7.968 0 0014.5 4c-1.255 0-2.443.29-3.5.804V12a1 1 0 11-2 0V4.804z" />
+                  </svg>
+                  <span className="text-xs font-medium">Guías</span>
+                </button>
               </div>
+
+              {/* Quick Guides - mostrar justo debajo del mapa si está seleccionada */}
+              {selectedZoneForGuides?.id === place.id && (
+                <div className="border-t border-gray-200">
+                  <QuickGuides zone={place} countryCode={selectedCountry?.country_code} />
+                </div>
+              )}
 
               <div className="p-3">
               <div className="mb-2">
