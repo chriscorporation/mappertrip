@@ -81,5 +81,6 @@ jobs:
             - Branch naming: feature/{descriptive-name}
             - Base branch for PR: claude_bot
             - Example: git checkout -b feature/add-version-banner && git push -u origin feature/add-version-banner
+            - After making changes, review the code to ensure there are no syntax errors
 
             Now, address the request in the ISSUE TITLE, ISSUE BODY, or COMMENT above.
