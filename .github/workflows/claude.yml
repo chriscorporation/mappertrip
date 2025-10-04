@@ -8,10 +8,10 @@ on:
 
 jobs:
   claude-job:
-    # Solo ejecutar si el comentario contiene @claude, o si es un issue nuevo/editado
+    # Solo ejecutar para el issue #7 con @claude, o si es issue #7 nuevo/editado/reabierto
     if: |
-      github.event_name == 'issues' ||
-      (github.event_name == 'issue_comment' && contains(github.event.comment.body, '@claude'))
+      (github.event_name == 'issues' && github.event.issue.number == 7) ||
+      (github.event_name == 'issue_comment' && github.event.issue.number == 7 && contains(github.event.comment.body, '@claude'))
 
     runs-on: ubuntu-latest
     timeout-minutes: 15
