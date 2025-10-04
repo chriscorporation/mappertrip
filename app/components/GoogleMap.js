@@ -185,6 +185,7 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
   const [showLegend, setShowLegend] = useState(true);
   const [mapStyle, setMapStyle] = useState('standard');
   const [showStyleSelector, setShowStyleSelector] = useState(false);
+  const [showDensityIndicator, setShowDensityIndicator] = useState(true);
   const [activeFilters, setActiveFilters] = useState({
     safe: true,
     medium: true,
@@ -1195,6 +1196,22 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
     };
   }, [map, mapClickMode, onMapClick]);
 
+  // Calcular densidad de seguridad basada en las zonas visibles
+  const calculateSafetyDensity = useMemo(() => {
+    if (!places || places.length === 0) return { safe: 0, unsafe: 0, total: 0, percentage: 0 };
+
+    const countryPlaces = selectedCountry
+      ? places.filter(p => p.country_code === selectedCountry.country_code)
+      : places;
+
+    const safeZones = countryPlaces.filter(p => p.color === '#22c55e' || p.color === '#3b82f6').length;
+    const unsafeZones = countryPlaces.filter(p => p.color === '#dc2626' || p.color === '#eab308').length;
+    const total = countryPlaces.length;
+    const percentage = total > 0 ? Math.round((safeZones / total) * 100) : 0;
+
+    return { safe: safeZones, unsafe: unsafeZones, total, percentage };
+  }, [places, selectedCountry]);
+
   return (
     <>
       <div className="relative w-full h-full">
@@ -1463,6 +1480,103 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
             places={places}
             selectedCountry={selectedCountry}
           />
+        )}
+
+        {/* Safety Density Indicator - Bottom center */}
+        {!isMapLoading && showDensityIndicator && calculateSafetyDensity.total > 0 && (
+          <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-20 animate-[fadeIn_0.6s_ease-out]">
+            <div className="bg-white/95 backdrop-blur-sm rounded-2xl shadow-2xl border-2 border-gray-200 p-4 min-w-[320px]">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <span className="text-xl">📊</span>
+                  <h3 className="font-bold text-sm text-gray-800">Índice de Seguridad</h3>
+                </div>
+                <button
+                  onClick={() => setShowDensityIndicator(false)}
+                  className="p-1 hover:bg-gray-100 rounded-full transition-colors duration-200"
+                  title="Ocultar indicador"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-gray-500" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                  </svg>
+                </button>
+              </div>
+
+              {/* Barra de progreso de densidad */}
+              <div className="relative mb-3">
+                <div className="h-10 bg-gradient-to-r from-red-100 via-yellow-100 to-green-100 rounded-full overflow-hidden shadow-inner border-2 border-gray-200">
+                  <div
+                    className="h-full bg-gradient-to-r from-green-500 to-emerald-500 transition-all duration-1000 ease-out flex items-center justify-end pr-3"
+                    style={{ width: `${calculateSafetyDensity.percentage}%` }}
+                  >
+                    <span className="text-white font-bold text-sm drop-shadow-lg">
+                      {calculateSafetyDensity.percentage}% Seguro
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Estadísticas detalladas */}
+              <div className="grid grid-cols-3 gap-2 text-center">
+                <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-lg p-2 border border-green-200">
+                  <div className="flex items-center justify-center gap-1 mb-1">
+                    <span className="text-lg">🛡️</span>
+                  </div>
+                  <p className="text-xl font-bold text-green-700">{calculateSafetyDensity.safe}</p>
+                  <p className="text-xs text-green-600 font-medium">Seguras</p>
+                </div>
+                <div className="bg-gradient-to-br from-red-50 to-rose-50 rounded-lg p-2 border border-red-200">
+                  <div className="flex items-center justify-center gap-1 mb-1">
+                    <span className="text-lg">⚠️</span>
+                  </div>
+                  <p className="text-xl font-bold text-red-700">{calculateSafetyDensity.unsafe}</p>
+                  <p className="text-xs text-red-600 font-medium">Riesgosas</p>
+                </div>
+                <div className="bg-gradient-to-br from-blue-50 to-cyan-50 rounded-lg p-2 border border-blue-200">
+                  <div className="flex items-center justify-center gap-1 mb-1">
+                    <span className="text-lg">📍</span>
+                  </div>
+                  <p className="text-xl font-bold text-blue-700">{calculateSafetyDensity.total}</p>
+                  <p className="text-xs text-blue-600 font-medium">Total</p>
+                </div>
+              </div>
+
+              {/* Recomendación visual */}
+              <div className={`mt-3 p-2 rounded-lg text-center ${
+                calculateSafetyDensity.percentage >= 70
+                  ? 'bg-green-50 border border-green-200'
+                  : calculateSafetyDensity.percentage >= 40
+                  ? 'bg-yellow-50 border border-yellow-200'
+                  : 'bg-red-50 border border-red-200'
+              }`}>
+                <p className={`text-xs font-semibold ${
+                  calculateSafetyDensity.percentage >= 70
+                    ? 'text-green-700'
+                    : calculateSafetyDensity.percentage >= 40
+                    ? 'text-yellow-700'
+                    : 'text-red-700'
+                }`}>
+                  {calculateSafetyDensity.percentage >= 70
+                    ? '✅ Zona predominantemente segura'
+                    : calculateSafetyDensity.percentage >= 40
+                    ? '⚡ Zona mixta - Revisar con cuidado'
+                    : '🚨 Precaución - Pocas zonas seguras'}
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Botón para mostrar indicador cuando está oculto */}
+        {!isMapLoading && !showDensityIndicator && calculateSafetyDensity.total > 0 && (
+          <button
+            onClick={() => setShowDensityIndicator(true)}
+            className="absolute bottom-6 left-1/2 -translate-x-1/2 bg-white/95 backdrop-blur-sm rounded-full shadow-xl border-2 border-gray-200 px-4 py-2 z-20 hover:scale-110 transition-all duration-300 group animate-[fadeIn_0.3s_ease-out] flex items-center gap-2"
+            title="Mostrar índice de seguridad"
+          >
+            <span className="text-xl">📊</span>
+            <span className="text-sm font-semibold text-gray-700">Índice</span>
+          </button>
         )}
       </div>
 
