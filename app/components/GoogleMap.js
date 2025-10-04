@@ -5,6 +5,7 @@ import CountryQuickSelector from './CountryQuickSelector';
 import QuickStatsPanel from './QuickStatsPanel';
 import MapSearchBox from './MapSearchBox';
 import MapLayersControl from './MapLayersControl';
+import StreetViewPreview from './StreetViewPreview';
 
 // Estilos de mapa predefinidos
 const MAP_STYLES = {
@@ -215,6 +216,9 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
   const boundsChangeTimeoutRef = useRef(null);
   const mapClickListenerRef = useRef(null);
   const tempMarkerRef = useRef(null);
+  const hoverTimeoutRef = useRef(null);
+  const [streetViewPosition, setStreetViewPosition] = useState(null);
+  const [showStreetView, setShowStreetView] = useState(false);
 
   // Helper function to get filter category from color
   const getFilterCategory = (color) => {
@@ -753,12 +757,23 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
         });
 
         // Add hover effect to polygon
-        polygon.addListener('mouseover', function() {
+        polygon.addListener('mouseover', function(event) {
           if (!polygon.getEditable()) {
             polygon.setOptions({
               fillOpacity: 0.35,
               strokeWeight: 4,
             });
+
+            // Activar Street View con delay de 800ms para hover prolongado
+            if (hoverTimeoutRef.current) {
+              clearTimeout(hoverTimeoutRef.current);
+            }
+            hoverTimeoutRef.current = setTimeout(() => {
+              // Usar la posición del cursor o el centro del polígono
+              const position = event.latLng || { lat: place.lat, lng: place.lng };
+              setStreetViewPosition(position);
+              setShowStreetView(true);
+            }, 800);
           }
         });
 
@@ -769,6 +784,12 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
               fillOpacity: isHighlighted ? 0.25 : 0.15,
               strokeWeight: isHighlighted ? 5 : 3,
             });
+
+            // Cancelar activación de Street View si sale antes de 800ms
+            if (hoverTimeoutRef.current) {
+              clearTimeout(hoverTimeoutRef.current);
+              hoverTimeoutRef.current = null;
+            }
           }
         });
 
@@ -929,11 +950,22 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
         });
 
         // Add hover effect to circle
-        circle.addListener('mouseover', function() {
+        circle.addListener('mouseover', function(event) {
           circle.setOptions({
             fillOpacity: 0.5,
             strokeWeight: 3,
           });
+
+          // Activar Street View con delay de 800ms para hover prolongado
+          if (hoverTimeoutRef.current) {
+            clearTimeout(hoverTimeoutRef.current);
+          }
+          hoverTimeoutRef.current = setTimeout(() => {
+            // Usar la posición del cursor o el centro del círculo
+            const position = event.latLng || { lat: place.lat, lng: place.lng };
+            setStreetViewPosition(position);
+            setShowStreetView(true);
+          }, 800);
         });
 
         circle.addListener('mouseout', function() {
@@ -941,6 +973,12 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
             fillOpacity: 0.35,
             strokeWeight: 2,
           });
+
+          // Cancelar activación de Street View si sale antes de 800ms
+          if (hoverTimeoutRef.current) {
+            clearTimeout(hoverTimeoutRef.current);
+            hoverTimeoutRef.current = null;
+          }
         });
 
         // Add click event to circle
@@ -1777,6 +1815,16 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
           </div>
         </div>
       )}
+
+      {/* Street View Preview flotante */}
+      <StreetViewPreview
+        position={streetViewPosition}
+        isVisible={showStreetView}
+        onClose={() => {
+          setShowStreetView(false);
+          setStreetViewPosition(null);
+        }}
+      />
     </>
   );
 }
