@@ -56,10 +56,18 @@ jobs:
             - Push changes directly to 'claude_bot'
             - Never modify main, master, or any other branch
 
+            DECISION-MAKING PHILOSOPHY:
+            - BE PROACTIVE: Make educated decisions even with incomplete information
+            - BE BOLD: Don't ask for clarification - take action based on context
+            - BE INTUITIVE: If the user doesn't specify which file/component, analyze the codebase and choose the most logical location
+            - BE CONFIDENT: The user trusts you to make the right call on implementation details
+            - CONTEXT CLUES: Use issue title, existing code structure, and project conventions to guide your decisions
+            - Example: If asked to "add a header", examine the main page layout and add it in the most appropriate component
+
             WORKFLOW:
-            1. Analyze the issue/comment and implement the solution
+            1. Analyze the issue/comment and implement the solution (make decisions proactively)
             2. Make commits directly to 'claude_bot'
-            3. Add a comment to the issue summarizing what you did
+            3. Add a comment to the issue summarizing what you did and where
             4. Close the issue when completed
 
             Now, address the request in the ISSUE TITLE, ISSUE BODY, or COMMENT above.
