@@ -13,6 +13,7 @@ import Header from './components/Header';
 import HeroBanner from './components/HeroBanner';
 import TrustBadges from './components/TrustBadges';
 import SafetyFilters from './components/SafetyFilters';
+import Breadcrumbs from './components/Breadcrumbs';
 import { useAuthStore } from './store/authStore';
 import { useAppStore } from './store/appStore';
 
@@ -319,6 +320,52 @@ function HomeContent() {
     }, 100);
   };
 
+  // Generar breadcrumbs dinámicamente según el tab activo
+  const getBreadcrumbs = () => {
+    const breadcrumbs = [
+      { label: 'Inicio', href: '/', onClick: () => router.push('/') }
+    ];
+
+    if (selectedTab === 'countries') {
+      breadcrumbs.push({ label: 'Países' });
+    }
+
+    if (selectedTab === 'zones' && selectedCountry) {
+      breadcrumbs.push({
+        label: 'Países',
+        href: '/?tab=countries',
+        onClick: () => {
+          setSelectedCountry(null);
+          router.push('/?tab=countries');
+        }
+      });
+      breadcrumbs.push({ label: selectedCountry.name });
+    }
+
+    if (selectedTab === 'airbnb') {
+      breadcrumbs.push({ label: 'Airbnb' });
+      if (selectedCountry) {
+        breadcrumbs.push({ label: selectedCountry.name });
+      }
+    }
+
+    if (selectedTab === 'coworking') {
+      breadcrumbs.push({ label: 'Coworking' });
+      if (selectedCountry) {
+        breadcrumbs.push({ label: selectedCountry.name });
+      }
+    }
+
+    if (selectedTab === 'instagramable') {
+      breadcrumbs.push({ label: 'Lugares Instagramables' });
+      if (selectedCountry) {
+        breadcrumbs.push({ label: selectedCountry.name });
+      }
+    }
+
+    return breadcrumbs;
+  };
+
   const handleDeletePlace = (placeId, confirm = false) => {
     if (confirm) {
       const place = places.find(p => p.id === placeId);
@@ -397,6 +444,9 @@ function HomeContent() {
 
       {/* Trust Badges - Sticky debajo del header */}
       <TrustBadges />
+
+      {/* Breadcrumbs - Navegación contextual */}
+      <Breadcrumbs items={getBreadcrumbs()} />
 
       {/* Safety Filters - Solo visible en tab zones */}
       {selectedTab === 'zones' && selectedCountry && (
