@@ -6,6 +6,7 @@ import QuickStatsPanel from './QuickStatsPanel';
 import MapSearchBox from './MapSearchBox';
 import MapLayersControl from './MapLayersControl';
 import StreetViewPreview from './StreetViewPreview';
+import ZoomControls from './ZoomControls';
 
 // Estilos de mapa predefinidos
 const MAP_STYLES = {
@@ -1825,6 +1826,9 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
           setStreetViewPosition(null);
         }}
       />
+
+      {/* Controles de zoom mejorados con indicador de escala */}
+      <ZoomControls map={map} />
     </>
   );
 }
