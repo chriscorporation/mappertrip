@@ -193,6 +193,7 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
     caution: true,
     unsafe: true
   });
+  const [showFABMenu, setShowFABMenu] = useState(false);
   const [marker, setMarker] = useState(null);
   const [airbnbMarker, setAirbnbMarker] = useState(null);
   const [drawingManager, setDrawingManager] = useState(null);
@@ -1196,6 +1197,18 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
     };
   }, [map, mapClickMode, onMapClick]);
 
+  // Manejar tecla Escape para cerrar el menú FAB
+  useEffect(() => {
+    const handleEscape = (e) => {
+      if (e.key === 'Escape' && showFABMenu) {
+        setShowFABMenu(false);
+      }
+    };
+
+    document.addEventListener('keydown', handleEscape);
+    return () => document.removeEventListener('keydown', handleEscape);
+  }, [showFABMenu]);
+
   // Calcular densidad de seguridad basada en las zonas visibles
   const calculateSafetyDensity = useMemo(() => {
     if (!places || places.length === 0) return { safe: 0, unsafe: 0, total: 0, percentage: 0 };
@@ -1577,6 +1590,126 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
             <span className="text-xl">📊</span>
             <span className="text-sm font-semibold text-gray-700">Índice</span>
           </button>
+        )}
+
+        {/* Floating Action Button (FAB) con menú de acciones rápidas */}
+        {!isMapLoading && (
+          <div className="fixed bottom-8 right-8 z-30 flex flex-col-reverse items-end gap-3">
+            {/* Menú de acciones expandido */}
+            {showFABMenu && (
+              <div className="flex flex-col gap-2 mb-2 animate-[fadeIn_0.2s_ease-out]">
+                {/* Acción: Toggle Leyenda */}
+                <button
+                  onClick={() => {
+                    setShowLegend(!showLegend);
+                    setShowFABMenu(false);
+                  }}
+                  className="group flex items-center gap-3 bg-white/95 backdrop-blur-sm rounded-full shadow-lg border-2 border-gray-200 pl-4 pr-6 py-3 hover:scale-105 hover:shadow-xl transition-all duration-300"
+                  title={showLegend ? "Ocultar leyenda" : "Mostrar leyenda"}
+                >
+                  <div className="w-10 h-10 flex items-center justify-center bg-gradient-to-br from-purple-500 to-indigo-600 rounded-full text-white shadow-md group-hover:scale-110 transition-transform duration-200">
+                    <span className="text-lg">{showLegend ? '🔒' : '🛡️'}</span>
+                  </div>
+                  <span className="text-sm font-semibold text-gray-700 whitespace-nowrap">
+                    {showLegend ? 'Ocultar Leyenda' : 'Mostrar Leyenda'}
+                  </span>
+                </button>
+
+                {/* Acción: Toggle Indicador de Densidad */}
+                {calculateSafetyDensity.total > 0 && (
+                  <button
+                    onClick={() => {
+                      setShowDensityIndicator(!showDensityIndicator);
+                      setShowFABMenu(false);
+                    }}
+                    className="group flex items-center gap-3 bg-white/95 backdrop-blur-sm rounded-full shadow-lg border-2 border-gray-200 pl-4 pr-6 py-3 hover:scale-105 hover:shadow-xl transition-all duration-300"
+                    title={showDensityIndicator ? "Ocultar índice" : "Mostrar índice"}
+                  >
+                    <div className="w-10 h-10 flex items-center justify-center bg-gradient-to-br from-blue-500 to-cyan-600 rounded-full text-white shadow-md group-hover:scale-110 transition-transform duration-200">
+                      <span className="text-lg">📊</span>
+                    </div>
+                    <span className="text-sm font-semibold text-gray-700 whitespace-nowrap">
+                      {showDensityIndicator ? 'Ocultar Índice' : 'Mostrar Índice'}
+                    </span>
+                  </button>
+                )}
+
+                {/* Acción: Restablecer Vista */}
+                <button
+                  onClick={() => {
+                    if (map) {
+                      map.setCenter({ lat: 0, lng: -70 });
+                      map.setZoom(3.5);
+                    }
+                    setShowFABMenu(false);
+                  }}
+                  className="group flex items-center gap-3 bg-white/95 backdrop-blur-sm rounded-full shadow-lg border-2 border-gray-200 pl-4 pr-6 py-3 hover:scale-105 hover:shadow-xl transition-all duration-300"
+                  title="Restablecer vista del mapa"
+                >
+                  <div className="w-10 h-10 flex items-center justify-center bg-gradient-to-br from-emerald-500 to-teal-600 rounded-full text-white shadow-md group-hover:scale-110 transition-transform duration-200">
+                    <span className="text-lg">🌎</span>
+                  </div>
+                  <span className="text-sm font-semibold text-gray-700 whitespace-nowrap">
+                    Vista Inicial
+                  </span>
+                </button>
+
+                {/* Acción: Atajos de Teclado */}
+                <button
+                  onClick={() => {
+                    alert('⌨️ Atajos de Teclado:\n\n' +
+                      '• Delete: Eliminar punto del polígono\n' +
+                      '• Enter: Guardar polígono editado\n' +
+                      '• Doble clic: Eliminar vértice del polígono\n' +
+                      '• Esc: Cerrar menú de acciones rápidas');
+                    setShowFABMenu(false);
+                  }}
+                  className="group flex items-center gap-3 bg-white/95 backdrop-blur-sm rounded-full shadow-lg border-2 border-gray-200 pl-4 pr-6 py-3 hover:scale-105 hover:shadow-xl transition-all duration-300"
+                  title="Ver atajos de teclado"
+                >
+                  <div className="w-10 h-10 flex items-center justify-center bg-gradient-to-br from-amber-500 to-orange-600 rounded-full text-white shadow-md group-hover:scale-110 transition-transform duration-200">
+                    <span className="text-lg">⌨️</span>
+                  </div>
+                  <span className="text-sm font-semibold text-gray-700 whitespace-nowrap">
+                    Atajos
+                  </span>
+                </button>
+              </div>
+            )}
+
+            {/* Botón FAB principal */}
+            <button
+              onClick={() => setShowFABMenu(!showFABMenu)}
+              className={`
+                group w-16 h-16 flex items-center justify-center
+                bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-600
+                rounded-full shadow-2xl border-3 border-white
+                hover:scale-110 hover:rotate-90
+                transition-all duration-300
+                ${showFABMenu ? 'rotate-45 scale-110' : 'rotate-0'}
+              `}
+              title="Acciones rápidas"
+            >
+              <svg
+                className="w-8 h-8 text-white transition-transform duration-300"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2.5}
+                  d={showFABMenu ? "M6 18L18 6M6 6l12 12" : "M12 4v16m8-8H4"}
+                />
+              </svg>
+            </button>
+
+            {/* Indicador de ayuda pulsante */}
+            {!showFABMenu && (
+              <div className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full animate-pulse border-2 border-white shadow-lg"></div>
+            )}
+          </div>
         )}
       </div>
 
