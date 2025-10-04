@@ -2,7 +2,7 @@ name: Claude Bot Automation
 
 on:
   issues:
-    types: [opened, edited]
+    types: [opened, edited, reopened]
   issue_comment:
     types: [created]
 
@@ -29,12 +29,6 @@ jobs:
         with:
           ref: claude_bot
           fetch-depth: 0
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-          cache: 'npm'
 
       - name: Run Claude Code
         uses: anthropics/claude-code-action@v1
@@ -91,5 +85,6 @@ jobs:
             - Base branch for PR: claude_bot
             - Example: git checkout -b feature/add-version-banner && git push -u origin feature/add-version-banner
             - After making changes, review the code to ensure there are no syntax errors
+            - LANGUAGE: Write ALL commit messages, PR descriptions, and issue comments in the SAME LANGUAGE as the original issue/comment (Spanish if issue is in Spanish, English if in English, etc.)
 
             Now, address the request in the ISSUE TITLE, ISSUE BODY, or COMMENT above.
