@@ -9,7 +9,7 @@ import { useToast } from '../store/toastStore';
 import SkeletonLoader from './SkeletonLoader';
 
 // Componente para card de comparación
-function ComparisonCard({ place, index }) {
+function ComparisonCard({ place, index, onDataLoaded, isRecommended, recommendationReason }) {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -19,6 +19,10 @@ function ComparisonCard({ place, index }) {
         const response = await fetch(`/api/perplexity-notes?zone_id=${place.id}`);
         const perplexityData = await response.json();
         setData(perplexityData);
+        // Notificar al padre que se cargaron los datos
+        if (onDataLoaded) {
+          onDataLoaded(place.id, perplexityData);
+        }
       } catch (error) {
         console.error('Error loading comparison data:', error);
       } finally {
@@ -26,7 +30,7 @@ function ComparisonCard({ place, index }) {
       }
     };
     loadData();
-  }, [place.id]);
+  }, [place.id, onDataLoaded]);
 
   const getColorClasses = (color) => {
     const colorMap = {
@@ -44,9 +48,18 @@ function ComparisonCard({ place, index }) {
 
   return (
     <div
-      className="bg-white border-2 border-gray-200 rounded-xl overflow-hidden shadow-lg hover:shadow-xl transition-all duration-300 animate-[fadeIn_0.4s_ease-out]"
+      className={`bg-white rounded-xl overflow-hidden shadow-lg hover:shadow-xl transition-all duration-300 animate-[fadeIn_0.4s_ease-out] relative ${
+        isRecommended ? 'border-4 border-yellow-400 ring-4 ring-yellow-200' : 'border-2 border-gray-200'
+      }`}
       style={{ animationDelay }}
     >
+      {/* Badge de recomendación */}
+      {isRecommended && (
+        <div className="absolute -top-3 -right-3 z-10 bg-gradient-to-r from-yellow-400 to-amber-500 text-white px-4 py-2 rounded-full shadow-lg flex items-center gap-2 animate-pulse">
+          <HiOutlineSparkles className="text-lg" />
+          <span className="font-bold text-sm">Recomendada</span>
+        </div>
+      )}
       {/* Header con gradiente según nivel de seguridad */}
       <div className={`bg-gradient-to-r ${colorClasses.bg} text-white p-4`}>
         <h3 className="font-bold text-lg mb-1">{place.address}</h3>
@@ -135,6 +148,19 @@ function ComparisonCard({ place, index }) {
               </div>
             )}
 
+            {/* Razón de recomendación */}
+            {isRecommended && recommendationReason && (
+              <div className="bg-gradient-to-r from-yellow-50 to-amber-50 border-2 border-yellow-300 rounded-lg p-3">
+                <div className="flex items-start gap-2">
+                  <HiOutlineSparkles className="text-lg text-yellow-600 mt-0.5 flex-shrink-0" />
+                  <div>
+                    <p className="text-xs font-semibold text-yellow-900 mb-1">¿Por qué esta zona?</p>
+                    <p className="text-xs text-yellow-800">{recommendationReason}</p>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Botón para ver más en Google Maps */}
             <a
               href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(place.address)}`}
@@ -149,6 +175,202 @@ function ComparisonCard({ place, index }) {
             </a>
           </>
         )}
+      </div>
+    </div>
+  );
+}
+
+// Componente de recomendaciones inteligentes
+function SmartRecommendations({ placesData, selectedPlaces }) {
+  const [recommendation, setRecommendation] = useState(null);
+
+  useEffect(() => {
+    // Solo generar recomendación cuando tengamos datos de todas las zonas
+    const allDataLoaded = selectedPlaces.every(place =>
+      placesData[place.id] !== undefined
+    );
+
+    if (!allDataLoaded || selectedPlaces.length === 0) {
+      setRecommendation(null);
+      return;
+    }
+
+    // Analizar y generar recomendaciones
+    const analysis = selectedPlaces.map(place => {
+      const data = placesData[place.id];
+
+      // Calcular score de seguridad (0-100)
+      let securityScore = 50;
+      const secureText = data?.secure?.toLowerCase() || '';
+      if (secureText.includes('buena') || secureText.includes('alta') || secureText.includes('segur') || secureText.includes('aceptable')) {
+        securityScore = 85;
+      } else if (secureText.includes('media') || secureText.includes('moderada')) {
+        securityScore = 60;
+      } else if (secureText.includes('baja') || secureText.includes('peligro') || secureText.includes('insegur')) {
+        securityScore = 25;
+      }
+
+      // Calcular score de precio (más barato = mejor)
+      const rentValue = data?.rent || 1000;
+      const priceScore = Math.max(0, 100 - (rentValue / 20)); // Normalizar
+
+      // Calcular score de turismo
+      const tourismScore = data?.tourism ? 70 : 30;
+
+      return {
+        place,
+        data,
+        securityScore,
+        priceScore,
+        rentValue,
+        tourismScore,
+        overallScore: (securityScore * 0.5) + (priceScore * 0.3) + (tourismScore * 0.2)
+      };
+    });
+
+    // Encontrar la mejor opción según diferentes criterios
+    const bestOverall = analysis.reduce((best, current) =>
+      current.overallScore > best.overallScore ? current : best
+    );
+
+    const bestSecurity = analysis.reduce((best, current) =>
+      current.securityScore > best.securityScore ? current : best
+    );
+
+    const bestPrice = analysis.reduce((best, current) =>
+      current.rentValue < best.rentValue ? current : best
+    );
+
+    setRecommendation({
+      bestOverall,
+      bestSecurity,
+      bestPrice,
+      analysis
+    });
+  }, [placesData, selectedPlaces]);
+
+  if (!recommendation) return null;
+
+  return (
+    <div className="mb-6 bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50 border-2 border-indigo-200 rounded-2xl p-6 shadow-lg animate-[fadeIn_0.5s_ease-out]">
+      <div className="flex items-center gap-3 mb-5">
+        <div className="p-3 bg-gradient-to-r from-indigo-500 to-purple-600 rounded-xl shadow-lg">
+          <HiOutlineSparkles className="text-2xl text-white" />
+        </div>
+        <div>
+          <h3 className="text-xl font-bold text-gray-800">Recomendaciones Inteligentes</h3>
+          <p className="text-sm text-gray-600">Análisis basado en seguridad, precio y atractivos turísticos</p>
+        </div>
+      </div>
+
+      {/* Grid de recomendaciones */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {/* Mejor Opción General */}
+        <div className="bg-white rounded-xl p-4 border-2 border-indigo-300 shadow-md hover:shadow-lg transition-all">
+          <div className="flex items-center gap-2 mb-3">
+            <span className="text-2xl">🏆</span>
+            <h4 className="font-bold text-gray-800 text-sm">Mejor Opción General</h4>
+          </div>
+          <p className="text-xs text-gray-700 font-semibold mb-2 line-clamp-2">
+            {recommendation.bestOverall.place.address}
+          </p>
+          <div className="space-y-2">
+            <div className="flex items-center justify-between text-xs">
+              <span className="text-gray-600">Seguridad:</span>
+              <span className="font-bold text-green-700">{recommendation.bestOverall.securityScore}%</span>
+            </div>
+            <div className="flex items-center justify-between text-xs">
+              <span className="text-gray-600">Precio:</span>
+              <span className="font-bold text-emerald-700">${Math.round(recommendation.bestOverall.rentValue)}</span>
+            </div>
+            <div className="mt-2 pt-2 border-t border-gray-200">
+              <div className="flex items-center gap-1">
+                <span className="text-xs text-gray-600">Puntuación:</span>
+                <div className="flex-1 bg-gray-200 rounded-full h-2">
+                  <div
+                    className="bg-gradient-to-r from-indigo-500 to-purple-600 h-2 rounded-full transition-all duration-1000"
+                    style={{ width: `${recommendation.bestOverall.overallScore}%` }}
+                  ></div>
+                </div>
+                <span className="text-xs font-bold text-indigo-700">{Math.round(recommendation.bestOverall.overallScore)}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Más Segura */}
+        <div className="bg-white rounded-xl p-4 border-2 border-green-300 shadow-md hover:shadow-lg transition-all">
+          <div className="flex items-center gap-2 mb-3">
+            <span className="text-2xl">🛡️</span>
+            <h4 className="font-bold text-gray-800 text-sm">Más Segura</h4>
+          </div>
+          <p className="text-xs text-gray-700 font-semibold mb-2 line-clamp-2">
+            {recommendation.bestSecurity.place.address}
+          </p>
+          <div className="space-y-2">
+            <div className="flex items-center justify-between text-xs">
+              <span className="text-gray-600">Nivel:</span>
+              <span className="font-bold text-green-700">{recommendation.bestSecurity.data?.secure || 'N/A'}</span>
+            </div>
+            <div className="mt-2 pt-2 border-t border-gray-200">
+              <div className="flex items-center gap-1">
+                <span className="text-xs text-gray-600">Seguridad:</span>
+                <div className="flex-1 bg-gray-200 rounded-full h-2">
+                  <div
+                    className="bg-gradient-to-r from-green-500 to-emerald-600 h-2 rounded-full transition-all duration-1000"
+                    style={{ width: `${recommendation.bestSecurity.securityScore}%` }}
+                  ></div>
+                </div>
+                <span className="text-xs font-bold text-green-700">{recommendation.bestSecurity.securityScore}</span>
+              </div>
+            </div>
+          </div>
+          <p className="text-xs text-gray-600 mt-3 italic">Prioridad máxima en seguridad para tu estadía</p>
+        </div>
+
+        {/* Más Económica */}
+        <div className="bg-white rounded-xl p-4 border-2 border-emerald-300 shadow-md hover:shadow-lg transition-all">
+          <div className="flex items-center gap-2 mb-3">
+            <span className="text-2xl">💰</span>
+            <h4 className="font-bold text-gray-800 text-sm">Más Económica</h4>
+          </div>
+          <p className="text-xs text-gray-700 font-semibold mb-2 line-clamp-2">
+            {recommendation.bestPrice.place.address}
+          </p>
+          <div className="space-y-2">
+            <div className="flex items-center justify-between text-xs">
+              <span className="text-gray-600">Renta mensual:</span>
+              <span className="font-bold text-emerald-700 text-lg">${Math.round(recommendation.bestPrice.rentValue)}</span>
+            </div>
+            <div className="flex items-center justify-between text-xs">
+              <span className="text-gray-600">Seguridad:</span>
+              <span className={`font-bold ${
+                recommendation.bestPrice.securityScore > 70 ? 'text-green-600' :
+                recommendation.bestPrice.securityScore > 50 ? 'text-blue-600' : 'text-orange-600'
+              }`}>
+                {recommendation.bestPrice.data?.secure || 'N/A'}
+              </span>
+            </div>
+          </div>
+          <p className="text-xs text-gray-600 mt-3 italic">Mejor relación calidad-precio</p>
+        </div>
+      </div>
+
+      {/* Insight adicional */}
+      <div className="mt-5 bg-white/60 backdrop-blur-sm rounded-xl p-4 border border-indigo-200">
+        <div className="flex items-start gap-3">
+          <BiInfoCircle className="text-2xl text-indigo-600 flex-shrink-0 mt-0.5" />
+          <div>
+            <h5 className="font-bold text-sm text-gray-800 mb-1">💡 Consejo para Viajeros</h5>
+            <p className="text-xs text-gray-700">
+              {recommendation.bestOverall.place.id === recommendation.bestSecurity.place.id ? (
+                <>La zona <strong>{recommendation.bestOverall.place.address.split(',')[0]}</strong> destaca tanto en seguridad como en valor general. Es una excelente elección balanceada para tu estadía.</>
+              ) : (
+                <>Si tu prioridad es la <strong>seguridad</strong>, elige <strong>{recommendation.bestSecurity.place.address.split(',')[0]}</strong>. Si buscas <strong>ahorrar</strong>, considera <strong>{recommendation.bestPrice.place.address.split(',')[0]}</strong>. Para el <strong>mejor balance</strong>, opta por <strong>{recommendation.bestOverall.place.address.split(',')[0]}</strong>.</>
+              )}
+            </p>
+          </div>
+        </div>
       </div>
     </div>
   );
@@ -200,6 +422,7 @@ export default function ZonesPanel({
   const [compareMode, setCompareMode] = useState(false);
   const [selectedForCompare, setSelectedForCompare] = useState([]);
   const [showCompareModal, setShowCompareModal] = useState(false);
+  const [comparisonData, setComparisonData] = useState({});
   const [favorites, setFavorites] = useState([]);
   const [showOnlyFavorites, setShowOnlyFavorites] = useState(false);
   const inputRef = useRef(null);
@@ -1315,10 +1538,67 @@ export default function ZonesPanel({
 
             {/* Contenido del modal */}
             <div className="flex-1 overflow-y-auto p-6">
+              {/* Panel de recomendaciones inteligentes */}
+              <SmartRecommendations
+                placesData={comparisonData}
+                selectedPlaces={selectedForCompare}
+              />
+
+              {/* Grid de comparación */}
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {selectedForCompare.map((place, index) => (
-                  <ComparisonCard key={place.id} place={place} index={index} />
-                ))}
+                {selectedForCompare.map((place, index) => {
+                  // Determinar si esta zona está recomendada
+                  const allDataLoaded = selectedForCompare.every(p => comparisonData[p.id]);
+                  let isRecommended = false;
+                  let recommendationReason = '';
+
+                  if (allDataLoaded && Object.keys(comparisonData).length > 0) {
+                    // Calcular scores para determinar recomendación
+                    const analysis = selectedForCompare.map(p => {
+                      const data = comparisonData[p.id];
+                      let securityScore = 50;
+                      const secureText = data?.secure?.toLowerCase() || '';
+                      if (secureText.includes('buena') || secureText.includes('alta') || secureText.includes('segur') || secureText.includes('aceptable')) {
+                        securityScore = 85;
+                      } else if (secureText.includes('media') || secureText.includes('moderada')) {
+                        securityScore = 60;
+                      } else if (secureText.includes('baja') || secureText.includes('peligro') || secureText.includes('insegur')) {
+                        securityScore = 25;
+                      }
+                      const rentValue = data?.rent || 1000;
+                      const priceScore = Math.max(0, 100 - (rentValue / 20));
+                      const tourismScore = data?.tourism ? 70 : 30;
+                      return {
+                        id: p.id,
+                        overallScore: (securityScore * 0.5) + (priceScore * 0.3) + (tourismScore * 0.2),
+                        securityScore,
+                        rentValue
+                      };
+                    });
+
+                    const bestOverall = analysis.reduce((best, current) =>
+                      current.overallScore > best.overallScore ? current : best
+                    );
+
+                    if (place.id === bestOverall.id) {
+                      isRecommended = true;
+                      recommendationReason = `Esta zona ofrece el mejor balance entre seguridad (${Math.round(bestOverall.securityScore)}%), precio ($${Math.round(bestOverall.rentValue)}/mes) y atractivos turísticos.`;
+                    }
+                  }
+
+                  return (
+                    <ComparisonCard
+                      key={place.id}
+                      place={place}
+                      index={index}
+                      onDataLoaded={(id, data) => {
+                        setComparisonData(prev => ({ ...prev, [id]: data }));
+                      }}
+                      isRecommended={isRecommended}
+                      recommendationReason={recommendationReason}
+                    />
+                  );
+                })}
               </div>
             </div>
 
@@ -1329,6 +1609,7 @@ export default function ZonesPanel({
                   setShowCompareModal(false);
                   setCompareMode(false);
                   setSelectedForCompare([]);
+                  setComparisonData({});
                 }}
                 className="px-6 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-semibold"
               >
