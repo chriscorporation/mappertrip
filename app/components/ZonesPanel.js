@@ -5,6 +5,7 @@ import ReactMarkdown from 'react-markdown';
 import { BiDollar, BiShield, BiMapAlt, BiInfoCircle, BiMapPin } from 'react-icons/bi';
 import { HiOutlineSparkles } from 'react-icons/hi';
 import { useAuthStore } from '../store/authStore';
+import { useToast } from '../store/toastStore';
 
 // Componente para card de comparación
 function ComparisonCard({ place, index }) {
@@ -155,6 +156,7 @@ export default function ZonesPanel({
   onUpdatePlace
 }) {
   const { isAuthenticated } = useAuthStore();
+  const toast = useToast();
   const isAdminMode = isAuthenticated;
   const [address, setAddress] = useState('');
   const [hoverEnabled, setHoverEnabled] = useState(false);
@@ -209,9 +211,13 @@ export default function ZonesPanel({
   // Toggle favorito
   const toggleFavorite = (placeId) => {
     setFavorites(prev => {
-      if (prev.includes(placeId)) {
+      const isRemoving = prev.includes(placeId);
+
+      if (isRemoving) {
+        toast.info('Zona eliminada de favoritos');
         return prev.filter(id => id !== placeId);
       } else {
+        toast.success('Zona añadida a favoritos');
         return [...prev, placeId];
       }
     });
