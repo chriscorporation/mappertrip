@@ -20,17 +20,32 @@ export const metadata = {
 async function getCountriesData() {
   const [countriesRes, placesRes] = await Promise.all([
     supabase.from('countries').select('*'),
-    supabase.from('geoplaces').select('country_code')
+    supabase.from('geoplaces').select('country_code, color')
   ]);
 
   const countries = countriesRes.data || [];
   const places = placesRes.data || [];
 
-  // Count zones per country
-  const countriesWithCounts = countries.map(country => ({
-    ...country,
-    zoneCount: places.filter(p => p.country_code === country.country_code).length
-  }));
+  // Count zones per country and calculate safety statistics
+  const countriesWithCounts = countries.map(country => {
+    const countryPlaces = places.filter(p => p.country_code === country.country_code);
+
+    // Calculate safety statistics
+    const safeZones = countryPlaces.filter(p => p.color === '#22c55e' || p.color === '#3b82f6').length;
+    const unsafeZones = countryPlaces.filter(p => p.color === '#dc2626' || p.color === '#eab308').length;
+    const regularZones = countryPlaces.filter(p => p.color === '#f97316').length;
+    const totalZones = countryPlaces.length;
+    const safetyPercentage = totalZones > 0 ? Math.round((safeZones / totalZones) * 100) : 0;
+
+    return {
+      ...country,
+      zoneCount: totalZones,
+      safeZones,
+      unsafeZones,
+      regularZones,
+      safetyPercentage
+    };
+  });
 
   return countriesWithCounts;
 }
@@ -67,6 +82,10 @@ export default async function Barrios() {
                       key={country.id}
                       country={country}
                       zoneCount={country.zoneCount}
+                      safeZones={country.safeZones}
+                      unsafeZones={country.unsafeZones}
+                      regularZones={country.regularZones}
+                      safetyPercentage={country.safetyPercentage}
                     />
                   ))}
                 </div>

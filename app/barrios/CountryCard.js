@@ -11,7 +11,14 @@ const getFlagEmoji = (countryCode) => {
   return String.fromCodePoint(...codePoints);
 };
 
-export default function CountryCard({ country, zoneCount }) {
+export default function CountryCard({
+  country,
+  zoneCount,
+  safeZones = 0,
+  unsafeZones = 0,
+  regularZones = 0,
+  safetyPercentage = 0
+}) {
   const router = useRouter();
   const hasZones = zoneCount > 0;
 
@@ -20,6 +27,39 @@ export default function CountryCard({ country, zoneCount }) {
     .replace(/[\u0300-\u036f]/g, "")
     .replace(/\s+/g, '-')
     .replace(/[^\w-]+/g, '');
+
+  // Determine safety badge based on percentage
+  const getSafetyBadge = () => {
+    if (!hasZones) return null;
+
+    if (safetyPercentage >= 70) {
+      return {
+        color: 'from-green-500 to-emerald-500',
+        icon: '🛡️',
+        text: 'Alta',
+        bgColor: 'bg-green-50',
+        borderColor: 'border-green-200'
+      };
+    } else if (safetyPercentage >= 40) {
+      return {
+        color: 'from-yellow-500 to-amber-400',
+        icon: '⚠️',
+        text: 'Media',
+        bgColor: 'bg-yellow-50',
+        borderColor: 'border-yellow-200'
+      };
+    } else {
+      return {
+        color: 'from-red-500 to-rose-500',
+        icon: '🚨',
+        text: 'Baja',
+        bgColor: 'bg-red-50',
+        borderColor: 'border-red-200'
+      };
+    }
+  };
+
+  const safetyBadge = getSafetyBadge();
 
   return (
     <button
@@ -50,6 +90,45 @@ export default function CountryCard({ country, zoneCount }) {
         <p className="text-xs text-gray-500 uppercase tracking-wider transition-colors duration-300 group-hover:text-blue-600">
           {country.country_code}
         </p>
+
+        {/* Safety Score Visual Indicator */}
+        {hasZones && safetyBadge && (
+          <div className="mt-4 space-y-2 animate-[fadeIn_0.5s_ease-out]">
+            {/* Mini Progress Bar */}
+            <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
+              <div
+                className={`h-full bg-gradient-to-r ${safetyBadge.color} transition-all duration-1000 ease-out`}
+                style={{ width: `${safetyPercentage}%` }}
+              />
+            </div>
+
+            {/* Safety Badge */}
+            <div className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-bold ${safetyBadge.bgColor} border ${safetyBadge.borderColor} shadow-sm`}>
+              <span className="mr-1">{safetyBadge.icon}</span>
+              <span className="text-gray-700">{safetyPercentage}% Seguro</span>
+            </div>
+
+            {/* Zone Stats */}
+            <div className="flex justify-center gap-2 text-xs">
+              <div className="flex items-center gap-1 bg-white/60 px-2 py-1 rounded-full">
+                <span className="text-green-600 font-bold">{safeZones}</span>
+                <span className="text-gray-500">🟢</span>
+              </div>
+              {regularZones > 0 && (
+                <div className="flex items-center gap-1 bg-white/60 px-2 py-1 rounded-full">
+                  <span className="text-orange-600 font-bold">{regularZones}</span>
+                  <span className="text-gray-500">🟠</span>
+                </div>
+              )}
+              {unsafeZones > 0 && (
+                <div className="flex items-center gap-1 bg-white/60 px-2 py-1 rounded-full">
+                  <span className="text-red-600 font-bold">{unsafeZones}</span>
+                  <span className="text-gray-500">🔴</span>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
       </div>
     </button>
   );
