@@ -17,6 +17,7 @@ import Breadcrumbs from './components/Breadcrumbs';
 import QuickActions from './components/QuickActions';
 import { useAuthStore } from './store/authStore';
 import { useAppStore } from './store/appStore';
+import { useToastStore } from './store/toastStore';
 
 // Home page component with tab-based navigation for countries, zones, airbnb, coworking, and instagramable places
 function HomeContent() {
@@ -24,6 +25,7 @@ function HomeContent() {
   const searchParams = useSearchParams();
   const { isAuthenticated } = useAuthStore();
   const { selectedCountry, setSelectedCountry, _hasHydrated } = useAppStore();
+  const { showToast } = useToastStore();
   const isAdminMode = isAuthenticated;
 
   const [airbnbLocation, setAirbnbLocation] = useState(null);
@@ -172,8 +174,10 @@ function HomeContent() {
     // Solo actualizar estado local si la eliminación en Supabase fue exitosa
     if (response.ok) {
       setPlaces(prev => prev.filter(p => p.id !== placeToDelete));
+      showToast('Zona eliminada correctamente', 'success');
     } else {
       console.error('Error al eliminar zona de Supabase');
+      showToast('Error al eliminar la zona', 'error');
     }
 
     setPlaceToDelete(null);
@@ -393,9 +397,13 @@ function HomeContent() {
         const savedPlace = await response.json();
         setCoworkingPlaces(prev => [savedPlace, ...prev]);
         setSelectedPlace(savedPlace);
+        showToast('Espacio de coworking agregado correctamente', 'success');
+      } else {
+        showToast('Error al agregar espacio de coworking', 'error');
       }
     } catch (error) {
       console.error('Error adding coworking place:', error);
+      showToast('Error al agregar espacio de coworking', 'error');
     }
   };
 
@@ -403,8 +411,10 @@ function HomeContent() {
     try {
       await fetch(`/api/coworking?id=${placeId}`, { method: 'DELETE' });
       setCoworkingPlaces(prev => prev.filter(p => p.id !== placeId));
+      showToast('Espacio de coworking eliminado', 'success');
     } catch (error) {
       console.error('Error deleting coworking place:', error);
+      showToast('Error al eliminar espacio de coworking', 'error');
     }
   };
 
@@ -420,9 +430,13 @@ function HomeContent() {
         const savedPlace = await response.json();
         setInstagramablePlaces(prev => [savedPlace, ...prev]);
         setSelectedPlace(savedPlace);
+        showToast('Lugar instagrameable agregado correctamente', 'success');
+      } else {
+        showToast('Error al agregar lugar instagrameable', 'error');
       }
     } catch (error) {
       console.error('Error adding instagramable place:', error);
+      showToast('Error al agregar lugar instagrameable', 'error');
     }
   };
 
@@ -430,8 +444,10 @@ function HomeContent() {
     try {
       await fetch(`/api/instagramable?id=${placeId}`, { method: 'DELETE' });
       setInstagramablePlaces(prev => prev.filter(p => p.id !== placeId));
+      showToast('Lugar instagrameable eliminado', 'success');
     } catch (error) {
       console.error('Error deleting instagramable place:', error);
+      showToast('Error al eliminar lugar instagrameable', 'error');
     }
   };
 

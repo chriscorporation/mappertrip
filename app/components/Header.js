@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '../store/authStore';
+import { useToastStore } from '../store/toastStore';
 
 export default function Header({ isAdminMode }) {
   const router = useRouter();
@@ -18,6 +19,7 @@ export default function Header({ isAdminMode }) {
   const searchInputRef = useRef(null);
 
   const { login, logout, isLoading, error, isAuthenticated, user, clearError } = useAuthStore();
+  const { showToast } = useToastStore();
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -26,12 +28,16 @@ export default function Header({ isAdminMode }) {
 
     if (result.success) {
       setShowLoginModal(false);
+      showToast('Sesión iniciada correctamente', 'success');
+    } else {
+      showToast(result.error || 'Error al iniciar sesión', 'error');
     }
   };
 
   const handleLogout = () => {
     logout();
     setMobileMenuOpen(false);
+    showToast('Sesión cerrada correctamente', 'info');
   };
 
   const handleCloseModal = () => {
