@@ -182,6 +182,13 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
   const [showLegend, setShowLegend] = useState(true);
   const [mapStyle, setMapStyle] = useState('standard');
   const [showStyleSelector, setShowStyleSelector] = useState(false);
+  const [activeFilters, setActiveFilters] = useState({
+    safe: true,
+    medium: true,
+    regular: true,
+    caution: true,
+    unsafe: true
+  });
   const [marker, setMarker] = useState(null);
   const [airbnbMarker, setAirbnbMarker] = useState(null);
   const [drawingManager, setDrawingManager] = useState(null);
@@ -196,6 +203,18 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
   const boundsChangeTimeoutRef = useRef(null);
   const mapClickListenerRef = useRef(null);
   const tempMarkerRef = useRef(null);
+
+  // Helper function to get filter category from color
+  const getFilterCategory = (color) => {
+    const colorMap = {
+      '#22c55e': 'safe',      // green
+      '#3b82f6': 'medium',    // blue
+      '#f97316': 'regular',   // orange
+      '#eab308': 'caution',   // yellow
+      '#dc2626': 'unsafe'     // red
+    };
+    return colorMap[color] || 'safe';
+  };
 
   // Cargar estilo de mapa desde localStorage
   useEffect(() => {
@@ -681,6 +700,9 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
     places.forEach(place => {
       // Si el lugar tiene un polígono guardado
       if (place.polygon) {
+        const filterCategory = getFilterCategory(place.color);
+        const isVisible = activeFilters[filterCategory];
+
         // Si ya está renderizado, solo actualizar opciones
         if (polygonsRef.current[place.id]) {
           const existingPolygon = polygonsRef.current[place.id];
@@ -688,6 +710,7 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
             fillColor: place.color || '#eb4034',
             strokeColor: place.color || '#eb4034',
           });
+          existingPolygon.setVisible(isVisible && !mapClickMode);
           return;
         }
 
@@ -810,7 +833,7 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
         delete polygonsRef.current[placeId];
       }
     });
-  }, [places, map]);
+  }, [places, map, activeFilters, mapClickMode]);
 
   // Actualizar estilo del polígono resaltado
   useEffect(() => {
@@ -853,6 +876,9 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
     places.forEach(place => {
       // Si el lugar tiene circle_radius
       if (place.circle_radius) {
+        const filterCategory = getFilterCategory(place.color);
+        const isVisible = activeFilters[filterCategory];
+
         // Determinar el radio a usar (editingRadius si se está editando, o el radio guardado)
         const radiusToUse = editingCircleId === place.id ? editingRadius : place.circle_radius;
 
@@ -864,6 +890,7 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
             strokeColor: place.color || '#8b5cf6',
             radius: radiusToUse,
           });
+          existingCircle.setVisible(isVisible);
           return;
         }
 
@@ -913,7 +940,7 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
         delete circlesRef.current[placeId];
       }
     });
-  }, [places, map, editingCircleId, editingRadius]);
+  }, [places, map, editingCircleId, editingRadius, activeFilters]);
 
   // Renderizar círculo temporal mientras se ajusta el radio
   useEffect(() => {
@@ -1239,6 +1266,109 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
           >
             <span className="text-2xl group-hover:scale-125 transition-transform duration-200 inline-block">🛡️</span>
           </button>
+        )}
+
+        {/* Safety Filters */}
+        {!isMapLoading && (
+          <div className="absolute top-6 right-6 z-20 flex flex-col gap-2">
+            <div className="bg-white/95 backdrop-blur-sm rounded-xl shadow-lg border-2 border-gray-200 p-3">
+              <div className="flex items-center gap-2 mb-2">
+                <span className="text-lg">🔍</span>
+                <span className="text-xs font-bold text-gray-700">Filtros de Seguridad</span>
+              </div>
+              <div className="flex flex-col gap-2">
+                <button
+                  onClick={() => setActiveFilters(prev => ({ ...prev, safe: !prev.safe }))}
+                  className={`
+                    flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold transition-all duration-300
+                    ${activeFilters.safe
+                      ? 'bg-gradient-to-r from-green-500 to-emerald-500 text-white shadow-md hover:shadow-lg transform hover:scale-105'
+                      : 'bg-gray-100 text-gray-400 hover:bg-gray-200'
+                    }
+                  `}
+                  title="Mostrar/Ocultar zonas seguras"
+                >
+                  <span className={activeFilters.safe ? 'animate-pulse' : ''}>🟢</span>
+                  <span>Seguro</span>
+                  {!activeFilters.safe && <span className="ml-auto text-xs opacity-60">✕</span>}
+                </button>
+
+                <button
+                  onClick={() => setActiveFilters(prev => ({ ...prev, medium: !prev.medium }))}
+                  className={`
+                    flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold transition-all duration-300
+                    ${activeFilters.medium
+                      ? 'bg-gradient-to-r from-blue-500 to-cyan-500 text-white shadow-md hover:shadow-lg transform hover:scale-105'
+                      : 'bg-gray-100 text-gray-400 hover:bg-gray-200'
+                    }
+                  `}
+                  title="Mostrar/Ocultar zonas de seguridad media"
+                >
+                  <span className={activeFilters.medium ? 'animate-pulse' : ''}>🔵</span>
+                  <span>Medio</span>
+                  {!activeFilters.medium && <span className="ml-auto text-xs opacity-60">✕</span>}
+                </button>
+
+                <button
+                  onClick={() => setActiveFilters(prev => ({ ...prev, regular: !prev.regular }))}
+                  className={`
+                    flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold transition-all duration-300
+                    ${activeFilters.regular
+                      ? 'bg-gradient-to-r from-orange-500 to-amber-500 text-white shadow-md hover:shadow-lg transform hover:scale-105'
+                      : 'bg-gray-100 text-gray-400 hover:bg-gray-200'
+                    }
+                  `}
+                  title="Mostrar/Ocultar zonas de seguridad regular"
+                >
+                  <span className={activeFilters.regular ? 'animate-pulse' : ''}>🟠</span>
+                  <span>Regular</span>
+                  {!activeFilters.regular && <span className="ml-auto text-xs opacity-60">✕</span>}
+                </button>
+
+                <button
+                  onClick={() => setActiveFilters(prev => ({ ...prev, caution: !prev.caution }))}
+                  className={`
+                    flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold transition-all duration-300
+                    ${activeFilters.caution
+                      ? 'bg-gradient-to-r from-yellow-500 to-amber-400 text-white shadow-md hover:shadow-lg transform hover:scale-105'
+                      : 'bg-gray-100 text-gray-400 hover:bg-gray-200'
+                    }
+                  `}
+                  title="Mostrar/Ocultar zonas de precaución"
+                >
+                  <span className={activeFilters.caution ? 'animate-pulse' : ''}>🟡</span>
+                  <span>Precaución</span>
+                  {!activeFilters.caution && <span className="ml-auto text-xs opacity-60">✕</span>}
+                </button>
+
+                <button
+                  onClick={() => setActiveFilters(prev => ({ ...prev, unsafe: !prev.unsafe }))}
+                  className={`
+                    flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold transition-all duration-300
+                    ${activeFilters.unsafe
+                      ? 'bg-gradient-to-r from-red-500 to-rose-500 text-white shadow-md hover:shadow-lg transform hover:scale-105'
+                      : 'bg-gray-100 text-gray-400 hover:bg-gray-200'
+                    }
+                  `}
+                  title="Mostrar/Ocultar zonas inseguras"
+                >
+                  <span className={activeFilters.unsafe ? 'animate-pulse' : ''}>🔴</span>
+                  <span>Inseguro</span>
+                  {!activeFilters.unsafe && <span className="ml-auto text-xs opacity-60">✕</span>}
+                </button>
+              </div>
+
+              <div className="mt-3 pt-3 border-t border-gray-200">
+                <button
+                  onClick={() => setActiveFilters({ safe: true, medium: true, regular: true, caution: true, unsafe: true })}
+                  className="w-full px-3 py-2 bg-gradient-to-r from-gray-600 to-gray-700 text-white text-xs font-semibold rounded-lg hover:from-gray-700 hover:to-gray-800 transition-all duration-300 shadow-sm hover:shadow-md"
+                  title="Mostrar todas las zonas"
+                >
+                  Mostrar Todas
+                </button>
+              </div>
+            </div>
+          </div>
         )}
 
         {/* Map Style Selector */}
