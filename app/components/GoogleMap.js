@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, useMemo } from 'react';
 
-export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocation, onSavePolygon, onPolygonClick, onBoundsChanged, coworkingPlaces, instagramablePlaces, mapClickMode, onMapClick, highlightedPlace, pendingCircle, circleRadius, editingCircleId, editingRadius }) {
+export default function GoogleMap({ selectedPlace, places, safetyFilters = [], airbnbs, airbnbLocation, onSavePolygon, onPolygonClick, onBoundsChanged, coworkingPlaces, instagramablePlaces, mapClickMode, onMapClick, highlightedPlace, pendingCircle, circleRadius, editingCircleId, editingRadius }) {
   const mapRef = useRef(null);
   const [map, setMap] = useState(null);
   const [marker, setMarker] = useState(null);
@@ -580,25 +580,70 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
     });
   }, [highlightedPlace, places, map]);
 
-  // Ocultar/mostrar polígonos según mapClickMode
+  // Ocultar/mostrar polígonos según mapClickMode y safetyFilters
   useEffect(() => {
     if (!map) return;
 
-    Object.values(polygonsRef.current).forEach(polygon => {
-      if (!polygon) return;
-      polygon.setVisible(!mapClickMode);
-    });
-  }, [mapClickMode, map]);
+    // Mapeo de filtros de seguridad a colores
+    const safetyLevelToColor = {
+      'safe': '#22c55e',      // green-500
+      'medium': '#3b82f6',    // blue-500
+      'regular': '#eab308',   // yellow-500
+      'caution': '#f97316',   // orange-500
+      'unsafe': '#ef4444'     // red-500
+    };
 
-  // Renderizar círculos
+    const filterColors = safetyFilters.length > 0
+      ? safetyFilters.map(filter => safetyLevelToColor[filter])
+      : [];
+
+    Object.keys(polygonsRef.current).forEach(placeId => {
+      const polygon = polygonsRef.current[placeId];
+      if (!polygon) return;
+
+      const place = places.find(p => p.id === parseInt(placeId));
+      if (!place) return;
+
+      // Ocultar si está en mapClickMode
+      if (mapClickMode) {
+        polygon.setVisible(false);
+        return;
+      }
+
+      // Si hay filtros activos, solo mostrar polígonos que coincidan
+      if (filterColors.length > 0) {
+        polygon.setVisible(filterColors.includes(place.color));
+      } else {
+        polygon.setVisible(true);
+      }
+    });
+  }, [mapClickMode, map, safetyFilters, places]);
+
+  // Renderizar círculos y aplicar filtros de seguridad
   useEffect(() => {
     if (!map || !places) return;
+
+    // Mapeo de filtros de seguridad a colores
+    const safetyLevelToColor = {
+      'safe': '#22c55e',      // green-500
+      'medium': '#3b82f6',    // blue-500
+      'regular': '#eab308',   // yellow-500
+      'caution': '#f97316',   // orange-500
+      'unsafe': '#ef4444'     // red-500
+    };
+
+    const filterColors = safetyFilters.length > 0
+      ? safetyFilters.map(filter => safetyLevelToColor[filter])
+      : [];
 
     places.forEach(place => {
       // Si el lugar tiene circle_radius
       if (place.circle_radius) {
         // Determinar el radio a usar (editingRadius si se está editando, o el radio guardado)
         const radiusToUse = editingCircleId === place.id ? editingRadius : place.circle_radius;
+
+        // Determinar si el círculo debe ser visible según los filtros
+        const shouldBeVisible = filterColors.length === 0 || filterColors.includes(place.color);
 
         // Si ya está renderizado, solo actualizar opciones
         if (circlesRef.current[place.id]) {
@@ -607,6 +652,7 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
             fillColor: place.color || '#8b5cf6',
             strokeColor: place.color || '#8b5cf6',
             radius: radiusToUse,
+            visible: shouldBeVisible,
           });
           return;
         }
@@ -621,6 +667,7 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
           map: map,
           center: { lat: place.lat, lng: place.lng },
           radius: radiusToUse,
+          visible: shouldBeVisible,
         });
 
         circlesRef.current[place.id] = circle;
@@ -635,7 +682,7 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
         delete circlesRef.current[placeId];
       }
     });
-  }, [places, map, editingCircleId, editingRadius]);
+  }, [places, map, editingCircleId, editingRadius, safetyFilters]);
 
   // Renderizar círculo temporal mientras se ajusta el radio
   useEffect(() => {

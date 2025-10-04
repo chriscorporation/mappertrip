@@ -9,6 +9,7 @@ import { useAuthStore } from '../store/authStore';
 export default function ZonesPanel({
   selectedCountry,
   places,
+  safetyFilters = [],
   onStartDrawing,
   onDeletePlace,
   onColorChange,
@@ -289,7 +290,25 @@ export default function ZonesPanel({
     );
   }
 
-  const countryPlaces = places.filter(p => p.country_code === selectedCountry.country_code);
+  // Mapeo de filtros de seguridad a colores
+  const safetyLevelToColor = {
+    'safe': '#22c55e',      // green-500
+    'medium': '#3b82f6',    // blue-500
+    'regular': '#eab308',   // yellow-500
+    'caution': '#f97316',   // orange-500
+    'unsafe': '#ef4444'     // red-500
+  };
+
+  // Filtrar lugares por país
+  let countryPlaces = places.filter(p => p.country_code === selectedCountry.country_code);
+
+  // Aplicar filtros de seguridad si hay alguno activo
+  if (safetyFilters.length > 0) {
+    const filterColors = safetyFilters.map(filter => safetyLevelToColor[filter]);
+    countryPlaces = countryPlaces.filter(place =>
+      filterColors.includes(place.color)
+    );
+  }
 
   return (
     <div className="flex">

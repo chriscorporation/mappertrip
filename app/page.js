@@ -12,6 +12,7 @@ import InstagramablePlacesPanel from './components/InstagramablePlacesPanel';
 import Header from './components/Header';
 import HeroBanner from './components/HeroBanner';
 import TrustBadges from './components/TrustBadges';
+import SafetyFilters from './components/SafetyFilters';
 import { useAuthStore } from './store/authStore';
 import { useAppStore } from './store/appStore';
 
@@ -39,6 +40,7 @@ function HomeContent() {
   const [circleRadius, setCircleRadius] = useState(1000);
   const [editingCircleId, setEditingCircleId] = useState(null);
   const [editingRadius, setEditingRadius] = useState(1000);
+  const [safetyFilters, setSafetyFilters] = useState([]);
 
   // Sync selectedTab with URL on mount and when searchParams change
   useEffect(() => {
@@ -396,6 +398,14 @@ function HomeContent() {
       {/* Trust Badges - Sticky debajo del header */}
       <TrustBadges />
 
+      {/* Safety Filters - Solo visible en tab zones */}
+      {selectedTab === 'zones' && selectedCountry && (
+        <SafetyFilters
+          onFilterChange={setSafetyFilters}
+          activeFilters={safetyFilters}
+        />
+      )}
+
       {/* Contenido principal */}
       <div className="flex flex-1 overflow-hidden pb-16 lg:pb-0">
         {/* Sidebar con tabs */}
@@ -418,6 +428,7 @@ function HomeContent() {
         <ZonesPanel
           selectedCountry={selectedCountry}
           places={places}
+          safetyFilters={safetyFilters}
           onStartDrawing={handleStartDrawing}
           onDeletePlace={handleDeletePlace}
           onColorChange={handleColorChange}
@@ -529,6 +540,7 @@ function HomeContent() {
         <GoogleMap
           selectedPlace={selectedPlace}
           places={places}
+          safetyFilters={safetyFilters}
           airbnbs={airbnbs.filter(a => a.country_code === selectedCountry?.country_code)}
           airbnbLocation={airbnbLocation}
           onSavePolygon={handleSavePolygon}
