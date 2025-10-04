@@ -11,6 +11,7 @@ import CoWorkingPanel from './components/CoWorkingPanel';
 import InstagramablePlacesPanel from './components/InstagramablePlacesPanel';
 import Header from './components/Header';
 import HeroBanner from './components/HeroBanner';
+import TrustBadges from './components/TrustBadges';
 import { useAuthStore } from './store/authStore';
 import { useAppStore } from './store/appStore';
 
@@ -391,6 +392,9 @@ function HomeContent() {
 
       {/* Header */}
       <Header isAdminMode={isAdminMode} />
+
+      {/* Trust Badges - Sticky debajo del header */}
+      <TrustBadges />
 
       {/* Contenido principal */}
       <div className="flex flex-1 overflow-hidden pb-16 lg:pb-0">
