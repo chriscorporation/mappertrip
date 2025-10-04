@@ -10,9 +10,40 @@ export default function Header({ isAdminMode }) {
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [newZonesCount, setNewZonesCount] = useState(0);
   const usernameInputRef = useRef(null);
 
   const { login, logout, isLoading, error, isAuthenticated, user, clearError } = useAuthStore();
+
+  // Cargar contador de zonas nuevas (últimas 48 horas)
+  useEffect(() => {
+    const fetchNewZonesCount = async () => {
+      try {
+        const response = await fetch('/api/places');
+        const data = await response.json();
+
+        // Calcular zonas agregadas en las últimas 48 horas
+        const now = new Date();
+        const fortyEightHoursAgo = new Date(now.getTime() - (48 * 60 * 60 * 1000));
+
+        const recentZones = data.filter(place => {
+          if (!place.created_at) return false;
+          const createdAt = new Date(place.created_at);
+          return createdAt >= fortyEightHoursAgo;
+        });
+
+        setNewZonesCount(recentZones.length);
+      } catch (error) {
+        console.error('Error loading new zones count:', error);
+      }
+    };
+
+    fetchNewZonesCount();
+
+    // Actualizar cada 5 minutos
+    const interval = setInterval(fetchNewZonesCount, 5 * 60 * 1000);
+    return () => clearInterval(interval);
+  }, []);
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -75,6 +106,15 @@ export default function Header({ isAdminMode }) {
               }`}
             >
               <span className="relative z-10">Trip</span>
+
+              {/* Badge de nuevas zonas */}
+              {newZonesCount > 0 && (
+                <span className="absolute -top-1 -right-1 flex items-center justify-center min-w-[20px] h-5 px-1.5 bg-gradient-to-r from-red-500 to-pink-500 text-white text-xs font-bold rounded-full shadow-lg animate-bounce-subtle">
+                  {newZonesCount > 99 ? '99+' : newZonesCount}
+                  <span className="absolute inset-0 bg-red-400 rounded-full opacity-75 animate-ping-slow"></span>
+                </span>
+              )}
+
               {isActiveRoute('/') && (
                 <span className="absolute bottom-0 left-1/2 -translate-x-1/2 w-8 h-0.5 bg-gradient-to-r from-blue-600 to-purple-600 rounded-full"></span>
               )}
@@ -353,6 +393,38 @@ export default function Header({ isAdminMode }) {
 
         .animate-pulse-slow {
           animation: pulse-slow 2s ease-in-out infinite;
+        }
+
+        @keyframes bounce-subtle {
+          0%, 100% {
+            transform: translateY(0);
+          }
+          50% {
+            transform: translateY(-3px);
+          }
+        }
+
+        @keyframes ping-slow {
+          0% {
+            transform: scale(1);
+            opacity: 0.75;
+          }
+          50% {
+            transform: scale(1.15);
+            opacity: 0.3;
+          }
+          100% {
+            transform: scale(1.3);
+            opacity: 0;
+          }
+        }
+
+        .animate-bounce-subtle {
+          animation: bounce-subtle 2s ease-in-out infinite;
+        }
+
+        .animate-ping-slow {
+          animation: ping-slow 1.5s cubic-bezier(0, 0, 0.2, 1) infinite;
         }
       `}</style>
     </>
