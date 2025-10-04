@@ -177,6 +177,8 @@ export default function ZonesPanel({
   const [compareMode, setCompareMode] = useState(false);
   const [selectedForCompare, setSelectedForCompare] = useState([]);
   const [showCompareModal, setShowCompareModal] = useState(false);
+  const [favorites, setFavorites] = useState([]);
+  const [showOnlyFavorites, setShowOnlyFavorites] = useState(false);
   const inputRef = useRef(null);
   const autocompleteRef = useRef(null);
   const cardRefs = useRef({});
@@ -186,6 +188,34 @@ export default function ZonesPanel({
   const pollingIntervalRef = useRef(null);
   const streetViewPanoramaRef = useRef(null);
   const streetViewDivRef = useRef(null);
+
+  // Cargar favoritos desde localStorage al montar el componente
+  useEffect(() => {
+    const savedFavorites = localStorage.getItem('maptrip_favorites');
+    if (savedFavorites) {
+      try {
+        setFavorites(JSON.parse(savedFavorites));
+      } catch (error) {
+        console.error('Error loading favorites:', error);
+      }
+    }
+  }, []);
+
+  // Guardar favoritos en localStorage cuando cambian
+  useEffect(() => {
+    localStorage.setItem('maptrip_favorites', JSON.stringify(favorites));
+  }, [favorites]);
+
+  // Toggle favorito
+  const toggleFavorite = (placeId) => {
+    setFavorites(prev => {
+      if (prev.includes(placeId)) {
+        return prev.filter(id => id !== placeId);
+      } else {
+        return [...prev, placeId];
+      }
+    });
+  };
 
   // Detectar cuando se agrega una nueva zona y hacer scroll + seleccionar
   useEffect(() => {
@@ -473,6 +503,10 @@ export default function ZonesPanel({
   }
 
   const countryPlaces = places.filter(p => p.country_code === selectedCountry.country_code);
+  const displayedPlaces = showOnlyFavorites
+    ? countryPlaces.filter(p => favorites.includes(p.id))
+    : countryPlaces;
+  const favoritesCount = countryPlaces.filter(p => favorites.includes(p.id)).length;
 
   const handleToggleCompareSelection = (place) => {
     setSelectedForCompare(prev => {
@@ -569,6 +603,30 @@ export default function ZonesPanel({
           />
           <span>Activar roll over</span>
         </label>
+
+        {/* Filtro de favoritos */}
+        <button
+          onClick={() => setShowOnlyFavorites(!showOnlyFavorites)}
+          className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-semibold transition-all duration-300 ${
+            showOnlyFavorites
+              ? 'bg-gradient-to-r from-amber-400 to-yellow-400 text-white shadow-md hover:shadow-lg'
+              : 'bg-white border border-amber-300 text-amber-700 hover:bg-amber-50'
+          }`}
+        >
+          <div className="flex items-center gap-2">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+              <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+            </svg>
+            <span>{showOnlyFavorites ? 'Ver Todas' : 'Solo Favoritos'}</span>
+          </div>
+          {favoritesCount > 0 && (
+            <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${
+              showOnlyFavorites ? 'bg-white/30' : 'bg-amber-100 text-amber-800'
+            }`}>
+              {favoritesCount}
+            </span>
+          )}
+        </button>
 
         {countryPlaces.length >= 2 && (
           <button
@@ -675,12 +733,12 @@ export default function ZonesPanel({
             </p>
           </div>
         )}
-        {countryPlaces.length === 0 && !pendingPlace ? (
+        {displayedPlaces.length === 0 && !pendingPlace ? (
           <p className="text-gray-500 text-sm text-center mt-4">
-            No hay zonas creadas para {selectedCountry.name}
+            {showOnlyFavorites ? 'No hay zonas favoritas' : `No hay zonas creadas para ${selectedCountry.name}`}
           </p>
         ) : (
-          countryPlaces.map(place => (
+          displayedPlaces.map(place => (
             <div
               key={place.id}
               ref={el => cardRefs.current[place.id] = el}
@@ -695,13 +753,38 @@ export default function ZonesPanel({
               }`}
               onMouseEnter={() => hoverEnabled && onGoToPlace(place)}
             >
+              {/* Botón de favorito */}
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  toggleFavorite(place.id);
+                }}
+                className={`absolute top-2 right-2 z-10 w-8 h-8 rounded-full transition-all duration-300 flex items-center justify-center ${
+                  favorites.includes(place.id)
+                    ? 'bg-gradient-to-r from-amber-400 to-yellow-400 shadow-lg scale-110 hover:scale-125'
+                    : 'bg-white/80 backdrop-blur-sm border-2 border-gray-300 hover:border-amber-400 hover:scale-110'
+                }`}
+                title={favorites.includes(place.id) ? 'Quitar de favoritos' : 'Agregar a favoritos'}
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className={`h-5 w-5 transition-colors ${
+                    favorites.includes(place.id) ? 'text-white' : 'text-gray-400'
+                  }`}
+                  viewBox="0 0 20 20"
+                  fill="currentColor"
+                >
+                  <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                </svg>
+              </button>
+
               {compareMode && (
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
                     handleToggleCompareSelection(place);
                   }}
-                  className={`absolute top-2 right-2 z-10 w-6 h-6 rounded-full border-2 transition-all duration-200 flex items-center justify-center ${
+                  className={`absolute top-2 right-12 z-10 w-6 h-6 rounded-full border-2 transition-all duration-200 flex items-center justify-center ${
                     selectedForCompare.find(p => p.id === place.id)
                       ? 'bg-purple-500 border-purple-600 shadow-lg scale-110'
                       : 'bg-white border-gray-300 hover:border-purple-400'
@@ -884,6 +967,15 @@ export default function ZonesPanel({
                         <span className="font-semibold">💡 Tip:</span> Usa los controles para explorar la zona visualmente
                       </p>
                     </div>
+                  </div>
+                )}
+
+                {/* Favorite Badge - visible cuando está en favoritos */}
+                {favorites.includes(place.id) && (
+                  <div className="mb-2">
+                    <span className="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-bold bg-gradient-to-r from-amber-100 to-yellow-100 text-amber-800 border-2 border-amber-300 shadow-sm animate-[fadeIn_0.3s_ease-out]">
+                      <span className="mr-1.5">⭐</span> Favorito
+                    </span>
                   </div>
                 )}
 
