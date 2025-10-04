@@ -7,6 +7,7 @@ import MapSearchBox from './MapSearchBox';
 import MapLayersControl from './MapLayersControl';
 import StreetViewPreview from './StreetViewPreview';
 import ZoomControls from './ZoomControls';
+import HeatMapControl from './HeatMapControl';
 
 // Estilos de mapa predefinidos
 const MAP_STYLES = {
@@ -275,7 +276,7 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
 
       // Crear y cargar el script de Google Maps
       const script = document.createElement('script');
-      script.src = `https://maps.googleapis.com/maps/api/js?key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}&libraries=places,drawing`;
+      script.src = `https://maps.googleapis.com/maps/api/js?key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}&libraries=places,drawing,visualization`;
       script.async = true;
       script.defer = true;
       script.onload = () => initMap();
@@ -1553,6 +1554,14 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
             onLayersChange={setVisibleLayers}
           />
         )}
+
+        {/* Heat Map Control - Top right below layer control */}
+        <HeatMapControl
+          map={map}
+          places={places}
+          selectedCountry={selectedCountry}
+          isMapLoading={isMapLoading}
+        />
 
         {/* Quick Stats Panel - Bottom right */}
         {!isMapLoading && (
