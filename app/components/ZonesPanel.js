@@ -46,6 +46,8 @@ export default function ZonesPanel({
   const [pendingPlaceName, setPendingPlaceName] = useState('');
   const [editingTitleId, setEditingTitleId] = useState(null);
   const [tempTitle, setTempTitle] = useState('');
+  const [streetViewPlace, setStreetViewPlace] = useState(null);
+  const [streetViewLoading, setStreetViewLoading] = useState(false);
   const inputRef = useRef(null);
   const autocompleteRef = useRef(null);
   const cardRefs = useRef({});
@@ -53,6 +55,8 @@ export default function ZonesPanel({
   const scrollContainerRef = useRef(null);
   const previousPlacesCountRef = useRef(places.length);
   const pollingIntervalRef = useRef(null);
+  const streetViewPanoramaRef = useRef(null);
+  const streetViewDivRef = useRef(null);
 
   // Detectar cuando se agrega una nueva zona y hacer scroll + seleccionar
   useEffect(() => {
@@ -77,6 +81,56 @@ export default function ZonesPanel({
 
     previousPlacesCountRef.current = countryPlaces.length;
   }, [places, selectedCountry, onGoToPlace]);
+
+  // Initialize Street View when streetViewPlace changes
+  useEffect(() => {
+    if (!streetViewPlace || !window.google?.maps) return;
+
+    const initStreetView = () => {
+      setStreetViewLoading(true);
+
+      if (!streetViewDivRef.current) return;
+
+      const streetViewService = new window.google.maps.StreetViewService();
+      const location = { lat: streetViewPlace.lat, lng: streetViewPlace.lng };
+
+      // Check if Street View is available at this location
+      streetViewService.getPanorama(
+        { location, radius: 50 },
+        (data, status) => {
+          setStreetViewLoading(false);
+
+          if (status === 'OK') {
+            // Create or update panorama
+            if (!streetViewPanoramaRef.current) {
+              streetViewPanoramaRef.current = new window.google.maps.StreetViewPanorama(
+                streetViewDivRef.current,
+                {
+                  position: location,
+                  pov: { heading: 0, pitch: 0 },
+                  zoom: 1,
+                  addressControl: false,
+                  linksControl: true,
+                  panControl: true,
+                  enableCloseButton: false,
+                  fullscreenControl: true,
+                  motionTracking: false,
+                  motionTrackingControl: false,
+                }
+              );
+            } else {
+              streetViewPanoramaRef.current.setPosition(location);
+              streetViewPanoramaRef.current.setPov({ heading: 0, pitch: 0 });
+            }
+          }
+        }
+      );
+    };
+
+    // Small delay to ensure the div is mounted
+    const timeoutId = setTimeout(initStreetView, 100);
+    return () => clearTimeout(timeoutId);
+  }, [streetViewPlace]);
 
   // Cleanup polling interval on unmount or panel close
   useEffect(() => {
@@ -552,19 +606,84 @@ export default function ZonesPanel({
                       {place.address}
                     </h3>
                   )}
-                  <a
-                    href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(place.address)}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="ml-2 text-gray-400 hover:text-blue-600 transition-colors"
-                    title="Ver en Google Maps"
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                      <path fillRule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" />
-                    </svg>
-                  </a>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setStreetViewPlace(streetViewPlace?.id === place.id ? null : place);
+                      }}
+                      className={`text-gray-400 hover:text-purple-600 transition-all duration-200 hover:scale-110 ${
+                        streetViewPlace?.id === place.id ? 'text-purple-600 scale-110' : ''
+                      }`}
+                      title="Ver Street View"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
+                        <circle cx="12" cy="9" r="1" fill="white"/>
+                      </svg>
+                    </button>
+                    <a
+                      href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(place.address)}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-gray-400 hover:text-blue-600 transition-colors"
+                      title="Ver en Google Maps"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                        <path fillRule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" />
+                      </svg>
+                    </a>
+                  </div>
                 </div>
+
+                {/* Street View Preview */}
+                {streetViewPlace?.id === place.id && (
+                  <div className="mt-3 rounded-lg overflow-hidden border-2 border-purple-300 shadow-lg animate-[fadeIn_0.3s_ease-out]">
+                    {streetViewLoading ? (
+                      <div className="h-48 bg-gradient-to-br from-purple-50 to-violet-100 flex items-center justify-center">
+                        <div className="text-center">
+                          <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600 mb-2"></div>
+                          <p className="text-sm text-purple-600 font-medium">Cargando Street View...</p>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="relative">
+                        <div
+                          ref={streetViewDivRef}
+                          className="h-48 w-full bg-gray-100"
+                          style={{ minHeight: '192px' }}
+                        ></div>
+                        <div className="absolute top-2 left-2 bg-white/90 backdrop-blur-sm rounded-lg px-3 py-1 shadow-md">
+                          <p className="text-xs font-semibold text-purple-700 flex items-center gap-1">
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" viewBox="0 0 20 20" fill="currentColor">
+                              <path d="M10 12a2 2 0 100-4 2 2 0 000 4z" />
+                              <path fillRule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clipRule="evenodd" />
+                            </svg>
+                            Vista de Calle
+                          </p>
+                        </div>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setStreetViewPlace(null);
+                          }}
+                          className="absolute top-2 right-2 bg-white/90 backdrop-blur-sm rounded-full p-1.5 shadow-md hover:bg-white transition-colors"
+                          title="Cerrar Street View"
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-gray-600" viewBox="0 0 20 20" fill="currentColor">
+                            <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                          </svg>
+                        </button>
+                      </div>
+                    )}
+                    <div className="bg-gradient-to-r from-purple-50 to-violet-50 px-3 py-2 border-t border-purple-200">
+                      <p className="text-xs text-purple-700">
+                        <span className="font-semibold">💡 Tip:</span> Usa los controles para explorar la zona visualmente
+                      </p>
+                    </div>
+                  </div>
+                )}
 
                 {/* Safety Status Badge */}
                 <div className="mb-2">
