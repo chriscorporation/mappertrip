@@ -10,6 +10,7 @@ import AirbnbPanel from './components/AirbnbPanel';
 import CoWorkingPanel from './components/CoWorkingPanel';
 import InstagramablePlacesPanel from './components/InstagramablePlacesPanel';
 import Header from './components/Header';
+import HeroBanner from './components/HeroBanner';
 import { useAuthStore } from './store/authStore';
 import { useAppStore } from './store/appStore';
 
@@ -385,6 +386,9 @@ function HomeContent() {
 
   return (
     <div className="flex flex-col h-screen">
+      {/* Hero Banner - Solo se muestra la primera vez */}
+      <HeroBanner />
+
       {/* Header */}
       <Header isAdminMode={isAdminMode} />
 
