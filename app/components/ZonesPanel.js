@@ -7,6 +7,7 @@ import { HiOutlineSparkles } from 'react-icons/hi';
 import { useAuthStore } from '../store/authStore';
 import MapPreview from './MapPreview';
 import SkeletonLoader from './SkeletonLoader';
+import ZoneComparison from './ZoneComparison';
 
 export default function ZonesPanel({
   selectedCountry,
@@ -50,6 +51,8 @@ export default function ZonesPanel({
   const [editingTitleId, setEditingTitleId] = useState(null);
   const [tempTitle, setTempTitle] = useState('');
   const [initialLoading, setInitialLoading] = useState(true);
+  const [selectedZonesForComparison, setSelectedZonesForComparison] = useState([]);
+  const [showComparison, setShowComparison] = useState(false);
   const inputRef = useRef(null);
   const autocompleteRef = useRef(null);
   const cardRefs = useRef({});
@@ -297,6 +300,33 @@ export default function ZonesPanel({
     }
   };
 
+  const handleToggleZoneComparison = (zone) => {
+    setSelectedZonesForComparison(prev => {
+      const isSelected = prev.some(z => z.id === zone.id);
+      if (isSelected) {
+        return prev.filter(z => z.id !== zone.id);
+      } else {
+        // Cargar datos de Perplexity para la zona si no los tiene
+        if (!zone.perplexityData) {
+          fetch(`/api/perplexity-notes?zone_id=${zone.id}`)
+            .then(res => res.json())
+            .then(data => {
+              zone.perplexityData = data;
+            })
+            .catch(err => console.error('Error loading zone data:', err));
+        }
+        return [...prev, zone];
+      }
+    });
+  };
+
+  const handleRemoveFromComparison = (zoneId) => {
+    setSelectedZonesForComparison(prev => prev.filter(z => z.id !== zoneId));
+    if (selectedZonesForComparison.length <= 1) {
+      setShowComparison(false);
+    }
+  };
+
   if (!selectedCountry) {
     return (
       <div className="w-80 bg-white border-r border-gray-300 p-4">
@@ -330,8 +360,23 @@ export default function ZonesPanel({
     <div className="flex">
     <div className="w-80 bg-white border-r border-gray-300 flex flex-col">
       <div className="p-4 border-b border-gray-200">
-        <h2 className="text-xl font-bold">Zones</h2>
-        <p className="text-xs text-gray-500 mt-1">{selectedCountry.name}</p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-xl font-bold">Zones</h2>
+            <p className="text-xs text-gray-500 mt-1">{selectedCountry.name}</p>
+          </div>
+          {selectedZonesForComparison.length > 0 && (
+            <button
+              onClick={() => setShowComparison(true)}
+              className="flex items-center gap-2 px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                <path d="M3 4a1 1 0 011-1h12a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1V4zM3 10a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H4a1 1 0 01-1-1v-6zM14 9a1 1 0 00-1 1v6a1 1 0 001 1h2a1 1 0 001-1v-6a1 1 0 00-1-1h-2z" />
+              </svg>
+              Comparar ({selectedZonesForComparison.length})
+            </button>
+          )}
+        </div>
       </div>
 
       {initialLoading && countryPlaces.length === 0 ? (
@@ -485,19 +530,38 @@ export default function ZonesPanel({
             No hay zonas creadas para {selectedCountry.name}
           </p>
         ) : (
-          countryPlaces.map(place => (
+          countryPlaces.map(place => {
+            const isSelectedForComparison = selectedZonesForComparison.some(z => z.id === place.id);
+
+            return (
             <div
               key={place.id}
               ref={el => cardRefs.current[place.id] = el}
               className={`bg-white rounded-xl shadow-sm border transition-all duration-200 overflow-hidden ${hoverEnabled ? 'cursor-pointer hover:shadow-md hover:-translate-y-0.5' : ''} ${
                 highlightedPlace === place.id
                   ? 'border-2 border-blue-500 shadow-md'
+                  : isSelectedForComparison
+                  ? 'border-2 border-purple-500 shadow-md'
                   : 'border-gray-200'
               }`}
               onMouseEnter={() => hoverEnabled && onGoToPlace(place)}
             >
               {/* Vista previa del mapa estilo Airbnb */}
-              <MapPreview place={place} className="w-full h-32 sm:h-36" />
+              <div className="relative">
+                <MapPreview place={place} className="w-full h-32 sm:h-36" />
+                {/* Checkbox de comparación en la esquina superior derecha */}
+                <label
+                  className="absolute top-3 right-3 flex items-center justify-center w-8 h-8 bg-white rounded-full shadow-md cursor-pointer hover:bg-gray-50 transition-colors"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <input
+                    type="checkbox"
+                    checked={isSelectedForComparison}
+                    onChange={() => handleToggleZoneComparison(place)}
+                    className="w-5 h-5 text-purple-600 rounded focus:ring-purple-500 cursor-pointer"
+                  />
+                </label>
+              </div>
 
               <div className="p-3">
               <div className="mb-2">
@@ -837,12 +901,22 @@ export default function ZonesPanel({
               )}
               </div>
             </div>
-          ))
+          );
+          })
         )}
       </div>
       </>
       )}
     </div>
+
+      {/* Zone Comparison Modal */}
+      {showComparison && (
+        <ZoneComparison
+          zones={selectedZonesForComparison}
+          onClose={() => setShowComparison(false)}
+          onRemoveZone={handleRemoveFromComparison}
+        />
+      )}
 
       {/* Panel flotante de Perplexity */}
       {showPerplexityPanel && (
