@@ -61,7 +61,7 @@ export default function CountriesPanel({ selectedCountry, onSelectCountry, place
                 transition-all duration-300 ease-in-out
                 ${isDisabled
                   ? 'opacity-40 cursor-default'
-                  : 'cursor-pointer hover:shadow-md hover:scale-[1.02] hover:z-10'
+                  : 'cursor-pointer hover:shadow-md hover:scale-[1.02] hover:-translate-y-0.5 hover:z-10'
                 }
                 ${selectedCountry?.id === country.id
                   ? 'bg-blue-50 border-l-4 border-l-blue-600 shadow-sm'
