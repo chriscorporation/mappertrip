@@ -470,7 +470,14 @@ export default function ZonesPanel({
       </div>
 
       <PullToRefresh onRefresh={handleRefresh} className="flex-1">
-        <div ref={scrollContainerRef} className="p-3 space-y-3">
+        <div
+          ref={scrollContainerRef}
+          className="p-3 space-y-3 overflow-y-auto scroll-smooth snap-y snap-mandatory"
+          style={{
+            scrollPaddingTop: '12px',
+            WebkitOverflowScrolling: 'touch',
+          }}
+        >
         {pendingPlace && (
           <div className="p-3 bg-blue-50 rounded-lg border-2 border-blue-400">
             <input
@@ -564,7 +571,7 @@ export default function ZonesPanel({
             <div
               key={place.id}
               ref={el => cardRefs.current[place.id] = el}
-              className={`glass-card animate-glass-appear backdrop-blur-md bg-white/80 rounded-xl shadow-lg border overflow-hidden ${hoverEnabled ? 'cursor-pointer hover:shadow-2xl hover:-translate-y-1 hover:bg-white/90' : ''} ${
+              className={`glass-card animate-glass-appear backdrop-blur-md bg-white/80 rounded-xl shadow-lg border overflow-hidden snap-center ${hoverEnabled ? 'cursor-pointer hover:shadow-2xl hover:-translate-y-1 hover:bg-white/90' : ''} ${
                 highlightedPlace === place.id
                   ? 'border-2 border-blue-500 shadow-2xl scale-[1.02] bg-white/95'
                   : isSelectedForComparison
@@ -574,6 +581,8 @@ export default function ZonesPanel({
               style={{
                 backdropFilter: 'blur(12px)',
                 WebkitBackdropFilter: 'blur(12px)',
+                scrollSnapAlign: 'center',
+                scrollMarginTop: '12px',
               }}
               onMouseEnter={() => hoverEnabled && onGoToPlace(place)}
             >

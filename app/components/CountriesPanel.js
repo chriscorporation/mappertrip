@@ -78,7 +78,13 @@ export default function CountriesPanel({ selectedCountry, onSelectCountry, place
       </div>
 
       {/* Grid de cards - Mobile first */}
-      <div className="flex-1 overflow-y-auto p-4 sm:p-6">
+      <div
+        className="flex-1 overflow-y-auto p-4 sm:p-6 scroll-smooth snap-y snap-mandatory"
+        style={{
+          scrollPaddingTop: '16px',
+          WebkitOverflowScrolling: 'touch',
+        }}
+      >
         <div className="space-y-4">
           {countries.map(country => {
             const zoneCount = places.filter(p => p.country_code === country.country_code).length;
@@ -91,7 +97,7 @@ export default function CountriesPanel({ selectedCountry, onSelectCountry, place
                 onClick={() => !isDisabled && onSelectCountry(country)}
                 disabled={isDisabled}
                 className={`
-                  w-full text-left rounded-xl overflow-hidden
+                  w-full text-left rounded-xl overflow-hidden snap-center
                   transition-all duration-300 group
                   ${isDisabled
                     ? 'opacity-50 cursor-not-allowed'
@@ -102,6 +108,10 @@ export default function CountriesPanel({ selectedCountry, onSelectCountry, place
                     : 'shadow-md'
                   }
                 `}
+                style={{
+                  scrollSnapAlign: 'center',
+                  scrollMarginTop: '16px',
+                }}
               >
                 {/* Imagen del país - Aspecto ratio 16:10 estilo Airbnb */}
                 <div className="relative h-44 sm:h-48 w-full bg-gray-200 overflow-hidden">

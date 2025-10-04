@@ -104,7 +104,13 @@ export default function CoWorkingPanel({
         </div>
       )}
 
-      <div className="flex-1 overflow-y-auto p-3 space-y-3">
+      <div
+        className="flex-1 overflow-y-auto p-3 space-y-3 scroll-smooth snap-y snap-mandatory"
+        style={{
+          scrollPaddingTop: '12px',
+          WebkitOverflowScrolling: 'touch',
+        }}
+      >
         {countryPlaces.length === 0 ? (
           <p className="text-gray-500 text-sm text-center mt-4">
             No hay lugares agregados para {selectedCountry.name}
@@ -113,7 +119,11 @@ export default function CoWorkingPanel({
           countryPlaces.map(place => (
             <div
               key={place.id}
-              className="p-3 bg-gray-50 rounded-lg border border-gray-200 hover:bg-gray-100 transition-colors"
+              className="p-3 bg-gray-50 rounded-lg border border-gray-200 hover:bg-gray-100 transition-colors snap-center"
+              style={{
+                scrollSnapAlign: 'center',
+                scrollMarginTop: '12px',
+              }}
             >
               <div className="mb-2">
                 <h3

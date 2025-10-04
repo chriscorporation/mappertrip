@@ -174,14 +174,27 @@ export default function AirbnbPanel({ onGoToLocation, selectedCountry }) {
         </div>
       )}
 
-      <div className="flex-1 overflow-y-auto p-3 space-y-3">
+      <div
+        className="flex-1 overflow-y-auto p-3 space-y-3 scroll-smooth snap-y snap-mandatory"
+        style={{
+          scrollPaddingTop: '12px',
+          WebkitOverflowScrolling: 'touch',
+        }}
+      >
         {airbnbs.length === 0 ? (
           <p className="text-gray-500 text-sm text-center mt-4">
             No hay propiedades de Airbnb agregadas
           </p>
         ) : (
           airbnbs.map(airbnb => (
-            <div key={airbnb.id} className="p-3 bg-gray-50 rounded-lg border border-gray-200">
+            <div
+              key={airbnb.id}
+              className="p-3 bg-gray-50 rounded-lg border border-gray-200 snap-center"
+              style={{
+                scrollSnapAlign: 'center',
+                scrollMarginTop: '12px',
+              }}
+            >
               <h3
                 className="font-semibold text-sm mb-2 cursor-pointer hover:text-blue-600 transition-colors line-clamp-2"
                 onClick={() => onGoToLocation({ lat: airbnb.lat, lng: airbnb.lng })}
