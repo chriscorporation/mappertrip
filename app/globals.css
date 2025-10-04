@@ -72,3 +72,39 @@ body {
 .animate-slide-down-fade {
   animation: slide-down-fade 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards;
 }
+
+/* Animación glassmorphism para cards de zona */
+@keyframes glass-appear {
+  from {
+    transform: translateY(20px) scale(0.95);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
+}
+
+.animate-glass-appear {
+  animation: glass-appear 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+/* Efecto hover mejorado para glassmorphism */
+@keyframes glass-hover {
+  0% {
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  }
+  100% {
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  }
+}
+
+/* Transición suave para efectos de cristal */
+.glass-card {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  will-change: transform, box-shadow, backdrop-filter;
+}
+
+.glass-card:hover {
+  animation: glass-hover 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
