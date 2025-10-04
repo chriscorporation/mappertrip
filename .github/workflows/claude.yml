@@ -43,6 +43,10 @@ jobs:
           # Autenticación con OAuth token de Claude Max
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
 
+          # Permitir todas las herramientas necesarias para crear PRs
+          claude_args: |
+            --allowedTools Bash,Edit,Write,Read
+
           # Prompt personalizado para el bot
           prompt: |
             REPOSITORY: ${{ github.repository }}
@@ -66,11 +70,19 @@ jobs:
             - CONTEXT CLUES: Use issue title, existing code structure, and project conventions to guide your decisions
             - Example: If asked to "add a header", examine the main page layout and add it in the most appropriate component
 
-            WORKFLOW:
+            WORKFLOW (MANDATORY - DO NOT SKIP ANY STEP):
             1. Analyze the issue/comment and implement the solution (make decisions proactively)
-            2. Create a branch and commit your changes
-            3. Create a Pull Request to 'claude_bot' branch
-            4. Add a comment to the issue with the PR link and summary of changes
-            5. Close the issue when completed
+            2. CRITICAL: Create a new git branch (using the branch prefix already configured)
+            3. CRITICAL: Make commits to that branch with your changes
+            4. CRITICAL: Push the branch to remote
+            5. CRITICAL: Create a Pull Request to 'claude_bot' branch using gh CLI or git commands
+            6. Add a comment to the issue with the PR link and summary of changes
+            7. Close the issue when completed
+
+            IMPORTANT REMINDERS:
+            - You MUST create a branch and PR - do not just make changes without committing
+            - Use git/gh commands via Bash tool to create branch, commit, push, and create PR
+            - The base branch for your PR is 'claude_bot'
+            - Your branch name should use the configured prefix
 
             Now, address the request in the ISSUE TITLE, ISSUE BODY, or COMMENT above.
