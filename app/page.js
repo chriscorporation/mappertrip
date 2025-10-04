@@ -11,6 +11,7 @@ import CoWorkingPanel from './components/CoWorkingPanel';
 import InstagramablePlacesPanel from './components/InstagramablePlacesPanel';
 import Header from './components/Header';
 import CountryQuickSelector from './components/CountryQuickSelector';
+import RealTimeMetrics from './components/RealTimeMetrics';
 import { useAuthStore } from './store/authStore';
 import { useAppStore } from './store/appStore';
 import { useToast } from './store/toastStore';
@@ -634,6 +635,9 @@ function HomeContent() {
         />
       </div>
       </div>
+
+      {/* Real-time metrics panel */}
+      <RealTimeMetrics places={places} selectedCountry={selectedCountry} />
 
     </div>
   );
