@@ -58,25 +58,37 @@ export default function CountriesPanel({ selectedCountry, onSelectCountry, place
               onClick={() => !isDisabled && onSelectCountry(country)}
               className={`
                 w-full text-left px-4 py-3 border-b border-gray-100
-                transition-colors
+                transition-all duration-300 ease-out
                 ${isDisabled
                   ? 'opacity-40 cursor-default'
-                  : 'cursor-pointer'
+                  : 'cursor-pointer group'
                 }
                 ${selectedCountry?.id === country.id
-                  ? 'bg-blue-50 border-l-4 border-l-blue-600'
-                  : !isDisabled && 'hover:bg-gray-50'
+                  ? 'bg-blue-50 border-l-4 border-l-blue-600 shadow-sm'
+                  : !isDisabled && 'hover:bg-gray-50 hover:shadow-md hover:border-l-4 hover:border-l-gray-300'
                 }
               `}
             >
               <div className="flex items-center gap-3">
-                <span className="text-2xl">{getFlagEmoji(country.country_code)}</span>
-                <div>
-                  <p className="font-medium">
-                    {country.name} <strong>({zoneCount})</strong>
+                <span className={`text-2xl transition-transform duration-300 ${!isDisabled && 'group-hover:scale-125'}`}>
+                  {getFlagEmoji(country.country_code)}
+                </span>
+                <div className="flex-1">
+                  <p className={`font-medium transition-colors duration-200 ${!isDisabled && 'group-hover:text-gray-900'}`}>
+                    {country.name} <strong className="text-blue-600">({zoneCount})</strong>
                   </p>
                   <p className="text-xs text-gray-500">{country.country_code}</p>
                 </div>
+                {!isDisabled && (
+                  <svg
+                    className={`w-5 h-5 text-gray-400 transition-all duration-300 ${selectedCountry?.id === country.id ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0'}`}
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
+                )}
               </div>
             </button>
           );
