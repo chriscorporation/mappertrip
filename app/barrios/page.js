@@ -2,6 +2,7 @@ import { createClient } from '@supabase/supabase-js';
 import Header from '../components/Header';
 import ExploreButton from '../components/ExploreButton';
 import CountryCard from './CountryCard';
+import Breadcrumbs from '../components/Breadcrumbs';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -56,6 +57,7 @@ export default async function Barrios() {
   return (
     <div className="flex flex-col min-h-screen overflow-y-auto">
       <Header isAdminMode={false} />
+      <Breadcrumbs />
 
       <section className="pt-6 pb-20 bg-gray-50">
         <div className="container mx-auto px-4">

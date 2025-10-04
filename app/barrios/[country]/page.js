@@ -3,6 +3,8 @@ import { notFound } from 'next/navigation';
 import Header from '../../components/Header';
 import PerplexityNotesDisplay from '../../components/PerplexityNotesDisplay';
 import BackButton from './BackButton';
+import Breadcrumbs from '../../components/Breadcrumbs';
+import { FiMap, FiMapPin } from 'react-icons/fi';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -110,9 +112,17 @@ export default async function BarriosPais({ params }) {
 
   const { country, zones } = data;
 
+  // Breadcrumb personalizado para esta página
+  const breadcrumbItems = [
+    { label: 'Inicio', href: '/' },
+    { label: 'Barrios', href: '/barrios' },
+    { label: country.name, href: null },
+  ];
+
   return (
     <div className="flex flex-col min-h-screen overflow-y-auto">
       <Header isAdminMode={false} />
+      <Breadcrumbs customItems={breadcrumbItems} />
 
       <section className="pt-6 pb-20 bg-gray-50">
         <div className="container mx-auto px-4">
