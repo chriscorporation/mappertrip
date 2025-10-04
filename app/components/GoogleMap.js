@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, useMemo } from 'react';
 import CountryQuickSelector from './CountryQuickSelector';
 import QuickStatsPanel from './QuickStatsPanel';
 import MapSearchBox from './MapSearchBox';
+import MapLayersControl from './MapLayersControl';
 
 // Estilos de mapa predefinidos
 const MAP_STYLES = {
@@ -196,6 +197,12 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
   const [showFABMenu, setShowFABMenu] = useState(false);
   const [marker, setMarker] = useState(null);
   const [airbnbMarker, setAirbnbMarker] = useState(null);
+  const [visibleLayers, setVisibleLayers] = useState({
+    zones: true,
+    airbnbs: true,
+    coworking: true,
+    instagramable: true,
+  });
   const [drawingManager, setDrawingManager] = useState(null);
   const [currentPolygon, setCurrentPolygon] = useState(null);
   const [vertexToDelete, setVertexToDelete] = useState(null);
@@ -544,7 +551,7 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
     const currentZoom = map.getZoom();
     let targetZoom = 13; // Zoom por defecto para zonas y Airbnb
 
-    if (isCoworking || isInstagramable) {
+    if ((isCoworking && visibleLayers.coworking) || (isInstagramable && visibleLayers.instagramable)) {
       targetZoom = 17; // Zoom mucho mayor para coworking e instagramable
     }
 
@@ -560,6 +567,16 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
     // Eliminar el marcador anterior si existe
     if (marker) {
       marker.setMap(null);
+    }
+
+    // Solo crear marcador si la capa correspondiente está visible
+    const shouldShowMarker =
+      (!isCoworking && !isInstagramable) || // Siempre mostrar zonas y airbnbs
+      (isCoworking && visibleLayers.coworking) ||
+      (isInstagramable && visibleLayers.instagramable);
+
+    if (!shouldShowMarker) {
+      return;
     }
 
     // Determinar el icono según el tipo de lugar
@@ -598,7 +615,7 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
     });
 
     setMarker(newMarker);
-  }, [selectedPlace, map]);
+  }, [selectedPlace, map, visibleLayers.coworking, visibleLayers.instagramable]);
 
   // Mostrar ubicación de Airbnb con punto verde
   useEffect(() => {
@@ -706,7 +723,7 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
       // Si el lugar tiene un polígono guardado
       if (place.polygon) {
         const filterCategory = getFilterCategory(place.color);
-        const isVisible = activeFilters[filterCategory];
+        const isVisible = activeFilters[filterCategory] && visibleLayers.zones;
 
         // Si ya está renderizado, solo actualizar opciones
         if (polygonsRef.current[place.id]) {
@@ -838,7 +855,7 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
         delete polygonsRef.current[placeId];
       }
     });
-  }, [places, map, activeFilters, mapClickMode]);
+  }, [places, map, activeFilters, mapClickMode, visibleLayers.zones]);
 
   // Actualizar estilo del polígono resaltado
   useEffect(() => {
@@ -882,7 +899,7 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
       // Si el lugar tiene circle_radius
       if (place.circle_radius) {
         const filterCategory = getFilterCategory(place.color);
-        const isVisible = activeFilters[filterCategory];
+        const isVisible = activeFilters[filterCategory] && visibleLayers.zones;
 
         // Determinar el radio a usar (editingRadius si se está editando, o el radio guardado)
         const radiusToUse = editingCircleId === place.id ? editingRadius : place.circle_radius;
@@ -945,7 +962,7 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
         delete circlesRef.current[placeId];
       }
     });
-  }, [places, map, editingCircleId, editingRadius, activeFilters]);
+  }, [places, map, editingCircleId, editingRadius, activeFilters, visibleLayers.zones]);
 
   // Renderizar círculo temporal mientras se ajusta el radio
   useEffect(() => {
@@ -1004,7 +1021,7 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
     airbnbMarkersRef.current.forEach(m => m.setMap(null));
     airbnbMarkersRef.current = [];
 
-    if (!airbnbs || airbnbs.length === 0) return;
+    if (!airbnbs || airbnbs.length === 0 || !visibleLayers.airbnbs) return;
 
     // Crear nuevos marcadores para cada Airbnb con InfoWindow personalizado
     airbnbs.forEach(airbnb => {
@@ -1117,7 +1134,7 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
       airbnbMarkersRef.current.forEach(m => m.setMap(null));
       airbnbMarkersRef.current = [];
     };
-  }, [map, airbnbsKey]);
+  }, [map, airbnbsKey, visibleLayers.airbnbs]);
 
   // Manejar el modo de clic del mapa
   useEffect(() => {
@@ -1485,6 +1502,17 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
               }}
             />
           </div>
+        )}
+
+        {/* Map Layers Control - Top right below filters */}
+        {!isMapLoading && (
+          <MapLayersControl
+            airbnbs={airbnbs}
+            coworkingPlaces={coworkingPlaces}
+            instagramablePlaces={instagramablePlaces}
+            places={places}
+            onLayersChange={setVisibleLayers}
+          />
         )}
 
         {/* Quick Stats Panel - Bottom right */}
