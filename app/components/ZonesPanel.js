@@ -564,13 +564,17 @@ export default function ZonesPanel({
             <div
               key={place.id}
               ref={el => cardRefs.current[place.id] = el}
-              className={`bg-white rounded-xl shadow-sm border transition-all duration-200 overflow-hidden ${hoverEnabled ? 'cursor-pointer hover:shadow-md hover:-translate-y-0.5' : ''} ${
+              className={`glass-card animate-glass-appear backdrop-blur-md bg-white/80 rounded-xl shadow-lg border overflow-hidden ${hoverEnabled ? 'cursor-pointer hover:shadow-2xl hover:-translate-y-1 hover:bg-white/90' : ''} ${
                 highlightedPlace === place.id
-                  ? 'border-2 border-blue-500 shadow-md'
+                  ? 'border-2 border-blue-500 shadow-2xl scale-[1.02] bg-white/95'
                   : isSelectedForComparison
-                  ? 'border-2 border-purple-500 shadow-md'
-                  : 'border-gray-200'
+                  ? 'border-2 border-purple-500 shadow-2xl scale-[1.02] bg-white/95'
+                  : 'border-gray-200/50'
               }`}
+              style={{
+                backdropFilter: 'blur(12px)',
+                WebkitBackdropFilter: 'blur(12px)',
+              }}
               onMouseEnter={() => hoverEnabled && onGoToPlace(place)}
             >
               {/* Vista previa del mapa estilo Airbnb */}
