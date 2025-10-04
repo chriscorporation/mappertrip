@@ -1,4 +1,4 @@
-name: Claude Automation - Mobile Branch Only
+name: Claude Bot Automation
 
 on:
   issues:
@@ -17,20 +17,20 @@ jobs:
       actions: read  # Required for Claude to read CI results
 
     steps:
-      - name: Checkout mobile branch
+      - name: Checkout claude_bot branch
         uses: actions/checkout@v4
         with:
-          ref: mobile
+          ref: claude_bot
           fetch-depth: 0
 
       - name: Run Claude Code
         uses: anthropics/claude-code-action@v1
         with:
-          # Rama base siempre será mobile
-          base_branch: mobile
+          # Rama base siempre será claude_bot
+          base_branch: claude_bot
 
           # Prefijo para ramas creadas por Claude
-          branch_prefix: "claude-mobile/"
+          branch_prefix: "claude-bot/"
 
           # Se activa sin necesidad de @claude (string vacío = siempre activo)
           trigger_phrase: ""
@@ -38,12 +38,12 @@ jobs:
           # Autenticación con OAuth token de Claude Max
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
 
-          # Prompt personalizado que indica trabajar solo en mobile
+          # Prompt personalizado que indica trabajar solo en claude_bot
           prompt: |
-            IMPORTANT: You MUST ONLY work on the 'mobile' branch.
-            - Always create branches from 'mobile'
+            IMPORTANT: You MUST ONLY work on the 'claude_bot' branch.
+            - Always create branches from 'claude_bot'
             - Never modify main, master, or any other branch
-            - All changes must target the 'mobile' branch
-            - Create pull requests against 'mobile' only
+            - All changes must target the 'claude_bot' branch
+            - Create pull requests against 'claude_bot' only
 
             Now, address the issue or request provided.
