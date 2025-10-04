@@ -2,7 +2,7 @@ name: Claude Bot Automation
 
 on:
   issues:
-    types: [opened, edited]
+    types: [opened, edited, reopened]
   issue_comment:
     types: [created]
 
