@@ -3,8 +3,9 @@
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '../store/authStore';
+import SearchBar from './SearchBar';
 
-export default function Header({ isAdminMode }) {
+export default function Header({ isAdminMode, onSelectCountry }) {
   const router = useRouter();
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [username, setUsername] = useState('');
@@ -42,7 +43,7 @@ export default function Header({ isAdminMode }) {
 
   return (
     <>
-      <header className="bg-white border-b border-gray-300 px-6 py-2 flex justify-between items-center">
+      <header className="bg-white border-b border-gray-300 px-6 py-3 flex justify-between items-center">
         <div className="flex items-center gap-6">
           <h1
             onClick={() => router.push('/')}
@@ -90,24 +91,31 @@ export default function Header({ isAdminMode }) {
           </div>
         </div>
 
-        {isAuthenticated ? (
-          <div className="flex items-center gap-3">
-            <span className="text-sm text-gray-700">{user?.email}</span>
+        {/* Barra de búsqueda estilo Airbnb */}
+        <div className="flex-1 flex justify-center px-8">
+          <SearchBar onSelectCountry={onSelectCountry} />
+        </div>
+
+        <div className="flex items-center gap-3">
+          {isAuthenticated ? (
+            <>
+              <span className="text-sm text-gray-700">{user?.email}</span>
+              <button
+                onClick={handleLogout}
+                className="text-sm text-blue-600 hover:text-blue-800 font-medium hover:underline"
+              >
+                Salir
+              </button>
+            </>
+          ) : (
             <button
-              onClick={handleLogout}
-              className="text-sm text-blue-600 hover:text-blue-800 font-medium hover:underline"
+              onClick={() => setShowLoginModal(!showLoginModal)}
+              className="text-sm text-gray-700 hover:text-gray-900 font-medium"
             >
-              Salir
+              Iniciar sesión
             </button>
-          </div>
-        ) : (
-          <button
-            onClick={() => setShowLoginModal(!showLoginModal)}
-            className="text-sm text-gray-700 hover:text-gray-900 font-medium"
-          >
-            Iniciar sesión
-          </button>
-        )}
+          )}
+        </div>
       </header>
 
       {/* Modal de login sin overlay */}

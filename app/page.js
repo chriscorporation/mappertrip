@@ -386,7 +386,7 @@ function HomeContent() {
   return (
     <div className="flex flex-col h-screen">
       {/* Header */}
-      <Header isAdminMode={isAdminMode} />
+      <Header isAdminMode={isAdminMode} onSelectCountry={handleSelectCountry} />
 
       {/* Contenido principal */}
       <div className="flex flex-1 overflow-hidden">
