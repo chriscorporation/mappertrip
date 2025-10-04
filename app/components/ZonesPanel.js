@@ -917,7 +917,6 @@ export default function ZonesPanel({
           onRemoveZone={handleRemoveFromComparison}
         />
       )}
-    </div>
 
       {/* Panel flotante de Perplexity */}
       {showPerplexityPanel && (
