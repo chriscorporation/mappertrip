@@ -2,11 +2,186 @@
 
 import { useEffect, useRef, useState, useMemo } from 'react';
 
+// Estilos de mapa predefinidos
+const MAP_STYLES = {
+  standard: {
+    name: 'Estándar',
+    icon: '🗺️',
+    styles: []
+  },
+  dark: {
+    name: 'Oscuro',
+    icon: '🌙',
+    styles: [
+      { elementType: 'geometry', stylers: [{ color: '#242f3e' }] },
+      { elementType: 'labels.text.stroke', stylers: [{ color: '#242f3e' }] },
+      { elementType: 'labels.text.fill', stylers: [{ color: '#746855' }] },
+      {
+        featureType: 'administrative.locality',
+        elementType: 'labels.text.fill',
+        stylers: [{ color: '#d59563' }]
+      },
+      {
+        featureType: 'poi',
+        elementType: 'labels.text.fill',
+        stylers: [{ color: '#d59563' }]
+      },
+      {
+        featureType: 'poi.park',
+        elementType: 'geometry',
+        stylers: [{ color: '#263c3f' }]
+      },
+      {
+        featureType: 'poi.park',
+        elementType: 'labels.text.fill',
+        stylers: [{ color: '#6b9a76' }]
+      },
+      {
+        featureType: 'road',
+        elementType: 'geometry',
+        stylers: [{ color: '#38414e' }]
+      },
+      {
+        featureType: 'road',
+        elementType: 'geometry.stroke',
+        stylers: [{ color: '#212a37' }]
+      },
+      {
+        featureType: 'road',
+        elementType: 'labels.text.fill',
+        stylers: [{ color: '#9ca5b3' }]
+      },
+      {
+        featureType: 'road.highway',
+        elementType: 'geometry',
+        stylers: [{ color: '#746855' }]
+      },
+      {
+        featureType: 'road.highway',
+        elementType: 'geometry.stroke',
+        stylers: [{ color: '#1f2835' }]
+      },
+      {
+        featureType: 'road.highway',
+        elementType: 'labels.text.fill',
+        stylers: [{ color: '#f3d19c' }]
+      },
+      {
+        featureType: 'transit',
+        elementType: 'geometry',
+        stylers: [{ color: '#2f3948' }]
+      },
+      {
+        featureType: 'transit.station',
+        elementType: 'labels.text.fill',
+        stylers: [{ color: '#d59563' }]
+      },
+      {
+        featureType: 'water',
+        elementType: 'geometry',
+        stylers: [{ color: '#17263c' }]
+      },
+      {
+        featureType: 'water',
+        elementType: 'labels.text.fill',
+        stylers: [{ color: '#515c6d' }]
+      },
+      {
+        featureType: 'water',
+        elementType: 'labels.text.stroke',
+        stylers: [{ color: '#17263c' }]
+      }
+    ]
+  },
+  safety: {
+    name: 'Seguridad',
+    icon: '🛡️',
+    styles: [
+      { elementType: 'geometry', stylers: [{ color: '#f5f5f5' }] },
+      { elementType: 'labels.icon', stylers: [{ visibility: 'off' }] },
+      { elementType: 'labels.text.fill', stylers: [{ color: '#616161' }] },
+      { elementType: 'labels.text.stroke', stylers: [{ color: '#f5f5f5' }] },
+      {
+        featureType: 'administrative.land_parcel',
+        elementType: 'labels.text.fill',
+        stylers: [{ color: '#bdbdbd' }]
+      },
+      {
+        featureType: 'poi',
+        elementType: 'geometry',
+        stylers: [{ color: '#eeeeee' }]
+      },
+      {
+        featureType: 'poi',
+        elementType: 'labels.text.fill',
+        stylers: [{ color: '#757575' }]
+      },
+      {
+        featureType: 'poi.park',
+        elementType: 'geometry',
+        stylers: [{ color: '#e5e5e5' }]
+      },
+      {
+        featureType: 'poi.park',
+        elementType: 'labels.text.fill',
+        stylers: [{ color: '#9e9e9e' }]
+      },
+      {
+        featureType: 'road',
+        elementType: 'geometry',
+        stylers: [{ color: '#ffffff' }]
+      },
+      {
+        featureType: 'road.arterial',
+        elementType: 'labels.text.fill',
+        stylers: [{ color: '#757575' }]
+      },
+      {
+        featureType: 'road.highway',
+        elementType: 'geometry',
+        stylers: [{ color: '#dadada' }]
+      },
+      {
+        featureType: 'road.highway',
+        elementType: 'labels.text.fill',
+        stylers: [{ color: '#616161' }]
+      },
+      {
+        featureType: 'road.local',
+        elementType: 'labels.text.fill',
+        stylers: [{ color: '#9e9e9e' }]
+      },
+      {
+        featureType: 'transit.line',
+        elementType: 'geometry',
+        stylers: [{ color: '#e5e5e5' }]
+      },
+      {
+        featureType: 'transit.station',
+        elementType: 'geometry',
+        stylers: [{ color: '#eeeeee' }]
+      },
+      {
+        featureType: 'water',
+        elementType: 'geometry',
+        stylers: [{ color: '#c9c9c9' }]
+      },
+      {
+        featureType: 'water',
+        elementType: 'labels.text.fill',
+        stylers: [{ color: '#9e9e9e' }]
+      }
+    ]
+  }
+};
+
 export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocation, onSavePolygon, onPolygonClick, onBoundsChanged, coworkingPlaces, instagramablePlaces, mapClickMode, onMapClick, highlightedPlace, pendingCircle, circleRadius, editingCircleId, editingRadius }) {
   const mapRef = useRef(null);
   const [map, setMap] = useState(null);
   const [isMapLoading, setIsMapLoading] = useState(true);
   const [showLegend, setShowLegend] = useState(true);
+  const [mapStyle, setMapStyle] = useState('standard');
+  const [showStyleSelector, setShowStyleSelector] = useState(false);
   const [marker, setMarker] = useState(null);
   const [airbnbMarker, setAirbnbMarker] = useState(null);
   const [drawingManager, setDrawingManager] = useState(null);
@@ -21,6 +196,38 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
   const boundsChangeTimeoutRef = useRef(null);
   const mapClickListenerRef = useRef(null);
   const tempMarkerRef = useRef(null);
+
+  // Cargar estilo de mapa desde localStorage
+  useEffect(() => {
+    const savedStyle = localStorage.getItem('mapStyle');
+    if (savedStyle && MAP_STYLES[savedStyle]) {
+      setMapStyle(savedStyle);
+    }
+  }, []);
+
+  // Cerrar selector de estilo al hacer clic fuera
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (showStyleSelector && !event.target.closest('.map-style-selector')) {
+        setShowStyleSelector(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showStyleSelector]);
+
+  // Aplicar estilo al mapa cuando cambia
+  useEffect(() => {
+    if (!map) return;
+
+    const styleConfig = MAP_STYLES[mapStyle];
+    if (styleConfig) {
+      map.setOptions({ styles: styleConfig.styles });
+      // Guardar preferencia
+      localStorage.setItem('mapStyle', mapStyle);
+    }
+  }, [map, mapStyle]);
 
   useEffect(() => {
     const loadGoogleMaps = () => {
@@ -48,10 +255,15 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
         lng: -70,
       };
 
+      // Obtener estilo guardado o usar standard
+      const savedStyle = localStorage.getItem('mapStyle') || 'standard';
+      const initialStyle = MAP_STYLES[savedStyle] ? MAP_STYLES[savedStyle].styles : [];
+
       // Crear el mapa usando la API global de Google Maps
       const newMap = new window.google.maps.Map(mapRef.current, {
         center: position,
         zoom: 3.5,
+        styles: initialStyle,
         mapTypeControl: true,
         mapTypeControlOptions: {
           style: window.google.maps.MapTypeControlStyle.HORIZONTAL_BAR,
@@ -1027,6 +1239,65 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
           >
             <span className="text-2xl group-hover:scale-125 transition-transform duration-200 inline-block">🛡️</span>
           </button>
+        )}
+
+        {/* Map Style Selector */}
+        {!isMapLoading && (
+          <div className="absolute top-6 left-6 z-20 map-style-selector">
+            {/* Main button */}
+            <button
+              onClick={() => setShowStyleSelector(!showStyleSelector)}
+              className="bg-white/95 backdrop-blur-sm rounded-xl shadow-lg border-2 border-gray-200 px-4 py-3 hover:scale-105 transition-all duration-300 group flex items-center gap-2"
+              title="Cambiar estilo del mapa"
+            >
+              <span className="text-xl group-hover:scale-110 transition-transform duration-200 inline-block">
+                {MAP_STYLES[mapStyle].icon}
+              </span>
+              <span className="text-sm font-semibold text-gray-700">
+                {MAP_STYLES[mapStyle].name}
+              </span>
+              <svg
+                className={`w-4 h-4 text-gray-500 transition-transform duration-300 ${showStyleSelector ? 'rotate-180' : ''}`}
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+
+            {/* Dropdown menu */}
+            {showStyleSelector && (
+              <div className="absolute top-full mt-2 bg-white/95 backdrop-blur-sm rounded-xl shadow-2xl border-2 border-gray-200 overflow-hidden min-w-[200px] animate-[fadeIn_0.2s_ease-out]">
+                {Object.entries(MAP_STYLES).map(([key, style]) => (
+                  <button
+                    key={key}
+                    onClick={() => {
+                      setMapStyle(key);
+                      setShowStyleSelector(false);
+                    }}
+                    className={`
+                      w-full px-4 py-3 flex items-center gap-3 transition-all duration-200
+                      ${mapStyle === key
+                        ? 'bg-gradient-to-r from-blue-50 to-purple-50 border-l-4 border-l-blue-600'
+                        : 'hover:bg-gray-50'
+                      }
+                    `}
+                  >
+                    <span className="text-xl">{style.icon}</span>
+                    <span className={`text-sm font-medium ${mapStyle === key ? 'text-blue-700 font-bold' : 'text-gray-700'}`}>
+                      {style.name}
+                    </span>
+                    {mapStyle === key && (
+                      <svg className="w-5 h-5 text-blue-600 ml-auto" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                      </svg>
+                    )}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
         )}
       </div>
 
