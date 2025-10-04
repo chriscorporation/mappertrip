@@ -5,6 +5,7 @@ import ReactMarkdown from 'react-markdown';
 import { BiDollar, BiShield, BiMapAlt, BiInfoCircle, BiMapPin } from 'react-icons/bi';
 import { HiOutlineSparkles } from 'react-icons/hi';
 import { useAuthStore } from '../store/authStore';
+import MapPreview from './MapPreview';
 
 export default function ZonesPanel({
   selectedCountry,
@@ -469,13 +470,17 @@ export default function ZonesPanel({
             <div
               key={place.id}
               ref={el => cardRefs.current[place.id] = el}
-              className={`p-3 bg-gray-50 rounded-lg transition-colors ${hoverEnabled ? 'cursor-pointer hover:bg-gray-100' : ''} ${
+              className={`bg-white rounded-xl shadow-sm border transition-all duration-200 overflow-hidden ${hoverEnabled ? 'cursor-pointer hover:shadow-md hover:-translate-y-0.5' : ''} ${
                 highlightedPlace === place.id
-                  ? 'border-2 border-blue-400'
-                  : 'border border-gray-200'
+                  ? 'border-2 border-blue-500 shadow-md'
+                  : 'border-gray-200'
               }`}
               onMouseEnter={() => hoverEnabled && onGoToPlace(place)}
             >
+              {/* Vista previa del mapa estilo Airbnb */}
+              <MapPreview place={place} className="w-full h-32 sm:h-36" />
+
+              <div className="p-3">
               <div className="mb-2">
                 <div className="flex items-start justify-between">
                   {editingTitleId === place.id ? (
@@ -702,7 +707,7 @@ export default function ZonesPanel({
                 </div>
               </div>
               {isAdminMode && (
-                <div className="flex justify-around items-center pt-2 border-t border-gray-200">
+                <div className="flex justify-around items-center pt-2 border-t border-gray-200 px-3 pb-3">
                   <select
                     value={place.color}
                     onChange={(e) => onColorChange(place.id, e.target.value)}
@@ -811,6 +816,7 @@ export default function ZonesPanel({
                   </div>
                 </div>
               )}
+              </div>
             </div>
           ))
         )}
