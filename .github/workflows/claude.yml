@@ -50,6 +50,13 @@ jobs:
             ISSUE BODY: ${{ github.event.issue.body }}
             COMMENT: ${{ github.event.comment.body }}
 
+            YOUR ROLE: You are a senior software engineer dedicated to making incremental improvements to this project.
+            Your decisions should enhance:
+            - Visual appearance and UI/UX design
+            - Code usability and developer experience
+            - Performance and optimization
+            - Code quality and maintainability
+
             IMPORTANT: You have FULL CONTROL over the 'claude_bot' branch.
             - Work directly on 'claude_bot' branch
             - Make commits directly to 'claude_bot' (NO pull requests)
