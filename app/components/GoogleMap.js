@@ -1,10 +1,12 @@
 'use client';
 
 import { useEffect, useRef, useState, useMemo } from 'react';
+import SkeletonLoader from './SkeletonLoader';
 
 export default function GoogleMap({ selectedPlace, places, safetyFilters = [], airbnbs, airbnbLocation, onSavePolygon, onPolygonClick, onBoundsChanged, coworkingPlaces, instagramablePlaces, mapClickMode, onMapClick, highlightedPlace, pendingCircle, circleRadius, editingCircleId, editingRadius }) {
   const mapRef = useRef(null);
   const [map, setMap] = useState(null);
+  const [mapLoading, setMapLoading] = useState(true);
   const [marker, setMarker] = useState(null);
   const [airbnbMarker, setAirbnbMarker] = useState(null);
   const [drawingManager, setDrawingManager] = useState(null);
@@ -53,6 +55,7 @@ export default function GoogleMap({ selectedPlace, places, safetyFilters = [], a
       });
 
       setMap(newMap);
+      setMapLoading(false);
 
       // Listener para cambios en los bounds del mapa con debounce
       newMap.addListener('bounds_changed', () => {
@@ -936,6 +939,11 @@ export default function GoogleMap({ selectedPlace, places, safetyFilters = [], a
 
   return (
     <>
+      {mapLoading && (
+        <div className="absolute inset-0 z-10">
+          <SkeletonLoader variant="map" />
+        </div>
+      )}
       <div ref={mapRef} className="w-full h-full" />
 
       {/* Modal de confirmación para eliminar punto */}

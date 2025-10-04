@@ -6,6 +6,7 @@ import { BiDollar, BiShield, BiMapAlt, BiInfoCircle, BiMapPin } from 'react-icon
 import { HiOutlineSparkles } from 'react-icons/hi';
 import { useAuthStore } from '../store/authStore';
 import MapPreview from './MapPreview';
+import SkeletonLoader from './SkeletonLoader';
 
 export default function ZonesPanel({
   selectedCountry,
@@ -48,6 +49,7 @@ export default function ZonesPanel({
   const [pendingPlaceName, setPendingPlaceName] = useState('');
   const [editingTitleId, setEditingTitleId] = useState(null);
   const [tempTitle, setTempTitle] = useState('');
+  const [initialLoading, setInitialLoading] = useState(true);
   const inputRef = useRef(null);
   const autocompleteRef = useRef(null);
   const cardRefs = useRef({});
@@ -79,6 +81,19 @@ export default function ZonesPanel({
 
     previousPlacesCountRef.current = countryPlaces.length;
   }, [places, selectedCountry, onGoToPlace]);
+
+  // Detectar cuando las zonas terminan de cargar
+  useEffect(() => {
+    if (selectedCountry && places.length > 0) {
+      // Simular delay de carga inicial para mostrar skeleton (efecto visual)
+      const timer = setTimeout(() => {
+        setInitialLoading(false);
+      }, 300);
+      return () => clearTimeout(timer);
+    } else if (selectedCountry) {
+      setInitialLoading(true);
+    }
+  }, [selectedCountry, places]);
 
   // Cleanup polling interval on unmount or panel close
   useEffect(() => {
@@ -319,6 +334,10 @@ export default function ZonesPanel({
         <p className="text-xs text-gray-500 mt-1">{selectedCountry.name}</p>
       </div>
 
+      {initialLoading && countryPlaces.length === 0 ? (
+        <SkeletonLoader variant="zone-list" count={5} />
+      ) : (
+        <>
       {isAdminMode && (
         <div className="p-4 border-b border-gray-200">
           <div className="flex gap-2">
@@ -821,8 +840,9 @@ export default function ZonesPanel({
           ))
         )}
       </div>
-
-      </div>
+      </>
+      )}
+    </div>
 
       {/* Panel flotante de Perplexity */}
       {showPerplexityPanel && (
