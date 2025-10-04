@@ -14,6 +14,7 @@ import HeroBanner from './components/HeroBanner';
 import TrustBadges from './components/TrustBadges';
 import SafetyFilters from './components/SafetyFilters';
 import Breadcrumbs from './components/Breadcrumbs';
+import QuickActions from './components/QuickActions';
 import { useAuthStore } from './store/authStore';
 import { useAppStore } from './store/appStore';
 
@@ -615,6 +616,12 @@ function HomeContent() {
         />
       </div>
       </div>
+
+      {/* Quick Actions - Botón flotante estilo Airbnb */}
+      <QuickActions
+        selectedTab={selectedTab}
+        selectedCountry={selectedCountry}
+      />
 
     </div>
   );
