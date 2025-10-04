@@ -1,0 +1,51 @@
+name: Claude Automation - Mobile Branch Only
+
+on:
+  issues:
+    types: [opened, edited]
+  issue_comment:
+    types: [created, edited]
+  pull_request:
+    types: [opened, edited, synchronize]
+  pull_request_review_comment:
+    types: [created, edited]
+
+jobs:
+  claude-job:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+      id-token: write
+
+    steps:
+      - name: Checkout mobile branch
+        uses: actions/checkout@v4
+        with:
+          ref: mobile
+          fetch-depth: 0
+
+      - name: Run Claude Code
+        uses: anthropics/claude-code-action@v1
+        with:
+          # Rama base siempre será mobile
+          base_branch: mobile
+
+          # Prefijo para ramas creadas por Claude
+          branch_prefix: "claude-mobile/"
+
+          # Se activa sin necesidad de @claude (string vacío = siempre activo)
+          trigger_phrase: ""
+
+          # Prompt personalizado que indica trabajar solo en mobile
+          prompt: |
+            IMPORTANT: You MUST ONLY work on the 'mobile' branch.
+            - Always create branches from 'mobile'
+            - Never modify main, master, or any other branch
+            - All changes must target the 'mobile' branch
+            - Create pull requests against 'mobile' only
+
+            Now, address the issue or request provided.
