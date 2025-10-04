@@ -136,80 +136,129 @@ export default function AirbnbPanel({ onGoToLocation, selectedCountry }) {
     }
   };
 
+  // Skeleton loader component
+  const SkeletonCard = () => (
+    <div className="p-3 bg-gradient-to-br from-gray-50 to-gray-100 rounded-xl border border-gray-200 animate-pulse">
+      <div className="h-4 bg-gray-300 rounded w-3/4 mb-3"></div>
+      <div className="space-y-2">
+        <div className="h-3 bg-gray-200 rounded w-1/2"></div>
+        <div className="h-3 bg-gray-200 rounded w-2/3"></div>
+        <div className="h-3 bg-gray-200 rounded w-1/3"></div>
+      </div>
+    </div>
+  );
+
   if (loading) {
     return (
-      <div className="w-80 bg-white border-r border-gray-300 p-4">
-        <h2 className="text-xl font-bold mb-4">AirBnB</h2>
-        <p className="text-gray-500">Cargando...</p>
+      <div className="w-80 bg-white border-r border-gray-300 flex flex-col">
+        <div className="p-4 border-b border-gray-200">
+          <h2 className="text-xl font-bold bg-gradient-to-r from-pink-600 to-rose-600 bg-clip-text text-transparent">
+            AirBnB
+          </h2>
+          <p className="text-xs text-gray-500 mt-1 animate-pulse">Cargando propiedades...</p>
+        </div>
+        <div className="flex-1 overflow-y-auto p-3 space-y-3">
+          <SkeletonCard />
+          <SkeletonCard />
+          <SkeletonCard />
+        </div>
       </div>
     );
   }
 
   return (
     <div className="w-80 bg-white border-r border-gray-300 flex flex-col">
-      <div className="p-4 border-b border-gray-200">
-        <h2 className="text-xl font-bold">AirBnB</h2>
-        <p className="text-xs text-gray-500 mt-1">{airbnbs.length} propiedades</p>
+      <div className="p-4 border-b border-gray-200 bg-gradient-to-r from-pink-50 to-rose-50">
+        <h2 className="text-xl font-bold bg-gradient-to-r from-pink-600 to-rose-600 bg-clip-text text-transparent">
+          AirBnB
+        </h2>
+        <p className="text-xs text-gray-600 mt-1 font-medium">
+          {airbnbs.length} {airbnbs.length === 1 ? 'propiedad' : 'propiedades'}
+        </p>
       </div>
 
       {isAdminMode && (
-        <div className="p-4 border-b border-gray-200">
+        <div className="p-4 border-b border-gray-200 bg-gradient-to-br from-gray-50 to-slate-50">
           <input
             type="text"
             value={airbnbLink}
             onChange={(e) => setAirbnbLink(e.target.value)}
             placeholder="https://www.airbnb.com/..."
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm mb-2"
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent text-sm mb-2 transition-all duration-300 hover:border-pink-300"
           />
           <button
             onClick={handleScrapeAirbnb}
             disabled={!airbnbLink || !selectedCountry || scraping}
-            className="w-full px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed cursor-pointer text-sm"
+            className="w-full px-3 py-2 bg-gradient-to-r from-pink-600 to-rose-600 text-white rounded-lg hover:from-pink-700 hover:to-rose-700 transition-all duration-300 disabled:from-gray-300 disabled:to-gray-400 disabled:cursor-not-allowed cursor-pointer text-sm font-medium shadow-sm hover:shadow-md transform hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-2"
           >
-            {scraping ? 'Scrapeando...' : 'Agregar Airbnb'}
+            {scraping ? (
+              <>
+                <div className="inline-block animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
+                <span>Scrapeando...</span>
+              </>
+            ) : (
+              <>
+                <span>+</span>
+                <span>Agregar Airbnb</span>
+              </>
+            )}
           </button>
           {!selectedCountry && (
-            <p className="text-xs text-red-600 mt-1">Selecciona un país primero</p>
+            <p className="text-xs text-red-600 mt-2 animate-pulse">⚠️ Selecciona un país primero</p>
           )}
         </div>
       )}
 
       <div className="flex-1 overflow-y-auto p-3 space-y-3">
         {airbnbs.length === 0 ? (
-          <p className="text-gray-500 text-sm text-center mt-4">
-            No hay propiedades de Airbnb agregadas
-          </p>
+          <div className="flex flex-col items-center justify-center py-12 px-4 text-center">
+            <div className="text-6xl mb-4 animate-bounce">🏠</div>
+            <p className="text-gray-600 font-medium mb-2">No hay propiedades aún</p>
+            <p className="text-xs text-gray-500">
+              {isAdminMode ? 'Agrega una propiedad de Airbnb usando el formulario de arriba' : 'Aún no se han agregado propiedades de Airbnb'}
+            </p>
+          </div>
         ) : (
-          airbnbs.map(airbnb => (
-            <div key={airbnb.id} className="p-3 bg-gray-50 rounded-lg border border-gray-200">
+          airbnbs.map((airbnb, index) => (
+            <div
+              key={airbnb.id}
+              className="p-3 bg-gradient-to-br from-white to-pink-50 rounded-xl border border-pink-200 shadow-sm hover:shadow-lg transition-all duration-300 ease-out transform hover:-translate-y-1 hover:border-pink-300 cursor-pointer animate-[fadeIn_0.5s_ease-out] group"
+              style={{ animationDelay: `${index * 0.05}s` }}
+            >
               <h3
-                className="font-semibold text-sm mb-2 cursor-pointer hover:text-blue-600 transition-colors line-clamp-2"
+                className="font-semibold text-sm mb-3 cursor-pointer text-gray-800 hover:text-pink-600 transition-all duration-200 line-clamp-2 group-hover:translate-x-1"
                 onClick={() => onGoToLocation({ lat: airbnb.lat, lng: airbnb.lng })}
                 title={airbnb.title}
               >
                 {airbnb.title}
               </h3>
 
-              <div className="space-y-1">
-                <div className="flex items-center gap-2 text-xs text-gray-600">
-                  <BiMapPin className="text-sm" />
-                  <span className="font-medium">Argentina</span>
+              <div className="space-y-2">
+                <div className="flex items-center gap-2 text-xs">
+                  <BiMapPin className="text-sm text-pink-600" />
+                  <span className="font-medium text-gray-700 bg-pink-50 px-2 py-1 rounded-full">
+                    {airbnb.country_code || 'Argentina'}
+                  </span>
                 </div>
 
                 {airbnb.ranking && (
                   <div className="flex items-center gap-2 text-xs">
-                    <BiStar className="text-sm" />
-                    <span className="font-medium">{airbnb.ranking}</span>
+                    <BiStar className="text-sm text-yellow-500" />
+                    <span className="font-bold text-gray-800 bg-yellow-50 px-2 py-1 rounded-full">
+                      {airbnb.ranking}
+                    </span>
                     {airbnb.evaluations && (
-                      <span className="text-gray-500">({airbnb.evaluations})</span>
+                      <span className="text-gray-500">({airbnb.evaluations} reseñas)</span>
                     )}
                   </div>
                 )}
 
                 {airbnb.price && (
                   <div className="flex items-center gap-2 text-xs">
-                    <BiDollar className="text-sm" />
-                    <span className="font-medium text-green-700">{airbnb.price}</span>
+                    <BiDollar className="text-sm text-green-600" />
+                    <span className="font-bold text-green-700 bg-green-50 px-2 py-1 rounded-full border border-green-200">
+                      {airbnb.price}
+                    </span>
                   </div>
                 )}
 
@@ -257,39 +306,39 @@ export default function AirbnbPanel({ onGoToLocation, selectedCountry }) {
                     href={airbnb.original_url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex items-center gap-1 text-xs text-gray-500 hover:text-blue-600 transition-colors mt-1 cursor-pointer"
+                    className="inline-flex items-center gap-1 text-xs text-pink-600 hover:text-pink-800 transition-all duration-200 mt-2 cursor-pointer font-medium bg-pink-50 px-2 py-1 rounded-lg hover:bg-pink-100 border border-pink-200 hover:border-pink-300 transform hover:scale-105"
                   >
                     <BiLinkExternal className="text-sm" />
-                    <span>Ver apartamento</span>
+                    <span>Ver en Airbnb</span>
                   </a>
                 )}
               </div>
 
               {isAdminMode && (
-                <div className="flex justify-end mt-2 pt-2 border-t border-gray-200">
+                <div className="flex justify-end mt-3 pt-3 border-t border-pink-100">
                   <div className="relative">
                     <button
                       onClick={() => handleDeleteAirbnb(airbnb.id)}
-                      className="p-2 rounded hover:bg-gray-100 text-gray-500 cursor-pointer"
-                      title="Eliminar"
+                      className="p-2 rounded-lg hover:bg-red-50 text-gray-400 hover:text-red-600 cursor-pointer transition-all duration-200 transform hover:scale-110"
+                      title="Eliminar propiedad"
                     >
                       <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                         <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
                       </svg>
                     </button>
                     {airbnbToDelete === airbnb.id && (
-                      <div className="absolute bottom-full right-0 mb-2 bg-white rounded-lg shadow-xl p-3 w-48 z-10 border border-gray-200">
-                        <p className="text-xs text-gray-700 mb-3">¿Eliminar este Airbnb?</p>
+                      <div className="absolute bottom-full right-0 mb-2 bg-white rounded-xl shadow-2xl p-4 w-52 z-10 border-2 border-red-200 animate-[fadeIn_0.2s_ease-out]">
+                        <p className="text-xs text-gray-700 mb-3 font-medium">¿Eliminar esta propiedad?</p>
                         <div className="flex gap-2">
                           <button
                             onClick={() => setAirbnbToDelete(null)}
-                            className="flex-1 px-2 py-1 text-xs text-gray-700 bg-gray-100 rounded hover:bg-gray-200 cursor-pointer"
+                            className="flex-1 px-3 py-1.5 text-xs text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 cursor-pointer transition-all duration-200 font-medium"
                           >
                             Cancelar
                           </button>
                           <button
                             onClick={() => handleDeleteAirbnb(airbnb.id, true)}
-                            className="flex-1 px-2 py-1 text-xs text-white bg-red-600 rounded hover:bg-red-700 cursor-pointer"
+                            className="flex-1 px-3 py-1.5 text-xs text-white bg-gradient-to-r from-red-600 to-rose-600 rounded-lg hover:from-red-700 hover:to-rose-700 cursor-pointer transition-all duration-200 font-medium shadow-sm hover:shadow-md"
                           >
                             Eliminar
                           </button>
@@ -301,8 +350,9 @@ export default function AirbnbPanel({ onGoToLocation, selectedCountry }) {
               )}
 
               {airbnb.error && (
-                <div className="mt-2 text-xs text-red-600 bg-red-50 p-2 rounded">
-                  ⚠️ {airbnb.error}
+                <div className="mt-3 text-xs text-red-700 bg-gradient-to-r from-red-50 to-rose-50 p-3 rounded-lg border border-red-200 flex items-center gap-2 animate-pulse">
+                  <span className="text-base">⚠️</span>
+                  <span className="font-medium">{airbnb.error}</span>
                 </div>
               )}
             </div>
