@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState, useMemo } from 'react';
+import CountryQuickSelector from './CountryQuickSelector';
 
 // Estilos de mapa predefinidos
 const MAP_STYLES = {
@@ -175,7 +176,7 @@ const MAP_STYLES = {
   }
 };
 
-export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocation, onSavePolygon, onPolygonClick, onBoundsChanged, coworkingPlaces, instagramablePlaces, mapClickMode, onMapClick, highlightedPlace, pendingCircle, circleRadius, editingCircleId, editingRadius }) {
+export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocation, onSavePolygon, onPolygonClick, onBoundsChanged, coworkingPlaces, instagramablePlaces, mapClickMode, onMapClick, highlightedPlace, pendingCircle, circleRadius, editingCircleId, editingRadius, countries, selectedCountry, onSelectCountry }) {
   const mapRef = useRef(null);
   const [map, setMap] = useState(null);
   const [isMapLoading, setIsMapLoading] = useState(true);
@@ -1427,6 +1428,18 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
                 ))}
               </div>
             )}
+          </div>
+        )}
+
+        {/* Country Quick Selector - Positioned at top center */}
+        {!isMapLoading && countries && countries.length > 0 && (
+          <div className="absolute top-6 left-1/2 -translate-x-1/2 z-20 animate-[fadeIn_0.4s_ease-out]">
+            <CountryQuickSelector
+              countries={countries}
+              selectedCountry={selectedCountry}
+              onSelectCountry={onSelectCountry}
+              places={places}
+            />
           </div>
         )}
       </div>
