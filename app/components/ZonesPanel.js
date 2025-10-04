@@ -6,6 +6,7 @@ import { BiDollar, BiShield, BiMapAlt, BiInfoCircle, BiMapPin } from 'react-icon
 import { HiOutlineSparkles } from 'react-icons/hi';
 import { useAuthStore } from '../store/authStore';
 import { useToast } from '../store/toastStore';
+import SkeletonLoader from './SkeletonLoader';
 
 // Componente para card de comparación
 function ComparisonCard({ place, index }) {
@@ -60,9 +61,29 @@ function ComparisonCard({ place, index }) {
       {/* Contenido */}
       <div className="p-4 space-y-3">
         {loading ? (
-          <div className="flex flex-col items-center justify-center py-8">
-            <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div>
-            <p className="mt-2 text-xs text-gray-500">Cargando datos...</p>
+          <div className="space-y-3 py-2">
+            {/* Security badge skeleton */}
+            <div className="bg-gray-100 rounded-lg p-3 space-y-2">
+              <div className="h-4 bg-gray-300 rounded w-1/3 animate-shimmer"></div>
+              <div className="h-6 bg-gray-300 rounded w-2/3 animate-shimmer"></div>
+            </div>
+
+            {/* Rent card skeleton */}
+            <div className="bg-gray-100 rounded-lg p-3 space-y-2">
+              <div className="h-4 bg-gray-300 rounded w-1/3 animate-shimmer"></div>
+              <div className="h-8 bg-gray-300 rounded w-1/2 animate-shimmer"></div>
+            </div>
+
+            {/* Tourism card skeleton */}
+            <div className="bg-gray-100 rounded-lg p-3 space-y-2">
+              <div className="h-4 bg-gray-300 rounded w-1/4 animate-shimmer"></div>
+              <div className="h-4 bg-gray-300 rounded w-full animate-shimmer"></div>
+              <div className="h-4 bg-gray-300 rounded w-full animate-shimmer"></div>
+              <div className="h-4 bg-gray-300 rounded w-3/4 animate-shimmer"></div>
+            </div>
+
+            {/* Button skeleton */}
+            <div className="h-10 bg-gray-300 rounded-lg w-full animate-shimmer"></div>
           </div>
         ) : (
           <>
@@ -1356,10 +1377,7 @@ export default function ZonesPanel({
 
           <div className="p-4 space-y-4" role="region" aria-label="Información detallada de la zona">
             {loadingPerplexity ? (
-              <div className="flex flex-col items-center justify-center py-12">
-                <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-                <p className="mt-4 text-sm text-gray-500">Esperando respuesta...</p>
-              </div>
+              <SkeletonLoader variant="perplexity-panel" />
             ) : (
               <>
             {/* Visual Safety Score Gauge - New Feature */}
