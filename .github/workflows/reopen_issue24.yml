@@ -1,0 +1,27 @@
+name: Reopen Issue 24
+
+on:
+  schedule:
+    # Ejecutar cada 30 minutos
+    - cron: '*/30 * * * *'
+  workflow_dispatch: # Permite ejecución manual
+
+jobs:
+  reopen-issue:
+    runs-on: ubuntu-latest
+
+    permissions:
+      issues: write
+
+    steps:
+      - name: Close issue #24 first
+        run: |
+          gh issue close 24 --repo ${{ github.repository }} || true
+        env:
+          GH_TOKEN: ${{ secrets.PERSONAL_GITHUB_ACCESS_TOKEN }}
+
+      - name: Reopen issue #24
+        run: |
+          gh issue reopen 24 --repo ${{ github.repository }}
+        env:
+          GH_TOKEN: ${{ secrets.PERSONAL_GITHUB_ACCESS_TOKEN }}
