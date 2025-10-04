@@ -6,6 +6,132 @@ import { BiDollar, BiShield, BiMapAlt, BiInfoCircle, BiMapPin } from 'react-icon
 import { HiOutlineSparkles } from 'react-icons/hi';
 import { useAuthStore } from '../store/authStore';
 
+// Componente para card de comparación
+function ComparisonCard({ place, index }) {
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        const response = await fetch(`/api/perplexity-notes?zone_id=${place.id}`);
+        const perplexityData = await response.json();
+        setData(perplexityData);
+      } catch (error) {
+        console.error('Error loading comparison data:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadData();
+  }, [place.id]);
+
+  const getColorClasses = (color) => {
+    const colorMap = {
+      '#22c55e': { bg: 'from-green-500 to-emerald-500', text: 'text-green-700', badge: 'bg-green-100' },
+      '#3b82f6': { bg: 'from-blue-500 to-cyan-500', text: 'text-blue-700', badge: 'bg-blue-100' },
+      '#f97316': { bg: 'from-orange-500 to-amber-500', text: 'text-orange-700', badge: 'bg-orange-100' },
+      '#eab308': { bg: 'from-yellow-500 to-amber-400', text: 'text-yellow-700', badge: 'bg-yellow-100' },
+      '#dc2626': { bg: 'from-red-500 to-rose-500', text: 'text-red-700', badge: 'bg-red-100' },
+    };
+    return colorMap[color] || colorMap['#22c55e'];
+  };
+
+  const colorClasses = getColorClasses(place.color);
+  const animationDelay = `${index * 0.1}s`;
+
+  return (
+    <div
+      className="bg-white border-2 border-gray-200 rounded-xl overflow-hidden shadow-lg hover:shadow-xl transition-all duration-300 animate-[fadeIn_0.4s_ease-out]"
+      style={{ animationDelay }}
+    >
+      {/* Header con gradiente según nivel de seguridad */}
+      <div className={`bg-gradient-to-r ${colorClasses.bg} text-white p-4`}>
+        <h3 className="font-bold text-lg mb-1">{place.address}</h3>
+        <div className="flex items-center gap-2 text-sm opacity-90">
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+            <path fillRule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" />
+          </svg>
+          Lat: {place.lat?.toFixed(4)}, Lng: {place.lng?.toFixed(4)}
+        </div>
+      </div>
+
+      {/* Contenido */}
+      <div className="p-4 space-y-3">
+        {loading ? (
+          <div className="flex flex-col items-center justify-center py-8">
+            <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div>
+            <p className="mt-2 text-xs text-gray-500">Cargando datos...</p>
+          </div>
+        ) : (
+          <>
+            {/* Nivel de Seguridad */}
+            <div className={`${colorClasses.badge} rounded-lg p-3`}>
+              <div className="flex items-center gap-2 mb-2">
+                <BiShield className={`text-lg ${colorClasses.text}`} />
+                <span className="text-xs font-semibold text-gray-600">Seguridad</span>
+              </div>
+              <p className={`text-sm font-bold ${colorClasses.text}`}>
+                {data?.secure || 'No disponible'}
+              </p>
+            </div>
+
+            {/* Costo de Renta */}
+            {data?.rent && (
+              <div className="bg-emerald-50 rounded-lg p-3">
+                <div className="flex items-center gap-2 mb-2">
+                  <BiDollar className="text-lg text-emerald-700" />
+                  <span className="text-xs font-semibold text-gray-600">Renta Mensual</span>
+                </div>
+                <p className="text-2xl font-extrabold text-emerald-700">
+                  ${Math.round(data.rent)}
+                  <span className="text-sm font-medium text-emerald-600 ml-1">USD</span>
+                </p>
+              </div>
+            )}
+
+            {/* Turismo (versión resumida) */}
+            {data?.tourism && (
+              <div className="bg-purple-50 rounded-lg p-3">
+                <div className="flex items-center gap-2 mb-2">
+                  <BiMapAlt className="text-lg text-purple-700" />
+                  <span className="text-xs font-semibold text-gray-600">Turismo</span>
+                </div>
+                <p className="text-xs text-gray-700 line-clamp-3">
+                  {data.tourism}
+                </p>
+              </div>
+            )}
+
+            {/* Indicador de radio circular si aplica */}
+            {place.circle_radius && (
+              <div className="bg-purple-50 rounded-lg p-2 flex items-center gap-2">
+                <span className="text-lg">⭕</span>
+                <span className="text-xs font-medium text-purple-700">
+                  Radio: {(place.circle_radius / 1000).toFixed(1)}km
+                </span>
+              </div>
+            )}
+
+            {/* Botón para ver más en Google Maps */}
+            <a
+              href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(place.address)}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="w-full flex items-center justify-center gap-2 px-3 py-2 bg-gradient-to-r from-blue-500 to-cyan-500 text-white rounded-lg hover:shadow-lg transition-all text-xs font-semibold"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" />
+              </svg>
+              Ver en Google Maps
+            </a>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export default function ZonesPanel({
   selectedCountry,
   places,
@@ -48,6 +174,9 @@ export default function ZonesPanel({
   const [tempTitle, setTempTitle] = useState('');
   const [streetViewPlace, setStreetViewPlace] = useState(null);
   const [streetViewLoading, setStreetViewLoading] = useState(false);
+  const [compareMode, setCompareMode] = useState(false);
+  const [selectedForCompare, setSelectedForCompare] = useState([]);
+  const [showCompareModal, setShowCompareModal] = useState(false);
   const inputRef = useRef(null);
   const autocompleteRef = useRef(null);
   const cardRefs = useRef({});
@@ -345,8 +474,37 @@ export default function ZonesPanel({
 
   const countryPlaces = places.filter(p => p.country_code === selectedCountry.country_code);
 
+  const handleToggleCompareSelection = (place) => {
+    setSelectedForCompare(prev => {
+      const exists = prev.find(p => p.id === place.id);
+      if (exists) {
+        return prev.filter(p => p.id !== place.id);
+      } else if (prev.length < 3) {
+        return [...prev, place];
+      }
+      return prev;
+    });
+  };
+
+  const handleCompare = async () => {
+    // Cargar datos de Perplexity para todas las zonas seleccionadas
+    const compareDataPromises = selectedForCompare.map(async (place) => {
+      try {
+        const response = await fetch(`/api/perplexity-notes?zone_id=${place.id}`);
+        const data = await response.json();
+        return { place, data };
+      } catch (error) {
+        console.error('Error loading data for comparison:', error);
+        return { place, data: null };
+      }
+    });
+
+    await Promise.all(compareDataPromises);
+    setShowCompareModal(true);
+  };
+
   return (
-    <div className="flex">
+    <div className="flex relative">
     <div className="w-80 bg-white border-r border-gray-300 flex flex-col">
       <div className="p-4 border-b border-gray-200">
         <h2 className="text-xl font-bold">Zones</h2>
@@ -401,7 +559,7 @@ export default function ZonesPanel({
         </div>
       )}
 
-      <div className="px-4 py-2 border-b border-gray-200 bg-gray-50">
+      <div className="px-4 py-2 border-b border-gray-200 bg-gray-50 space-y-2">
         <label className="flex items-center gap-2 text-xs text-gray-700 cursor-pointer">
           <input
             type="checkbox"
@@ -411,6 +569,28 @@ export default function ZonesPanel({
           />
           <span>Activar roll over</span>
         </label>
+
+        {countryPlaces.length >= 2 && (
+          <button
+            onClick={() => {
+              setCompareMode(!compareMode);
+              if (compareMode) {
+                setSelectedForCompare([]);
+              }
+            }}
+            className={`w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold transition-all duration-300 ${
+              compareMode
+                ? 'bg-gradient-to-r from-purple-500 to-indigo-500 text-white shadow-md hover:shadow-lg'
+                : 'bg-white border border-purple-300 text-purple-700 hover:bg-purple-50'
+            }`}
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+              <path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z" />
+              <path fillRule="evenodd" d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm3 4a1 1 0 000 2h.01a1 1 0 100-2H7zm3 0a1 1 0 000 2h3a1 1 0 100-2h-3zm-3 4a1 1 0 100 2h.01a1 1 0 100-2H7zm3 0a1 1 0 100 2h3a1 1 0 100-2h-3z" clipRule="evenodd" />
+            </svg>
+            {compareMode ? 'Cancelar Comparación' : 'Comparar Zonas'}
+          </button>
+        )}
       </div>
 
       <div ref={scrollContainerRef} className="flex-1 overflow-y-auto p-3 space-y-3">
@@ -504,15 +684,37 @@ export default function ZonesPanel({
             <div
               key={place.id}
               ref={el => cardRefs.current[place.id] = el}
-              className={`p-3 bg-gradient-to-br from-white to-gray-50 rounded-xl transition-all duration-300 ease-out transform ${
+              className={`p-3 bg-gradient-to-br from-white to-gray-50 rounded-xl transition-all duration-300 ease-out transform relative ${
                 hoverEnabled ? 'cursor-pointer hover:shadow-lg hover:-translate-y-0.5 hover:from-blue-50 hover:to-cyan-50' : ''
               } ${
                 highlightedPlace === place.id
                   ? 'border-2 border-blue-400 shadow-md scale-[1.02]'
+                  : selectedForCompare.find(p => p.id === place.id)
+                  ? 'border-2 border-purple-400 shadow-md'
                   : 'border border-gray-200'
               }`}
               onMouseEnter={() => hoverEnabled && onGoToPlace(place)}
             >
+              {compareMode && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleToggleCompareSelection(place);
+                  }}
+                  className={`absolute top-2 right-2 z-10 w-6 h-6 rounded-full border-2 transition-all duration-200 flex items-center justify-center ${
+                    selectedForCompare.find(p => p.id === place.id)
+                      ? 'bg-purple-500 border-purple-600 shadow-lg scale-110'
+                      : 'bg-white border-gray-300 hover:border-purple-400'
+                  }`}
+                  title={selectedForCompare.find(p => p.id === place.id) ? 'Deseleccionar' : 'Seleccionar para comparar'}
+                >
+                  {selectedForCompare.find(p => p.id === place.id) && (
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-white" viewBox="0 0 20 20" fill="currentColor">
+                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                    </svg>
+                  )}
+                </button>
+              )}
               <div className="mb-2">
                 <div className="flex items-start justify-between mb-2">
                   {editingTitleId === place.id ? (
@@ -949,6 +1151,80 @@ export default function ZonesPanel({
       </div>
 
       </div>
+
+      {/* Botón flotante sticky para comparar */}
+      {compareMode && selectedForCompare.length >= 2 && (
+        <div className="sticky bottom-4 left-4 right-4 z-30 px-4 animate-[fadeIn_0.3s_ease-out]">
+          <button
+            onClick={handleCompare}
+            className="w-full bg-gradient-to-r from-purple-600 via-indigo-600 to-purple-600 text-white px-4 py-3 rounded-xl shadow-2xl hover:shadow-purple-500/50 transition-all duration-300 font-bold text-sm flex items-center justify-center gap-2 hover:scale-105 border-2 border-purple-400"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 animate-pulse" viewBox="0 0 20 20" fill="currentColor">
+              <path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z" />
+              <path fillRule="evenodd" d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm3 4a1 1 0 000 2h.01a1 1 0 100-2H7zm3 0a1 1 0 000 2h3a1 1 0 100-2h-3zm-3 4a1 1 0 100 2h.01a1 1 0 100-2H7zm3 0a1 1 0 100 2h3a1 1 0 100-2h-3z" clipRule="evenodd" />
+            </svg>
+            Comparar {selectedForCompare.length} Zonas
+          </button>
+        </div>
+      )}
+
+      {/* Modal de comparación */}
+      {showCompareModal && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-[fadeIn_0.2s_ease-out]">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-6xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+            {/* Header */}
+            <div className="bg-gradient-to-r from-purple-600 to-indigo-600 text-white p-6 flex justify-between items-center">
+              <div>
+                <h2 className="text-2xl font-bold flex items-center gap-2">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-7 w-7" viewBox="0 0 20 20" fill="currentColor">
+                    <path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z" />
+                    <path fillRule="evenodd" d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm3 4a1 1 0 000 2h.01a1 1 0 100-2H7zm3 0a1 1 0 000 2h3a1 1 0 100-2h-3zm-3 4a1 1 0 100 2h.01a1 1 0 100-2H7zm3 0a1 1 0 100 2h3a1 1 0 100-2h-3z" clipRule="evenodd" />
+                  </svg>
+                  Comparación de Zonas
+                </h2>
+                <p className="text-purple-100 text-sm mt-1">Compara hasta 3 zonas lado a lado</p>
+              </div>
+              <button
+                onClick={() => setShowCompareModal(false)}
+                className="p-2 hover:bg-white/20 rounded-lg transition-colors"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                </svg>
+              </button>
+            </div>
+
+            {/* Contenido del modal */}
+            <div className="flex-1 overflow-y-auto p-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {selectedForCompare.map((place, index) => (
+                  <ComparisonCard key={place.id} place={place} index={index} />
+                ))}
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="bg-gray-50 border-t border-gray-200 p-4 flex justify-end gap-3">
+              <button
+                onClick={() => {
+                  setShowCompareModal(false);
+                  setCompareMode(false);
+                  setSelectedForCompare([]);
+                }}
+                className="px-6 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-semibold"
+              >
+                Cerrar y Resetear
+              </button>
+              <button
+                onClick={() => setShowCompareModal(false)}
+                className="px-6 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-lg hover:shadow-lg transition-all font-semibold"
+              >
+                Continuar Comparando
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Panel flotante de Perplexity */}
       {showPerplexityPanel && (
