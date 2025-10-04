@@ -24,15 +24,21 @@ export default function CountryCard({ country, zoneCount }) {
   return (
     <button
       onClick={() => hasZones && router.push(`/barrios/${slug}`)}
-      className={`p-6 bg-gray-50 rounded-3xl transition-colors group ${
+      className={`p-6 bg-white border border-gray-200 rounded-2xl transition-all duration-300 group relative ${
         hasZones
-          ? 'hover:bg-gray-100 cursor-pointer'
+          ? 'hover:shadow-lg hover:-translate-y-1 cursor-pointer'
           : 'opacity-40 cursor-default'
       }`}
       disabled={!hasZones}
     >
-      <div className="text-center">
-        <div className={`text-6xl mb-4 transition-transform ${
+      {hasZones && zoneCount > 0 && (
+        <div className="absolute top-3 right-3 bg-blue-50 text-blue-600 text-xs font-semibold px-2.5 py-1 rounded-full">
+          {zoneCount} {zoneCount === 1 ? 'zona' : 'zonas'}
+        </div>
+      )}
+
+      <div className="text-center mt-2">
+        <div className={`text-6xl mb-4 transition-transform duration-300 ${
           hasZones ? 'transform group-hover:scale-110' : ''
         }`}>
           {getFlagEmoji(country.country_code)}
