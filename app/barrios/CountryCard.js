@@ -43,6 +43,13 @@ export default function CountryCard({ country, zoneCount }) {
         <p className="text-xs text-gray-500 uppercase tracking-wider">
           {country.country_code}
         </p>
+        {hasZones && (
+          <div className="mt-3 pt-3 border-t border-gray-100">
+            <span className="text-xs font-semibold text-gray-600 group-hover:text-blue-600 transition-colors duration-300">
+              {zoneCount} {zoneCount === 1 ? 'zona' : 'zonas'}
+            </span>
+          </div>
+        )}
       </div>
     </button>
   );
