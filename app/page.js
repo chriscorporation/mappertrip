@@ -385,9 +385,45 @@ function HomeContent() {
 
   return (
     <div className="flex flex-col h-screen">
-      {/* Version indicator bar */}
-      <div className="bg-gradient-to-r from-blue-600 to-purple-600 text-white text-center py-1 text-xs font-medium">
-        Claude bot
+      {/* Dynamic contextual banner */}
+      <div className="relative bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-600 text-white overflow-hidden">
+        {/* Animated background pattern */}
+        <div className="absolute inset-0 opacity-10">
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_120%,rgba(255,255,255,0.3),transparent_50%)]" />
+        </div>
+
+        <div className="relative px-4 py-2 flex items-center justify-center gap-3">
+          {selectedCountry ? (
+            <>
+              <div className="flex items-center gap-2 animate-[fadeIn_0.4s_ease-in-out]">
+                <span className="text-2xl" role="img" aria-label="location">📍</span>
+                <span className="font-semibold text-sm sm:text-base">
+                  {selectedCountry.name}
+                </span>
+              </div>
+
+              <div className="h-4 w-px bg-white/30" />
+
+              <div className="flex items-center gap-2 animate-[fadeIn_0.5s_ease-in-out]">
+                <span className="text-xl" role="img" aria-label="zones">🛡️</span>
+                <span className="text-xs sm:text-sm font-medium">
+                  {places.filter(p => p.country_code === selectedCountry.country_code).length}
+                  {places.filter(p => p.country_code === selectedCountry.country_code).length === 1 ? ' zona mapeada' : ' zonas mapeadas'}
+                </span>
+              </div>
+            </>
+          ) : (
+            <div className="flex items-center gap-2 animate-[fadeIn_0.4s_ease-in-out]">
+              <span className="text-xl" role="img" aria-label="world">🌎</span>
+              <span className="text-sm font-medium">
+                Selecciona un país para explorar zonas de seguridad
+              </span>
+            </div>
+          )}
+        </div>
+
+        {/* Subtle bottom gradient */}
+        <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent" />
       </div>
 
       {/* Header */}
