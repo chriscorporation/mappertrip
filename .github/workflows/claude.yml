@@ -3,12 +3,6 @@ name: Claude Automation - Mobile Branch Only
 on:
   issues:
     types: [opened, edited]
-  issue_comment:
-    types: [created, edited]
-  pull_request:
-    types: [opened, edited, synchronize]
-  pull_request_review_comment:
-    types: [created, edited]
 
 jobs:
   claude-job:
