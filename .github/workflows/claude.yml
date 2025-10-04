@@ -33,10 +33,6 @@ jobs:
         uses: anthropics/claude-code-action@v1
         id: claude
         with:
-          # Claude creará branches con prefijo claude/ y hará PR hacia claude_bot
-          base_branch: claude_bot
-          branch_prefix: claude/
-
           # Trigger cuando se menciona @claude en el issue
           trigger_phrase: "@claude"
 
@@ -72,17 +68,18 @@ jobs:
 
             WORKFLOW (MANDATORY - DO NOT SKIP ANY STEP):
             1. Analyze the issue/comment and implement the solution (make decisions proactively)
-            2. CRITICAL: Create a new git branch (using the branch prefix already configured)
+            2. CRITICAL: Create a new git branch (use feature/ prefix, e.g., feature/add-header)
             3. CRITICAL: Make commits to that branch with your changes
             4. CRITICAL: Push the branch to remote
-            5. CRITICAL: Create a Pull Request to 'claude_bot' branch using gh CLI or git commands
+            5. CRITICAL: Create a Pull Request to 'claude_bot' branch using gh CLI
             6. Add a comment to the issue with the PR link and summary of changes
             7. Close the issue when completed
 
             IMPORTANT REMINDERS:
             - You MUST create a branch and PR - do not just make changes without committing
             - Use git/gh commands via Bash tool to create branch, commit, push, and create PR
-            - The base branch for your PR is 'claude_bot'
-            - Your branch name should use the configured prefix
+            - Branch naming: feature/{descriptive-name}
+            - Base branch for PR: claude_bot
+            - Example: git checkout -b feature/add-version-banner && git push -u origin feature/add-version-banner
 
             Now, address the request in the ISSUE TITLE, ISSUE BODY, or COMMENT above.
