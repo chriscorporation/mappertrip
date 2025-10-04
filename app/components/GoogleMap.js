@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, useMemo } from 'react';
 import CountryQuickSelector from './CountryQuickSelector';
 import QuickStatsPanel from './QuickStatsPanel';
+import MapSearchBox from './MapSearchBox';
 
 // Estilos de mapa predefinidos
 const MAP_STYLES = {
@@ -1440,6 +1441,18 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
               selectedCountry={selectedCountry}
               onSelectCountry={onSelectCountry}
               places={places}
+            />
+          </div>
+        )}
+
+        {/* Map Search Box - Positioned below country selector */}
+        {!isMapLoading && map && (
+          <div className="absolute top-24 left-1/2 -translate-x-1/2 z-20 w-full max-w-md px-4 animate-[fadeIn_0.5s_ease-out]">
+            <MapSearchBox
+              map={map}
+              onPlaceSelected={(place) => {
+                console.log('Lugar seleccionado:', place);
+              }}
             />
           </div>
         )}
