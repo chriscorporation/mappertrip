@@ -41,46 +41,61 @@ export default function CountriesPanel({ selectedCountry, onSelectCountry, place
   }
 
   return (
-    <div className="w-80 bg-white border-r border-gray-300 flex flex-col">
-      <div className="p-4 border-b border-gray-200">
-        <h2 className="text-xl font-bold">Countries</h2>
-        <p className="text-xs text-gray-500 mt-1">Selecciona un país para ver zonas</p>
+    <div className="w-80 bg-white border-r border-gray-200 flex flex-col">
+      <div className="p-6 border-b border-gray-100">
+        <h2 className="text-2xl font-semibold text-gray-900">Países</h2>
+        <p className="text-sm text-gray-600 mt-1">Explora zonas seguras en Latinoamérica</p>
       </div>
 
-      <div className="flex-1 overflow-y-auto">
-        {countries.map(country => {
-          const zoneCount = places.filter(p => p.country_code === country.country_code).length;
-          const isDisabled = zoneCount === 0;
+      <div className="flex-1 overflow-y-auto p-4 bg-gray-50">
+        <div className="space-y-3">
+          {countries.map(country => {
+            const zoneCount = places.filter(p => p.country_code === country.country_code).length;
+            const isDisabled = zoneCount === 0;
 
-          return (
-            <button
-              key={country.id}
-              onClick={() => !isDisabled && onSelectCountry(country)}
-              className={`
-                w-full text-left px-4 py-3 border-b border-gray-100
-                transition-colors
-                ${isDisabled
-                  ? 'opacity-40 cursor-default'
-                  : 'cursor-pointer'
-                }
-                ${selectedCountry?.id === country.id
-                  ? 'bg-blue-50 border-l-4 border-l-blue-600'
-                  : !isDisabled && 'hover:bg-gray-50'
-                }
-              `}
-            >
-              <div className="flex items-center gap-3">
-                <span className="text-2xl">{getFlagEmoji(country.country_code)}</span>
-                <div>
-                  <p className="font-medium">
-                    {country.name} <strong>({zoneCount})</strong>
-                  </p>
-                  <p className="text-xs text-gray-500">{country.country_code}</p>
+            return (
+              <button
+                key={country.id}
+                onClick={() => !isDisabled && onSelectCountry(country)}
+                className={`
+                  w-full text-left p-4 rounded-xl bg-white border border-gray-200
+                  transition-all duration-200 ease-out
+                  ${isDisabled
+                    ? 'opacity-50 cursor-not-allowed'
+                    : 'cursor-pointer hover:shadow-lg hover:-translate-y-0.5 hover:border-gray-300'
+                  }
+                  ${selectedCountry?.id === country.id
+                    ? 'ring-2 ring-blue-500 border-blue-500 shadow-md'
+                    : 'shadow-sm'
+                  }
+                `}
+                disabled={isDisabled}
+              >
+                <div className="flex items-center gap-4">
+                  <div className={`
+                    text-4xl transition-transform duration-200
+                    ${!isDisabled && 'group-hover:scale-110'}
+                  `}>
+                    {getFlagEmoji(country.country_code)}
+                  </div>
+                  <div className="flex-1">
+                    <div className="flex items-baseline gap-2">
+                      <p className="font-semibold text-gray-900 text-base">
+                        {country.name}
+                      </p>
+                      <span className="text-xs font-medium text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">
+                        {zoneCount} {zoneCount === 1 ? 'zona' : 'zonas'}
+                      </span>
+                    </div>
+                    <p className="text-xs text-gray-500 mt-0.5 uppercase tracking-wide">
+                      {country.country_code}
+                    </p>
+                  </div>
                 </div>
-              </div>
-            </button>
-          );
-        })}
+              </button>
+            );
+          })}
+        </div>
       </div>
     </div>
   );
