@@ -10,6 +10,7 @@ import AirbnbPanel from './components/AirbnbPanel';
 import CoWorkingPanel from './components/CoWorkingPanel';
 import InstagramablePlacesPanel from './components/InstagramablePlacesPanel';
 import Header from './components/Header';
+import CountryQuickSelector from './components/CountryQuickSelector';
 import { useAuthStore } from './store/authStore';
 import { useAppStore } from './store/appStore';
 
@@ -27,6 +28,7 @@ function HomeContent() {
   const [airbnbs, setAirbnbs] = useState([]);
   const [coworkingPlaces, setCoworkingPlaces] = useState([]);
   const [instagramablePlaces, setInstagramablePlaces] = useState([]);
+  const [countries, setCountries] = useState([]);
   const [placeToDelete, setPlaceToDelete] = useState(null);
   const [selectedTab, setSelectedTab] = useState('countries');
   const [highlightedPlace, setHighlightedPlace] = useState(null);
@@ -281,10 +283,23 @@ function HomeContent() {
       }
     };
 
+    const loadCountries = async () => {
+      try {
+        const response = await fetch('/api/countries');
+        const data = await response.json();
+        if (isMounted && data) {
+          setCountries(data);
+        }
+      } catch (error) {
+        console.error('Error loading countries:', error);
+      }
+    };
+
     loadPlaces();
     loadAirbnbs();
     loadCoworkingPlaces();
     loadInstagramablePlaces();
+    loadCountries();
 
     return () => {
       isMounted = false;
@@ -583,6 +598,9 @@ function HomeContent() {
           circleRadius={circleRadius}
           editingCircleId={editingCircleId}
           editingRadius={editingRadius}
+          countries={countries}
+          selectedCountry={selectedCountry}
+          onSelectCountry={handleSelectCountry}
         />
       </div>
       </div>
