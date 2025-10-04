@@ -5,6 +5,8 @@ import { useEffect, useRef, useState, useMemo } from 'react';
 export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocation, onSavePolygon, onPolygonClick, onBoundsChanged, coworkingPlaces, instagramablePlaces, mapClickMode, onMapClick, highlightedPlace, pendingCircle, circleRadius, editingCircleId, editingRadius }) {
   const mapRef = useRef(null);
   const [map, setMap] = useState(null);
+  const [isMapLoading, setIsMapLoading] = useState(true);
+  const [showLegend, setShowLegend] = useState(true);
   const [marker, setMarker] = useState(null);
   const [airbnbMarker, setAirbnbMarker] = useState(null);
   const [drawingManager, setDrawingManager] = useState(null);
@@ -50,9 +52,31 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
       const newMap = new window.google.maps.Map(mapRef.current, {
         center: position,
         zoom: 3.5,
+        mapTypeControl: true,
+        mapTypeControlOptions: {
+          style: window.google.maps.MapTypeControlStyle.HORIZONTAL_BAR,
+          position: window.google.maps.ControlPosition.TOP_RIGHT,
+        },
+        zoomControl: true,
+        zoomControlOptions: {
+          position: window.google.maps.ControlPosition.RIGHT_BOTTOM,
+        },
+        streetViewControl: true,
+        streetViewControlOptions: {
+          position: window.google.maps.ControlPosition.RIGHT_BOTTOM,
+        },
+        fullscreenControl: true,
+        fullscreenControlOptions: {
+          position: window.google.maps.ControlPosition.RIGHT_TOP,
+        },
       });
 
       setMap(newMap);
+
+      // Ocultar loader una vez que el mapa esté listo
+      window.google.maps.event.addListenerOnce(newMap, 'tilesloaded', () => {
+        setTimeout(() => setIsMapLoading(false), 300);
+      });
 
       // Listener para cambios en los bounds del mapa con debounce
       newMap.addListener('bounds_changed', () => {
@@ -471,6 +495,26 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
           map: map,
         });
 
+        // Add hover effect to polygon
+        polygon.addListener('mouseover', function() {
+          if (!polygon.getEditable()) {
+            polygon.setOptions({
+              fillOpacity: 0.35,
+              strokeWeight: 4,
+            });
+          }
+        });
+
+        polygon.addListener('mouseout', function() {
+          if (!polygon.getEditable()) {
+            const isHighlighted = highlightedPlace === place.id;
+            polygon.setOptions({
+              fillOpacity: isHighlighted ? 0.25 : 0.15,
+              strokeWeight: isHighlighted ? 5 : 3,
+            });
+          }
+        });
+
         // Variable para rastrear el vértice seleccionado
         let selectedVertex = null;
 
@@ -621,6 +665,28 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
           map: map,
           center: { lat: place.lat, lng: place.lng },
           radius: radiusToUse,
+        });
+
+        // Add hover effect to circle
+        circle.addListener('mouseover', function() {
+          circle.setOptions({
+            fillOpacity: 0.5,
+            strokeWeight: 3,
+          });
+        });
+
+        circle.addListener('mouseout', function() {
+          circle.setOptions({
+            fillOpacity: 0.35,
+            strokeWeight: 2,
+          });
+        });
+
+        // Add click event to circle
+        circle.addListener('click', function() {
+          if (onPolygonClick) {
+            onPolygonClick(place.id);
+          }
         });
 
         circlesRef.current[place.id] = circle;
@@ -889,7 +955,80 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
 
   return (
     <>
-      <div ref={mapRef} className="w-full h-full" />
+      <div className="relative w-full h-full">
+        {/* Loading skeleton */}
+        {isMapLoading && (
+          <div className="absolute inset-0 z-10 bg-gradient-to-br from-gray-100 via-gray-50 to-blue-50 flex items-center justify-center animate-pulse">
+            <div className="text-center">
+              <div className="inline-block w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mb-4"></div>
+              <p className="text-gray-600 font-semibold text-lg">Cargando mapa...</p>
+              <p className="text-gray-500 text-sm mt-2">Preparando zonas de seguridad</p>
+            </div>
+          </div>
+        )}
+
+        {/* Map container */}
+        <div ref={mapRef} className="w-full h-full" />
+
+        {/* Floating Safety Legend */}
+        {!isMapLoading && showLegend && (
+          <div className="absolute bottom-6 left-6 bg-white/95 backdrop-blur-sm rounded-2xl shadow-2xl border-2 border-gray-200 p-4 max-w-xs z-20 animate-[fadeIn_0.5s_ease-out]">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="font-bold text-sm text-gray-800 flex items-center gap-2">
+                <span className="text-lg">🛡️</span>
+                Niveles de Seguridad
+              </h3>
+              <button
+                onClick={() => setShowLegend(false)}
+                className="p-1 hover:bg-gray-100 rounded-full transition-colors duration-200"
+                title="Ocultar leyenda"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-gray-500" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                </svg>
+              </button>
+            </div>
+            <div className="space-y-2">
+              <div className="flex items-center gap-3 p-2 rounded-lg hover:bg-green-50 transition-all duration-200 group">
+                <div className="w-8 h-4 rounded border-2 border-green-600 bg-green-500/20 flex-shrink-0 shadow-sm group-hover:scale-110 transition-transform duration-200"></div>
+                <span className="text-xs font-medium text-gray-700">Zona Segura</span>
+              </div>
+              <div className="flex items-center gap-3 p-2 rounded-lg hover:bg-blue-50 transition-all duration-200 group">
+                <div className="w-8 h-4 rounded border-2 border-blue-600 bg-blue-500/20 flex-shrink-0 shadow-sm group-hover:scale-110 transition-transform duration-200"></div>
+                <span className="text-xs font-medium text-gray-700">Seguridad Media</span>
+              </div>
+              <div className="flex items-center gap-3 p-2 rounded-lg hover:bg-orange-50 transition-all duration-200 group">
+                <div className="w-8 h-4 rounded border-2 border-orange-600 bg-orange-500/20 flex-shrink-0 shadow-sm group-hover:scale-110 transition-transform duration-200"></div>
+                <span className="text-xs font-medium text-gray-700">Seguridad Regular</span>
+              </div>
+              <div className="flex items-center gap-3 p-2 rounded-lg hover:bg-yellow-50 transition-all duration-200 group">
+                <div className="w-8 h-4 rounded border-2 border-yellow-600 bg-yellow-500/20 flex-shrink-0 shadow-sm group-hover:scale-110 transition-transform duration-200"></div>
+                <span className="text-xs font-medium text-gray-700">Precaución</span>
+              </div>
+              <div className="flex items-center gap-3 p-2 rounded-lg hover:bg-red-50 transition-all duration-200 group">
+                <div className="w-8 h-4 rounded border-2 border-red-600 bg-red-500/20 flex-shrink-0 shadow-sm group-hover:scale-110 transition-transform duration-200"></div>
+                <span className="text-xs font-medium text-gray-700">Zona Insegura</span>
+              </div>
+            </div>
+            <div className="mt-3 pt-3 border-t border-gray-200">
+              <p className="text-xs text-gray-500 italic">
+                📍 Haz clic en una zona para ver detalles
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* Show legend button when hidden */}
+        {!isMapLoading && !showLegend && (
+          <button
+            onClick={() => setShowLegend(true)}
+            className="absolute bottom-6 left-6 bg-white/95 backdrop-blur-sm rounded-full shadow-xl border-2 border-gray-200 p-3 z-20 hover:scale-110 transition-all duration-300 group animate-[fadeIn_0.3s_ease-out]"
+            title="Mostrar leyenda"
+          >
+            <span className="text-2xl group-hover:scale-125 transition-transform duration-200 inline-block">🛡️</span>
+          </button>
+        )}
+      </div>
 
       {/* Modal de confirmación para eliminar punto */}
       {vertexToDelete && deleteModalPosition && (
