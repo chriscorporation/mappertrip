@@ -840,8 +840,9 @@ export default function ZonesPanel({
           ))
         )}
       </div>
-
-      </div>
+      </>
+      )}
+    </div>
 
       {/* Panel flotante de Perplexity */}
       {showPerplexityPanel && (
@@ -1007,9 +1008,6 @@ export default function ZonesPanel({
           </div>
         </div>
       )}
-      </>
-      )}
-    </div>
     </div>
   );
 }
