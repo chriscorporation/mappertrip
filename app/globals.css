@@ -40,3 +40,19 @@ body {
 .animate-slide-down {
   animation: slide-down 0.3s ease-out forwards;
 }
+
+/* Animación suave para badges */
+@keyframes fade-in-up {
+  from {
+    transform: translateY(10px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.animate-fade-in-up {
+  animation: fade-in-up 0.4s ease-out forwards;
+}
