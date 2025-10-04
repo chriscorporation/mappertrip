@@ -8,6 +8,11 @@ on:
 
 jobs:
   claude-job:
+    # Solo ejecutar si el comentario contiene @claude, o si es un issue nuevo/editado
+    if: |
+      github.event_name == 'issues' ||
+      (github.event_name == 'issue_comment' && contains(github.event.comment.body, '@claude'))
+
     runs-on: ubuntu-latest
     timeout-minutes: 30
 
@@ -39,6 +44,12 @@ jobs:
 
           # Prompt personalizado: commit directo sin PRs
           prompt: |
+            REPOSITORY: ${{ github.repository }}
+            ISSUE NUMBER: ${{ github.event.issue.number }}
+            ISSUE TITLE: ${{ github.event.issue.title }}
+            ISSUE BODY: ${{ github.event.issue.body }}
+            COMMENT: ${{ github.event.comment.body }}
+
             IMPORTANT: You have FULL CONTROL over the 'claude_bot' branch.
             - Work directly on 'claude_bot' branch
             - Make commits directly to 'claude_bot' (NO pull requests)
@@ -46,9 +57,9 @@ jobs:
             - Never modify main, master, or any other branch
 
             WORKFLOW:
-            1. Analyze the issue and implement the solution
+            1. Analyze the issue/comment and implement the solution
             2. Make commits directly to 'claude_bot'
             3. Add a comment to the issue summarizing what you did
             4. Close the issue when completed
 
-            Now, address the issue or request provided.
+            Now, address the request in the ISSUE TITLE, ISSUE BODY, or COMMENT above.
