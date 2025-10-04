@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Image from 'next/image';
+import SkeletonLoader from './SkeletonLoader';
 
 // Función para convertir country_code a emoji de bandera
 const getFlagEmoji = (countryCode) => {
@@ -58,17 +59,8 @@ export default function CountriesPanel({ selectedCountry, onSelectCountry, place
 
   if (loading) {
     return (
-      <div className="w-full sm:w-80 lg:w-96 bg-white border-r border-gray-200 p-4 sm:p-6">
-        <div className="space-y-4">
-          {/* Skeleton loader estilo Airbnb */}
-          {[1, 2, 3].map((i) => (
-            <div key={i} className="animate-pulse">
-              <div className="bg-gray-200 h-48 rounded-xl mb-3"></div>
-              <div className="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
-              <div className="h-3 bg-gray-200 rounded w-1/2"></div>
-            </div>
-          ))}
-        </div>
+      <div className="w-full sm:w-80 lg:w-96 bg-white border-r border-gray-200">
+        <SkeletonLoader variant="country-card" count={4} />
       </div>
     );
   }
