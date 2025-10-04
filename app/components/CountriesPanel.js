@@ -57,25 +57,25 @@ export default function CountriesPanel({ selectedCountry, onSelectCountry, place
               key={country.id}
               onClick={() => !isDisabled && onSelectCountry(country)}
               className={`
-                w-full text-left px-4 py-3 border-b border-gray-100
-                transition-colors
+                w-full text-left px-5 py-4 border-b border-gray-100
+                transition-all duration-200
                 ${isDisabled
                   ? 'opacity-40 cursor-default'
                   : 'cursor-pointer'
                 }
                 ${selectedCountry?.id === country.id
-                  ? 'bg-blue-50 border-l-4 border-l-blue-600'
-                  : !isDisabled && 'hover:bg-gray-50'
+                  ? 'bg-blue-50 border-l-4 border-l-blue-600 shadow-sm'
+                  : !isDisabled && 'hover:bg-gray-50 hover:shadow-sm'
                 }
               `}
             >
-              <div className="flex items-center gap-3">
-                <span className="text-2xl">{getFlagEmoji(country.country_code)}</span>
+              <div className="flex items-center gap-4">
+                <span className="text-3xl transition-transform duration-200 hover:scale-110">{getFlagEmoji(country.country_code)}</span>
                 <div>
-                  <p className="font-medium">
-                    {country.name} <strong>({zoneCount})</strong>
+                  <p className="font-semibold text-gray-900 tracking-tight">
+                    {country.name} <span className="font-bold text-blue-600">({zoneCount})</span>
                   </p>
-                  <p className="text-xs text-gray-500">{country.country_code}</p>
+                  <p className="text-xs text-gray-400 uppercase tracking-wider font-medium mt-0.5">{country.country_code}</p>
                 </div>
               </div>
             </button>
