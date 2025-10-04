@@ -13,6 +13,7 @@ import Header from './components/Header';
 import CountryQuickSelector from './components/CountryQuickSelector';
 import { useAuthStore } from './store/authStore';
 import { useAppStore } from './store/appStore';
+import { useToast } from './store/toastStore';
 
 // Home page component with tab-based navigation for countries, zones, airbnb, coworking, and instagramable places
 function HomeContent() {
@@ -20,6 +21,7 @@ function HomeContent() {
   const searchParams = useSearchParams();
   const { isAuthenticated } = useAuthStore();
   const { selectedCountry, setSelectedCountry, _hasHydrated } = useAppStore();
+  const toast = useToast();
   const isAdminMode = isAuthenticated;
 
   const [airbnbLocation, setAirbnbLocation] = useState(null);
@@ -168,8 +170,10 @@ function HomeContent() {
     // Solo actualizar estado local si la eliminación en Supabase fue exitosa
     if (response.ok) {
       setPlaces(prev => prev.filter(p => p.id !== placeToDelete));
+      toast.success('Zona eliminada correctamente');
     } else {
       console.error('Error al eliminar zona de Supabase');
+      toast.error('Error al eliminar la zona');
     }
 
     setPlaceToDelete(null);
@@ -356,18 +360,28 @@ function HomeContent() {
         const savedPlace = await response.json();
         setCoworkingPlaces(prev => [savedPlace, ...prev]);
         setSelectedPlace(savedPlace);
+        toast.success('Coworking añadido correctamente');
+      } else {
+        toast.error('Error al añadir coworking');
       }
     } catch (error) {
       console.error('Error adding coworking place:', error);
+      toast.error('Error al añadir coworking');
     }
   };
 
   const handleDeleteCoworkingPlace = async (placeId) => {
     try {
-      await fetch(`/api/coworking?id=${placeId}`, { method: 'DELETE' });
-      setCoworkingPlaces(prev => prev.filter(p => p.id !== placeId));
+      const response = await fetch(`/api/coworking?id=${placeId}`, { method: 'DELETE' });
+      if (response.ok) {
+        setCoworkingPlaces(prev => prev.filter(p => p.id !== placeId));
+        toast.success('Coworking eliminado correctamente');
+      } else {
+        toast.error('Error al eliminar coworking');
+      }
     } catch (error) {
       console.error('Error deleting coworking place:', error);
+      toast.error('Error al eliminar coworking');
     }
   };
 
@@ -383,18 +397,28 @@ function HomeContent() {
         const savedPlace = await response.json();
         setInstagramablePlaces(prev => [savedPlace, ...prev]);
         setSelectedPlace(savedPlace);
+        toast.success('Lugar instagrameable añadido correctamente');
+      } else {
+        toast.error('Error al añadir lugar instagrameable');
       }
     } catch (error) {
       console.error('Error adding instagramable place:', error);
+      toast.error('Error al añadir lugar instagrameable');
     }
   };
 
   const handleDeleteInstagramablePlace = async (placeId) => {
     try {
-      await fetch(`/api/instagramable?id=${placeId}`, { method: 'DELETE' });
-      setInstagramablePlaces(prev => prev.filter(p => p.id !== placeId));
+      const response = await fetch(`/api/instagramable?id=${placeId}`, { method: 'DELETE' });
+      if (response.ok) {
+        setInstagramablePlaces(prev => prev.filter(p => p.id !== placeId));
+        toast.success('Lugar instagrameable eliminado correctamente');
+      } else {
+        toast.error('Error al eliminar lugar instagrameable');
+      }
     } catch (error) {
       console.error('Error deleting instagramable place:', error);
+      toast.error('Error al eliminar lugar instagrameable');
     }
   };
 
@@ -499,6 +523,7 @@ function HomeContent() {
 
               if (!response.ok) {
                 console.error('Error creando zona');
+                toast.error('Error al crear la zona');
                 return;
               }
 
@@ -511,6 +536,9 @@ function HomeContent() {
               setSelectedPlace(savedPlace);
               setTimeout(() => setSelectedPlace(null), 1000);
 
+              // Mostrar toast de éxito
+              toast.success('Zona creada correctamente');
+
               // Iniciar proceso de Perplexity en background
               try {
                 await fetch('/api/perplexity-populate', {
@@ -520,11 +548,13 @@ function HomeContent() {
                     zone_id: savedPlace.id
                   })
                 });
+                toast.info('Generando información de la zona con IA...');
               } catch (error) {
                 console.error('Error populating zone with AI:', error);
               }
             } catch (error) {
               console.error('Error:', error);
+              toast.error('Error inesperado al crear la zona');
             }
           }}
           onMapClickModeChange={(isActive, callback) => {
