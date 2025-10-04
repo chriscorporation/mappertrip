@@ -75,8 +75,8 @@ jobs:
             5. CRITICAL: If build fails, fix the errors and commit the fixes
             6. CRITICAL: Push the branch to remote
             7. CRITICAL: Create a Pull Request to 'claude_bot' branch using gh CLI
-            8. Add a comment to the issue with the PR link and summary of changes
-            9. Close the issue when completed
+            8. CRITICAL: Add a comment to the issue with the PR link and summary of changes
+            9. CRITICAL: Close the issue using 'gh issue close' command - THIS IS MANDATORY
 
             IMPORTANT REMINDERS:
             - You MUST create a branch and PR - do not just make changes without committing
@@ -86,5 +86,6 @@ jobs:
             - Example: git checkout -b feature/add-version-banner && git push -u origin feature/add-version-banner
             - After making changes, review the code to ensure there are no syntax errors
             - LANGUAGE: Write ALL commit messages, PR descriptions, and issue comments in the SAME LANGUAGE as the original issue/comment (Spanish if issue is in Spanish, English if in English, etc.)
+            - ALWAYS CLOSE THE ISSUE: After creating PR and commenting, you MUST run 'gh issue close {issue_number}' - this is REQUIRED even for reopened issues
 
             Now, address the request in the ISSUE TITLE, ISSUE BODY, or COMMENT above.
