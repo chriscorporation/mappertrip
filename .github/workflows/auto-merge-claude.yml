@@ -8,12 +8,7 @@ on:
 
 jobs:
   auto-approve-and-merge:
-    # Solo para PRs creados por Claude (app/claude o claude[bot]) hacia claude_bot desde branches feature/*
-    if: |
-      (github.event.pull_request.user.login == 'app/claude' || github.event.pull_request.user.login == 'claude[bot]') &&
-      github.event.pull_request.base.ref == 'claude_bot' &&
-      startsWith(github.event.pull_request.head.ref, 'feature/')
-
+    # Auto-merge para CUALQUIER PR hacia claude_bot
     runs-on: ubuntu-latest
 
     permissions:
