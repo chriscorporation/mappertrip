@@ -450,9 +450,11 @@ export default function ZonesPanel({
             <div
               key={place.id}
               ref={el => cardRefs.current[place.id] = el}
-              className={`p-3 bg-gray-50 rounded-lg transition-colors ${hoverEnabled ? 'cursor-pointer hover:bg-gray-100' : ''} ${
+              className={`p-3 bg-gradient-to-br from-white to-gray-50 rounded-xl transition-all duration-300 ease-out transform ${
+                hoverEnabled ? 'cursor-pointer hover:shadow-lg hover:-translate-y-0.5 hover:from-blue-50 hover:to-cyan-50' : ''
+              } ${
                 highlightedPlace === place.id
-                  ? 'border-2 border-blue-400'
+                  ? 'border-2 border-blue-400 shadow-md scale-[1.02]'
                   : 'border border-gray-200'
               }`}
               onMouseEnter={() => hoverEnabled && onGoToPlace(place)}
@@ -477,7 +479,7 @@ export default function ZonesPanel({
                     />
                   ) : (
                     <h3
-                      className="font-semibold text-sm mb-1 cursor-pointer hover:text-blue-600 transition-colors flex-1"
+                      className="font-semibold text-sm mb-1 cursor-pointer hover:text-blue-600 transition-all duration-200 flex-1 hover:translate-x-1"
                       onDoubleClick={(e) => {
                         e.stopPropagation();
                         setEditingTitleId(place.id);
@@ -567,28 +569,28 @@ export default function ZonesPanel({
                 {/* Safety Status Badge */}
                 <div className="mb-2">
                   {place.color === '#22c55e' && (
-                    <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-800 border border-green-200">
-                      🟢 Zona Segura
+                    <span className="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-semibold bg-gradient-to-r from-green-100 to-emerald-100 text-green-800 border-2 border-green-200 shadow-sm hover:shadow-md transition-all duration-200 hover:scale-105">
+                      <span className="animate-pulse mr-1.5">🟢</span> Zona Segura
                     </span>
                   )}
                   {place.color === '#3b82f6' && (
-                    <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-blue-100 text-blue-800 border border-blue-200">
-                      🔵 Seguridad Media
+                    <span className="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-semibold bg-gradient-to-r from-blue-100 to-cyan-100 text-blue-800 border-2 border-blue-200 shadow-sm hover:shadow-md transition-all duration-200 hover:scale-105">
+                      <span className="animate-pulse mr-1.5">🔵</span> Seguridad Media
                     </span>
                   )}
                   {place.color === '#f97316' && (
-                    <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-orange-100 text-orange-800 border border-orange-200">
-                      🟠 Seguridad Regular
+                    <span className="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-semibold bg-gradient-to-r from-orange-100 to-amber-100 text-orange-800 border-2 border-orange-200 shadow-sm hover:shadow-md transition-all duration-200 hover:scale-105">
+                      <span className="animate-pulse mr-1.5">🟠</span> Seguridad Regular
                     </span>
                   )}
                   {place.color === '#eab308' && (
-                    <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-yellow-100 text-yellow-800 border border-yellow-200">
-                      🟡 Precaución
+                    <span className="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-semibold bg-gradient-to-r from-yellow-100 to-amber-100 text-yellow-800 border-2 border-yellow-200 shadow-sm hover:shadow-md transition-all duration-200 hover:scale-105">
+                      <span className="animate-pulse mr-1.5">🟡</span> Precaución
                     </span>
                   )}
                   {place.color === '#dc2626' && (
-                    <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-red-100 text-red-800 border border-red-200">
-                      🔴 Zona Insegura
+                    <span className="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-semibold bg-gradient-to-r from-red-100 to-rose-100 text-red-800 border-2 border-red-200 shadow-sm hover:shadow-md transition-all duration-200 hover:scale-105">
+                      <span className="animate-pulse mr-1.5">🔴</span> Zona Insegura
                     </span>
                   )}
                 </div>
@@ -638,8 +640,8 @@ export default function ZonesPanel({
 
                 <div className="mt-2 flex gap-2 flex-col">
                   {place.polygon && !place.isDrawing && (
-                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 w-fit">
-                      ✓ Zona delimitada
+                    <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-gradient-to-r from-emerald-50 to-teal-50 text-emerald-700 border border-emerald-200 w-fit shadow-sm hover:shadow transition-all duration-200">
+                      <span className="mr-1">✓</span> Zona delimitada
                     </span>
                   )}
                   {place.isDrawing && (
@@ -704,8 +706,8 @@ export default function ZonesPanel({
                           </div>
                         </div>
                       ) : (
-                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800 w-fit">
-                          ⭕ Radio: {(place.circle_radius / 1000).toFixed(1)}km
+                        <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-gradient-to-r from-purple-50 to-violet-50 text-purple-700 border border-purple-200 w-fit shadow-sm hover:shadow transition-all duration-200">
+                          <span className="mr-1">⭕</span> Radio: {(place.circle_radius / 1000).toFixed(1)}km
                         </span>
                       )}
                     </>
