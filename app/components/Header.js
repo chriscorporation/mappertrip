@@ -42,34 +42,34 @@ export default function Header({ isAdminMode }) {
 
   return (
     <>
-      <header className="bg-white border-b border-gray-300 px-6 py-2 flex justify-between items-center">
-        <div className="flex items-center gap-6">
+      <header className="bg-white border-b border-gray-200 px-8 py-4 flex justify-between items-center shadow-sm">
+        <div className="flex items-center gap-8">
           <h1
             onClick={() => router.push('/')}
-            className="text-lg font-bold text-gray-800 cursor-pointer hover:text-gray-600 transition-colors"
+            className="text-xl font-bold text-gray-900 cursor-pointer hover:text-gray-700 transition-colors tracking-tight"
           >
-            Mapper Trip - Real and secure trips
+            Mapper Trip
           </h1>
           {isAdminMode && (
-            <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">Admin</span>
+            <span className="text-xs bg-blue-50 text-blue-700 px-2.5 py-1 rounded-full font-medium">Admin</span>
           )}
 
-          <div className="flex items-center gap-4">
+          <nav className="flex items-center gap-6 ml-4">
             <button
               onClick={() => router.push('/')}
-              className="text-sm text-gray-600 hover:text-gray-900 transition-colors cursor-pointer"
+              className="text-sm font-medium text-gray-700 hover:text-gray-900 transition-colors cursor-pointer px-2 py-1 rounded-lg hover:bg-gray-50"
             >
               Trip
             </button>
             <button
               onClick={() => router.push('/nomadas-digitales')}
-              className="text-sm text-gray-600 hover:text-gray-900 transition-colors cursor-pointer"
+              className="text-sm font-medium text-gray-700 hover:text-gray-900 transition-colors cursor-pointer px-2 py-1 rounded-lg hover:bg-gray-50"
             >
               Nómadas digitales
             </button>
             <button
               onClick={() => router.push('/zonas-seguras-para-viajar')}
-              className="text-sm text-gray-600 hover:text-gray-900 transition-colors cursor-pointer"
+              className="text-sm font-medium text-gray-700 hover:text-gray-900 transition-colors cursor-pointer px-2 py-1 rounded-lg hover:bg-gray-50"
             >
               Zonas seguras
             </button>
@@ -77,25 +77,25 @@ export default function Header({ isAdminMode }) {
               href="https://vuelahoy.com/"
               target="_blank"
               rel="noopener noreferrer"
-              className="text-sm text-gray-600 hover:text-gray-900 transition-colors cursor-pointer"
+              className="text-sm font-medium text-gray-700 hover:text-gray-900 transition-colors cursor-pointer px-2 py-1 rounded-lg hover:bg-gray-50"
             >
               Vuelos
             </a>
             <button
               onClick={() => router.push('/barrios')}
-              className="text-sm text-gray-600 hover:text-gray-900 transition-colors cursor-pointer"
+              className="text-sm font-medium text-gray-700 hover:text-gray-900 transition-colors cursor-pointer px-2 py-1 rounded-lg hover:bg-gray-50"
             >
               Barrios
             </button>
-          </div>
+          </nav>
         </div>
 
         {isAuthenticated ? (
-          <div className="flex items-center gap-3">
-            <span className="text-sm text-gray-700">{user?.email}</span>
+          <div className="flex items-center gap-4">
+            <span className="text-sm text-gray-600">{user?.email}</span>
             <button
               onClick={handleLogout}
-              className="text-sm text-blue-600 hover:text-blue-800 font-medium hover:underline"
+              className="text-sm text-gray-700 hover:text-gray-900 font-medium px-3 py-1.5 rounded-lg hover:bg-gray-50 transition-colors"
             >
               Salir
             </button>
@@ -103,7 +103,7 @@ export default function Header({ isAdminMode }) {
         ) : (
           <button
             onClick={() => setShowLoginModal(!showLoginModal)}
-            className="text-sm text-gray-700 hover:text-gray-900 font-medium"
+            className="text-sm text-gray-700 hover:text-gray-900 font-medium px-4 py-2 rounded-lg border border-gray-300 hover:border-gray-400 transition-all"
           >
             Iniciar sesión
           </button>
