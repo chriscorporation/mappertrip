@@ -393,7 +393,7 @@ function HomeContent() {
       <Header isAdminMode={isAdminMode} />
 
       {/* Contenido principal */}
-      <div className="flex flex-1 overflow-hidden">
+      <div className="flex flex-1 overflow-hidden pb-16 lg:pb-0">
         {/* Sidebar con tabs */}
         <Sidebar
         selectedTab={selectedTab}
