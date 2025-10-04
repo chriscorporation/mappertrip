@@ -869,6 +869,85 @@ export default function ZonesPanel({
               </div>
             ) : (
               <>
+            {/* Visual Safety Score Gauge - New Feature */}
+            {perplexityData?.secure && (
+              <div className="bg-gradient-to-br from-slate-50 to-gray-100 border-2 border-gray-300 rounded-2xl p-5 shadow-lg">
+                <h3 className="text-sm font-bold text-gray-700 mb-3 flex items-center gap-2">
+                  <BiShield className="text-xl text-gray-600" />
+                  EVALUACIÓN DE SEGURIDAD
+                </h3>
+                {(() => {
+                  const secureText = perplexityData.secure.toLowerCase();
+                  let safetyScore = 50;
+                  let scoreColor = 'from-yellow-400 to-orange-500';
+                  let bgColor = 'bg-yellow-50';
+                  let textColor = 'text-yellow-800';
+                  let icon = '⚠️';
+                  let label = 'Media';
+
+                  if (secureText.includes('buena') || secureText.includes('aceptable') || secureText.includes('alta') || secureText.includes('segur')) {
+                    safetyScore = 85;
+                    scoreColor = 'from-green-400 to-emerald-500';
+                    bgColor = 'bg-green-50';
+                    textColor = 'text-green-800';
+                    icon = '🛡️';
+                    label = 'Alta';
+                  } else if (secureText.includes('media') || secureText.includes('moderada')) {
+                    safetyScore = 60;
+                    scoreColor = 'from-blue-400 to-cyan-500';
+                    bgColor = 'bg-blue-50';
+                    textColor = 'text-blue-800';
+                    icon = '🔷';
+                    label = 'Media';
+                  } else if (secureText.includes('baja') || secureText.includes('peligro') || secureText.includes('insegur') || secureText.includes('riesgo')) {
+                    safetyScore = 25;
+                    scoreColor = 'from-red-400 to-rose-500';
+                    bgColor = 'bg-red-50';
+                    textColor = 'text-red-800';
+                    icon = '🚨';
+                    label = 'Baja';
+                  }
+
+                  return (
+                    <>
+                      <div className="relative mb-4">
+                        {/* Progress Bar Background */}
+                        <div className="h-8 bg-gray-200 rounded-full overflow-hidden shadow-inner">
+                          {/* Animated Progress Fill */}
+                          <div
+                            className={`h-full bg-gradient-to-r ${scoreColor} transition-all duration-1000 ease-out flex items-center justify-end pr-3`}
+                            style={{ width: `${safetyScore}%` }}
+                          >
+                            <span className="text-white font-bold text-sm drop-shadow-lg">
+                              {safetyScore}%
+                            </span>
+                          </div>
+                        </div>
+                        {/* Score Labels */}
+                        <div className="flex justify-between mt-2 text-xs text-gray-500">
+                          <span>Riesgo Alto</span>
+                          <span>Seguridad Óptima</span>
+                        </div>
+                      </div>
+                      {/* Security Level Badge */}
+                      <div className={`${bgColor} rounded-xl p-3 flex items-center justify-between`}>
+                        <div className="flex items-center gap-2">
+                          <span className="text-2xl">{icon}</span>
+                          <div>
+                            <p className="text-xs text-gray-600 font-medium">Nivel de Seguridad</p>
+                            <p className={`text-sm font-bold ${textColor}`}>{label}</p>
+                          </div>
+                        </div>
+                        <div className={`px-3 py-1 rounded-full text-xs font-bold ${textColor} bg-white/60`}>
+                          {perplexityData.secure}
+                        </div>
+                      </div>
+                    </>
+                  );
+                })()}
+              </div>
+            )}
+
             {/* Secure - Prioridad #1 según GOAL.md */}
             {perplexityData?.secure && (
               <div
