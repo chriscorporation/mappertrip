@@ -42,34 +42,34 @@ export default function Header({ isAdminMode }) {
 
   return (
     <>
-      <header className="bg-white border-b border-gray-300 px-6 py-2 flex justify-between items-center">
-        <div className="flex items-center gap-6">
+      <header className="bg-white border-b border-gray-200 shadow-sm px-8 py-4 flex justify-between items-center sticky top-0 z-40">
+        <div className="flex items-center gap-8">
           <h1
             onClick={() => router.push('/')}
-            className="text-lg font-bold text-gray-800 cursor-pointer hover:text-gray-600 transition-colors"
+            className="text-xl font-semibold text-gray-900 cursor-pointer hover:text-rose-500 transition-all duration-200"
           >
-            Mapper Trip - Real and secure trips
+            Mapper Trip
           </h1>
           {isAdminMode && (
-            <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">Admin</span>
+            <span className="text-xs bg-blue-50 text-blue-700 px-2.5 py-1 rounded-full font-medium">Admin</span>
           )}
 
-          <div className="flex items-center gap-4">
+          <nav className="flex items-center gap-1 ml-4">
             <button
               onClick={() => router.push('/')}
-              className="text-sm text-gray-600 hover:text-gray-900 transition-colors cursor-pointer"
+              className="px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50 rounded-full transition-all duration-200"
             >
               Trip
             </button>
             <button
               onClick={() => router.push('/nomadas-digitales')}
-              className="text-sm text-gray-600 hover:text-gray-900 transition-colors cursor-pointer"
+              className="px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50 rounded-full transition-all duration-200"
             >
               Nómadas digitales
             </button>
             <button
               onClick={() => router.push('/zonas-seguras-para-viajar')}
-              className="text-sm text-gray-600 hover:text-gray-900 transition-colors cursor-pointer"
+              className="px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50 rounded-full transition-all duration-200"
             >
               Zonas seguras
             </button>
@@ -77,25 +77,25 @@ export default function Header({ isAdminMode }) {
               href="https://vuelahoy.com/"
               target="_blank"
               rel="noopener noreferrer"
-              className="text-sm text-gray-600 hover:text-gray-900 transition-colors cursor-pointer"
+              className="px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50 rounded-full transition-all duration-200"
             >
               Vuelos
             </a>
             <button
               onClick={() => router.push('/barrios')}
-              className="text-sm text-gray-600 hover:text-gray-900 transition-colors cursor-pointer"
+              className="px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50 rounded-full transition-all duration-200"
             >
               Barrios
             </button>
-          </div>
+          </nav>
         </div>
 
         {isAuthenticated ? (
-          <div className="flex items-center gap-3">
-            <span className="text-sm text-gray-700">{user?.email}</span>
+          <div className="flex items-center gap-4">
+            <span className="text-sm text-gray-600">{user?.email}</span>
             <button
               onClick={handleLogout}
-              className="text-sm text-blue-600 hover:text-blue-800 font-medium hover:underline"
+              className="px-5 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 rounded-full border border-gray-300 transition-all duration-200"
             >
               Salir
             </button>
@@ -103,7 +103,7 @@ export default function Header({ isAdminMode }) {
         ) : (
           <button
             onClick={() => setShowLoginModal(!showLoginModal)}
-            className="text-sm text-gray-700 hover:text-gray-900 font-medium"
+            className="px-5 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 rounded-full border border-gray-300 transition-all duration-200"
           >
             Iniciar sesión
           </button>
@@ -112,18 +112,18 @@ export default function Header({ isAdminMode }) {
 
       {/* Modal de login sin overlay */}
       {showLoginModal && (
-        <div className="absolute top-12 right-6 bg-white border border-gray-300 rounded-lg shadow-xl p-6 w-80 z-50">
-          <h2 className="text-lg font-bold mb-4">Iniciar sesión</h2>
+        <div className="absolute top-20 right-8 bg-white border border-gray-200 rounded-2xl shadow-2xl p-8 w-96 z-50">
+          <h2 className="text-2xl font-semibold mb-6 text-gray-900">Bienvenido a Mapper Trip</h2>
 
-          <form onSubmit={handleLogin} className="space-y-4">
+          <form onSubmit={handleLogin} className="space-y-5">
             {error && (
-              <div className="bg-red-50 border border-red-200 text-red-700 px-3 py-2 rounded-lg text-sm">
+              <div className="bg-red-50 border border-red-100 text-red-700 px-4 py-3 rounded-xl text-sm">
                 {error}
               </div>
             )}
 
             <div>
-              <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-1">
+              <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-2">
                 Usuario
               </label>
               <input
@@ -132,7 +132,7 @@ export default function Header({ isAdminMode }) {
                 type="text"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-rose-500 focus:border-rose-500 transition-all outline-none"
                 placeholder="Tu usuario"
                 required
                 disabled={isLoading}
@@ -140,7 +140,7 @@ export default function Header({ isAdminMode }) {
             </div>
 
             <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
+              <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
                 Contraseña
               </label>
               <input
@@ -148,17 +148,17 @@ export default function Header({ isAdminMode }) {
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-rose-500 focus:border-rose-500 transition-all outline-none"
                 placeholder="Tu contraseña"
                 required
                 disabled={isLoading}
               />
             </div>
 
-            <div className="flex gap-2">
+            <div className="flex flex-col gap-3 pt-2">
               <button
                 type="submit"
-                className="flex-1 px-4 py-2 text-sm text-white bg-blue-600 rounded-lg hover:bg-blue-700 flex items-center justify-center gap-2"
+                className="w-full px-4 py-3 text-sm font-medium text-white bg-gradient-to-r from-rose-500 to-pink-500 rounded-xl hover:from-rose-600 hover:to-pink-600 flex items-center justify-center gap-2 transition-all duration-200 shadow-sm"
                 disabled={isLoading}
               >
                 {isLoading ? (
@@ -176,7 +176,7 @@ export default function Header({ isAdminMode }) {
               <button
                 type="button"
                 onClick={handleCloseModal}
-                className="flex-1 px-4 py-2 text-sm text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200"
+                className="w-full px-4 py-3 text-sm font-medium text-gray-700 bg-white rounded-xl border border-gray-300 hover:bg-gray-50 transition-all duration-200"
                 disabled={isLoading}
               >
                 Cancelar
