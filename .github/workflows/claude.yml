@@ -70,10 +70,12 @@ jobs:
             1. Analyze the issue/comment and implement the solution (make decisions proactively)
             2. CRITICAL: Create a new git branch (use feature/ prefix, e.g., feature/add-header)
             3. CRITICAL: Make commits to that branch with your changes
-            4. CRITICAL: Push the branch to remote
-            5. CRITICAL: Create a Pull Request to 'claude_bot' branch using gh CLI
-            6. Add a comment to the issue with the PR link and summary of changes
-            7. Close the issue when completed
+            4. CRITICAL: Run 'npm run build' to verify the code compiles without errors
+            5. CRITICAL: If build fails, fix the errors and commit the fixes
+            6. CRITICAL: Push the branch to remote
+            7. CRITICAL: Create a Pull Request to 'claude_bot' branch using gh CLI
+            8. Add a comment to the issue with the PR link and summary of changes
+            9. Close the issue when completed
 
             IMPORTANT REMINDERS:
             - You MUST create a branch and PR - do not just make changes without committing
