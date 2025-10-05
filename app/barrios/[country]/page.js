@@ -132,22 +132,22 @@ export default async function BarriosPais({ params }) {
                 </p>
               </div>
 
-              <div className="max-w-3xl mx-auto">
+              <div className="max-w-7xl mx-auto">
                 {zones.length === 0 ? (
                   <div className="text-center py-12">
                     <p className="text-gray-500 mb-4">No hay barrios disponibles para este país</p>
                     <BackButton />
                   </div>
                 ) : (
-                  <div className="flex flex-wrap -m-3 mb-10">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-10">
                     {zones.map((zone) => {
                       const notes = zone.perplexityNotes;
 
                       return (
-                        <div key={zone.id} className="w-full p-3">
-                          <div className="w-full block p-10 bg-gray-100 rounded-3xl">
-                            <h2 className="font-heading mb-6 text-3xl font-black">
-                              <span className="text-transparent bg-clip-text bg-gradient-to-r from-gray-500 to-gray-900">
+                        <div key={zone.id} className="w-full">
+                          <div className="w-full block p-8 bg-white border-2 border-gray-200 rounded-3xl shadow-lg hover:shadow-xl transition-shadow duration-300">
+                            <h2 className="font-heading mb-6 text-2xl font-black">
+                              <span className="text-transparent bg-clip-text bg-gradient-to-r from-gray-600 to-gray-900">
                                 {zone.address}
                               </span>
                             </h2>
