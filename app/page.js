@@ -13,9 +13,11 @@ import Header from './components/Header';
 import CountryQuickSelector from './components/CountryQuickSelector';
 import RealTimeMetrics from './components/RealTimeMetrics';
 import OnboardingTour from './components/OnboardingTour';
+import HistoryPanel from './components/HistoryPanel';
 import { useAuthStore } from './store/authStore';
 import { useAppStore } from './store/appStore';
 import { useToast } from './store/toastStore';
+import { useHistoryStore } from './store/historyStore';
 
 // Home page component with tab-based navigation for countries, zones, airbnb, coworking, and instagramable places
 function HomeContent() {
@@ -23,6 +25,7 @@ function HomeContent() {
   const searchParams = useSearchParams();
   const { isAuthenticated } = useAuthStore();
   const { selectedCountry, setSelectedCountry, _hasHydrated } = useAppStore();
+  const { addVisitedZone } = useHistoryStore();
   const toast = useToast();
   const isAdminMode = isAuthenticated;
 
@@ -199,6 +202,10 @@ function HomeContent() {
 
   const handleGoToPlace = (place) => {
     setSelectedPlace(place);
+    // Agregar al historial si es una zona válida
+    if (place && place.id && place.address) {
+      addVisitedZone(place);
+    }
   };
 
   const handleTuristicChange = async (placeId, is_turistic) => {
@@ -618,6 +625,11 @@ function HomeContent() {
           onPolygonClick={(placeId) => {
             setHighlightedPlace(placeId);
             router.push('/?tab=zones');
+            // Agregar al historial cuando se hace clic en una zona
+            const clickedPlace = places.find(p => p.id === placeId);
+            if (clickedPlace) {
+              addVisitedZone(clickedPlace);
+            }
           }}
           onBoundsChanged={setMapBounds}
           coworkingPlaces={coworkingPlaces}
@@ -645,6 +657,9 @@ function HomeContent() {
 
       {/* Onboarding Tour */}
       <OnboardingTour />
+
+      {/* History Panel */}
+      <HistoryPanel onGoToZone={handleGoToPlace} countries={countries} />
 
     </div>
   );
