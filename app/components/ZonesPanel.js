@@ -49,6 +49,10 @@ export default function ZonesPanel({
   const [streetViewPlace, setStreetViewPlace] = useState(null);
   const [streetViewLoading, setStreetViewLoading] = useState(false);
   const [searchFilter, setSearchFilter] = useState('');
+  const [comparisonMode, setComparisonMode] = useState(false);
+  const [selectedForComparison, setSelectedForComparison] = useState([]);
+  const [showComparisonPanel, setShowComparisonPanel] = useState(false);
+  const [comparisonData, setComparisonData] = useState({});
   const inputRef = useRef(null);
   const autocompleteRef = useRef(null);
   const cardRefs = useRef({});
@@ -402,6 +406,71 @@ export default function ZonesPanel({
             {filteredPlaces.length === 1 ? 'zona encontrada' : 'zonas encontradas'}
           </p>
         )}
+
+        {/* Comparison Mode Toggle - Solo visible si hay 2+ zonas */}
+        {countryPlaces.length >= 2 && (
+          <button
+            onClick={() => {
+              setComparisonMode(!comparisonMode);
+              setSelectedForComparison([]);
+            }}
+            className={`mt-2 w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg font-medium text-sm transition-all duration-300 ${
+              comparisonMode
+                ? 'bg-gradient-to-r from-violet-500 to-purple-600 text-white shadow-lg hover:shadow-xl'
+                : 'bg-white text-gray-700 border-2 border-gray-300 hover:border-violet-400 hover:bg-violet-50'
+            }`}
+            title={comparisonMode ? 'Salir del modo comparación' : 'Comparar zonas'}
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+              <path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z" />
+              <path fillRule="evenodd" d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm3 4a1 1 0 000 2h.01a1 1 0 100-2H7zm3 0a1 1 0 000 2h3a1 1 0 100-2h-3zm-3 4a1 1 0 100 2h.01a1 1 0 100-2H7zm3 0a1 1 0 100 2h3a1 1 0 100-2h-3z" clipRule="evenodd" />
+            </svg>
+            {comparisonMode ? 'Salir de Comparación' : 'Comparar Zonas'}
+          </button>
+        )}
+
+        {comparisonMode && selectedForComparison.length > 0 && (
+          <div className="mt-2 space-y-2">
+            <p className="text-xs text-violet-700 flex items-center gap-1 font-medium">
+              <span className="animate-pulse">✓</span>
+              {selectedForComparison.length} {selectedForComparison.length === 1 ? 'zona seleccionada' : 'zonas seleccionadas'} (máx. 3)
+            </p>
+            {selectedForComparison.length >= 2 && (
+              <button
+                onClick={async () => {
+                  setShowComparisonPanel(true);
+                  setComparisonMode(false);
+
+                  // Cargar datos de Perplexity para cada zona seleccionada
+                  const dataPromises = selectedForComparison.map(async (place) => {
+                    try {
+                      const response = await fetch(`/api/perplexity-notes?zone_id=${place.id}`);
+                      const data = await response.json();
+                      return { placeId: place.id, data };
+                    } catch (error) {
+                      console.error('Error loading comparison data:', error);
+                      return { placeId: place.id, data: null };
+                    }
+                  });
+
+                  const results = await Promise.all(dataPromises);
+                  const dataMap = {};
+                  results.forEach(({ placeId, data }) => {
+                    dataMap[placeId] = data;
+                  });
+                  setComparisonData(dataMap);
+                }}
+                className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg font-bold text-sm bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-[1.02]"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                  <path d="M10 12a2 2 0 100-4 2 2 0 000 4z" />
+                  <path fillRule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clipRule="evenodd" />
+                </svg>
+                Ver Comparación
+              </button>
+            )}
+          </div>
+        )}
       </div>
 
       {isAdminMode && (
@@ -563,20 +632,46 @@ export default function ZonesPanel({
             )}
           </div>
         ) : (
-          filteredPlaces.map(place => (
+          filteredPlaces.map(place => {
+            const isSelectedForComparison = selectedForComparison.some(p => p.id === place.id);
+
+            return (
             <div
               key={place.id}
               ref={el => cardRefs.current[place.id] = el}
-              className={`p-3 bg-gradient-to-br from-white to-gray-50 rounded-xl transition-all duration-300 ease-out transform ${
-                hoverEnabled ? 'cursor-pointer hover:shadow-lg hover:-translate-y-0.5 hover:from-blue-50 hover:to-cyan-50' : ''
+              className={`p-3 bg-gradient-to-br rounded-xl transition-all duration-300 ease-out transform ${
+                isSelectedForComparison
+                  ? 'from-violet-100 to-purple-100 border-3 border-violet-500 shadow-lg scale-[1.02] ring-2 ring-violet-300'
+                  : 'from-white to-gray-50 border border-gray-200'
               } ${
-                highlightedPlace === place.id
+                hoverEnabled && !comparisonMode ? 'cursor-pointer hover:shadow-lg hover:-translate-y-0.5 hover:from-blue-50 hover:to-cyan-50' : ''
+              } ${
+                comparisonMode ? 'cursor-pointer hover:shadow-md hover:scale-[1.01]' : ''
+              } ${
+                highlightedPlace === place.id && !isSelectedForComparison
                   ? 'border-2 border-blue-400 shadow-md scale-[1.02]'
-                  : 'border border-gray-200'
+                  : ''
               }`}
-              onMouseEnter={() => hoverEnabled && onGoToPlace(place)}
+              onMouseEnter={() => !comparisonMode && hoverEnabled && onGoToPlace(place)}
+              onClick={() => {
+                if (comparisonMode) {
+                  if (isSelectedForComparison) {
+                    setSelectedForComparison(prev => prev.filter(p => p.id !== place.id));
+                  } else if (selectedForComparison.length < 3) {
+                    setSelectedForComparison(prev => [...prev, place]);
+                  }
+                }
+              }}
             >
               <div className="mb-2">
+                {/* Selection Badge for Comparison Mode */}
+                {isSelectedForComparison && (
+                  <div className="mb-2 flex items-center gap-2 bg-violet-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold shadow-md">
+                    <span className="text-base">✓</span>
+                    Seleccionada para comparar
+                  </div>
+                )}
+
                 <div className="flex items-start justify-between mb-2">
                   {editingTitleId === place.id ? (
                     <input
@@ -1007,7 +1102,8 @@ export default function ZonesPanel({
                 </div>
               )}
             </div>
-          ))
+            );
+          })
         )}
       </div>
 
@@ -1294,6 +1390,190 @@ export default function ZonesPanel({
             )}
             </>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Panel de Comparación */}
+      {showComparisonPanel && selectedForComparison.length >= 2 && (
+        <div className="w-[600px] bg-gradient-to-br from-slate-50 to-gray-100 shadow-2xl border-l-4 border-violet-500 overflow-y-auto">
+          <div className="sticky top-0 bg-gradient-to-r from-violet-600 to-purple-700 text-white p-4 flex justify-between items-center shadow-lg z-10">
+            <h2 className="text-lg font-bold flex items-center gap-2">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" viewBox="0 0 20 20" fill="currentColor">
+                <path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z" />
+                <path fillRule="evenodd" d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm3 4a1 1 0 000 2h.01a1 1 0 100-2H7zm3 0a1 1 0 000 2h3a1 1 0 100-2h-3zm-3 4a1 1 0 100 2h.01a1 1 0 100-2H7zm3 0a1 1 0 100 2h3a1 1 0 100-2h-3z" clipRule="evenodd" />
+              </svg>
+              Comparación de Zonas
+            </h2>
+            <button
+              onClick={() => {
+                setShowComparisonPanel(false);
+                setSelectedForComparison([]);
+                setComparisonData({});
+              }}
+              className="p-2 hover:bg-white/20 rounded-lg transition-colors"
+              title="Cerrar comparación"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+              </svg>
+            </button>
+          </div>
+
+          <div className="p-6 space-y-6">
+            {/* Comparación de seguridad */}
+            <div className="bg-white rounded-xl p-5 shadow-md border-2 border-gray-200">
+              <h3 className="text-base font-bold text-gray-800 mb-4 flex items-center gap-2">
+                <BiShield className="text-2xl text-blue-600" />
+                Nivel de Seguridad
+              </h3>
+              <div className="grid grid-cols-1 gap-3">
+                {selectedForComparison.map((place, index) => {
+                  const data = comparisonData[place.id];
+                  const secureText = data?.secure?.toLowerCase() || '';
+                  let scoreColor = 'from-yellow-400 to-orange-500';
+                  let bgColor = 'bg-yellow-50';
+                  let textColor = 'text-yellow-800';
+
+                  if (secureText.includes('buena') || secureText.includes('aceptable') || secureText.includes('alta') || secureText.includes('segur')) {
+                    scoreColor = 'from-green-400 to-emerald-500';
+                    bgColor = 'bg-green-50';
+                    textColor = 'text-green-800';
+                  } else if (secureText.includes('baja') || secureText.includes('peligro') || secureText.includes('insegur') || secureText.includes('riesgo')) {
+                    scoreColor = 'from-red-400 to-rose-500';
+                    bgColor = 'bg-red-50';
+                    textColor = 'text-red-800';
+                  }
+
+                  return (
+                    <div key={place.id} className={`${bgColor} rounded-lg p-3 border-2 border-gray-200`}>
+                      <div className="flex items-center justify-between mb-2">
+                        <p className="text-xs font-bold text-gray-700 truncate flex-1">{place.address}</p>
+                        <span className={`ml-2 px-2 py-1 rounded-full text-xs font-bold ${textColor} bg-white/70`}>
+                          #{index + 1}
+                        </span>
+                      </div>
+                      {data?.secure ? (
+                        <p className={`text-sm font-semibold ${textColor}`}>{data.secure}</p>
+                      ) : (
+                        <p className="text-xs text-gray-500 italic">Sin información</p>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Comparación de costos de renta */}
+            <div className="bg-white rounded-xl p-5 shadow-md border-2 border-gray-200">
+              <h3 className="text-base font-bold text-gray-800 mb-4 flex items-center gap-2">
+                <BiDollar className="text-2xl text-emerald-600" />
+                Costo de Renta Mensual
+              </h3>
+              <div className="grid grid-cols-1 gap-3">
+                {selectedForComparison.map((place, index) => {
+                  const data = comparisonData[place.id];
+                  const rent = data?.rent;
+
+                  return (
+                    <div key={place.id} className="bg-emerald-50 rounded-lg p-3 border-2 border-emerald-200">
+                      <div className="flex items-center justify-between mb-1">
+                        <p className="text-xs font-bold text-gray-700 truncate flex-1">{place.address}</p>
+                        <span className="ml-2 px-2 py-1 rounded-full text-xs font-bold text-emerald-800 bg-white/70">
+                          #{index + 1}
+                        </span>
+                      </div>
+                      {rent ? (
+                        <div className="flex items-baseline gap-2">
+                          <span className="text-2xl font-extrabold text-emerald-700">${Math.round(rent)}</span>
+                          <span className="text-xs font-medium text-emerald-600">USD/mes</span>
+                        </div>
+                      ) : (
+                        <p className="text-xs text-gray-500 italic">Sin información</p>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Indicador de mejor precio */}
+              {(() => {
+                const rents = selectedForComparison
+                  .map(place => ({ place, rent: comparisonData[place.id]?.rent }))
+                  .filter(item => item.rent);
+
+                if (rents.length >= 2) {
+                  const cheapest = rents.reduce((min, item) => item.rent < min.rent ? item : min);
+                  return (
+                    <div className="mt-3 p-3 bg-gradient-to-r from-green-100 to-emerald-100 rounded-lg border-2 border-green-300">
+                      <p className="text-xs font-bold text-green-800 flex items-center gap-2">
+                        <span className="text-base">💰</span>
+                        <span className="truncate">
+                          <strong>{cheapest.place.address}</strong> es la opción más económica
+                        </span>
+                      </p>
+                    </div>
+                  );
+                }
+                return null;
+              })()}
+            </div>
+
+            {/* Comparación de turismo */}
+            <div className="bg-white rounded-xl p-5 shadow-md border-2 border-gray-200">
+              <h3 className="text-base font-bold text-gray-800 mb-4 flex items-center gap-2">
+                <BiMapAlt className="text-2xl text-purple-600" />
+                Atractivo Turístico
+              </h3>
+              <div className="space-y-3">
+                {selectedForComparison.map((place, index) => {
+                  const data = comparisonData[place.id];
+                  return (
+                    <div key={place.id} className="bg-purple-50 rounded-lg p-3 border-2 border-purple-200">
+                      <div className="flex items-center gap-2 mb-2">
+                        <span className="px-2 py-1 rounded-full text-xs font-bold text-purple-800 bg-white/70">
+                          #{index + 1}
+                        </span>
+                        <p className="text-xs font-bold text-gray-700 truncate">{place.address}</p>
+                      </div>
+                      {data?.tourism ? (
+                        <div className="text-xs text-gray-700 leading-relaxed bg-white/60 rounded p-2">
+                          <ReactMarkdown>{data.tourism}</ReactMarkdown>
+                        </div>
+                      ) : (
+                        <p className="text-xs text-gray-500 italic">Sin información turística</p>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Botón para navegar a cada zona */}
+            <div className="bg-white rounded-xl p-5 shadow-md border-2 border-gray-200">
+              <h3 className="text-base font-bold text-gray-800 mb-4">Acciones Rápidas</h3>
+              <div className="space-y-2">
+                {selectedForComparison.map((place, index) => (
+                  <button
+                    key={place.id}
+                    onClick={() => {
+                      onGoToPlace(place);
+                      setShowComparisonPanel(false);
+                      setSelectedForComparison([]);
+                    }}
+                    className="w-full flex items-center justify-between gap-3 px-4 py-3 rounded-lg bg-gradient-to-r from-blue-50 to-cyan-50 border-2 border-blue-200 hover:border-blue-400 hover:shadow-md transition-all duration-200"
+                  >
+                    <span className="text-sm font-semibold text-gray-700 truncate">{place.address}</span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-bold text-blue-600">Ver en mapa</span>
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-blue-600" viewBox="0 0 20 20" fill="currentColor">
+                        <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
+                      </svg>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
           </div>
         </div>
       )}
