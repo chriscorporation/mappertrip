@@ -31,6 +31,7 @@ function HomeContent() {
   const [airbnbs, setAirbnbs] = useState([]);
   const [coworkingPlaces, setCoworkingPlaces] = useState([]);
   const [instagramablePlaces, setInstagramablePlaces] = useState([]);
+  const [countries, setCountries] = useState([]);
   const [placeToDelete, setPlaceToDelete] = useState(null);
   const [selectedTab, setSelectedTab] = useState('countries');
   const [highlightedPlace, setHighlightedPlace] = useState(null);
@@ -394,10 +395,23 @@ function HomeContent() {
       }
     };
 
+    const loadCountries = async () => {
+      try {
+        const response = await fetch('/api/countries');
+        const loadedCountries = await response.json();
+        if (isMounted && loadedCountries) {
+          setCountries(loadedCountries);
+        }
+      } catch (error) {
+        console.error('Error loading countries:', error);
+      }
+    };
+
     loadPlaces();
     loadAirbnbs();
     loadCoworkingPlaces();
     loadInstagramablePlaces();
+    loadCountries();
 
     return () => {
       isMounted = false;
@@ -556,6 +570,11 @@ function HomeContent() {
         selectedTab={selectedTab}
         selectedCountry={selectedCountry}
         isZonesEnabled={!!selectedCountry}
+        places={places}
+        airbnbs={airbnbs}
+        coworkingPlaces={coworkingPlaces}
+        instagramablePlaces={instagramablePlaces}
+        countries={countries}
       />
 
       {/* Panel de contenido según tab seleccionado */}
