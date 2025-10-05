@@ -189,6 +189,7 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
   const [currentPolygon, setCurrentPolygon] = useState(null);
   const [vertexToDelete, setVertexToDelete] = useState(null);
   const [deleteModalPosition, setDeleteModalPosition] = useState(null);
+  const [showTraffic, setShowTraffic] = useState(false);
   const polygonsRef = useRef({});
   const circlesRef = useRef({});
   const tempCircleRef = useRef(null);
@@ -197,6 +198,7 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
   const boundsChangeTimeoutRef = useRef(null);
   const mapClickListenerRef = useRef(null);
   const tempMarkerRef = useRef(null);
+  const trafficLayerRef = useRef(null);
 
   // Cargar estilo de mapa desde localStorage
   useEffect(() => {
@@ -242,6 +244,36 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
       if (listener) window.google.maps.event.removeListener(listener);
     };
   }, [map, onMapTypeChange]);
+
+  // Manejar capa de tráfico
+  useEffect(() => {
+    if (!map || !window.google?.maps?.TrafficLayer) return;
+
+    if (showTraffic) {
+      // Crear y mostrar capa de tráfico
+      if (!trafficLayerRef.current) {
+        trafficLayerRef.current = new window.google.maps.TrafficLayer();
+      }
+      trafficLayerRef.current.setMap(map);
+    } else {
+      // Ocultar capa de tráfico
+      if (trafficLayerRef.current) {
+        trafficLayerRef.current.setMap(null);
+      }
+    }
+
+    // Cleanup
+    return () => {
+      if (trafficLayerRef.current) {
+        trafficLayerRef.current.setMap(null);
+      }
+    };
+  }, [map, showTraffic]);
+
+  // Toggle traffic layer
+  const handleToggleTraffic = () => {
+    setShowTraffic(prev => !prev);
+  };
 
 
   useEffect(() => {
@@ -1202,6 +1234,8 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
           <MapToolbar
             mapStyle={mapStyle}
             onMapStyleChange={setMapStyle}
+            showTraffic={showTraffic}
+            onToggleTraffic={handleToggleTraffic}
           />
         )}
 

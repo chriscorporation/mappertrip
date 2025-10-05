@@ -27,7 +27,7 @@ const SAFETY_LEVELS = [
   { color: 'red', label: 'Zona Insegura', borderColor: 'border-red-600', bgColor: 'bg-red-500/20', hoverBg: 'hover:bg-red-50' },
 ];
 
-export default function MapToolbar({ mapStyle, onMapStyleChange, onToggleLegend, showLegend }) {
+export default function MapToolbar({ mapStyle, onMapStyleChange, onToggleLegend, showLegend, showTraffic, onToggleTraffic }) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [activePanel, setActivePanel] = useState(null); // 'legend' | 'styles' | null
   const toolbarRef = useRef(null);
@@ -102,13 +102,31 @@ export default function MapToolbar({ mapStyle, onMapStyleChange, onToggleLegend,
         {/* Divider */}
         <div className="w-px h-6 bg-gray-300"></div>
 
-        {/* Zoom Info (optional decorative element) */}
-        <div className="px-3 py-2 text-xs text-gray-500 font-medium hidden md:flex items-center gap-1">
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-          </svg>
-          <span>Zoom</span>
-        </div>
+        {/* Traffic Layer Toggle */}
+        <button
+          onClick={onToggleTraffic}
+          className={`
+            relative px-4 py-2.5 rounded-full transition-all duration-300 flex items-center gap-2 group
+            ${showTraffic
+              ? 'bg-gradient-to-r from-red-500 to-orange-500 text-white shadow-lg scale-105'
+              : 'hover:bg-gray-100 text-gray-700'
+            }
+          `}
+          title={showTraffic ? 'Ocultar tráfico' : 'Mostrar tráfico'}
+        >
+          <span className="text-lg group-hover:scale-110 transition-transform duration-200">
+            🚦
+          </span>
+          <span className="text-sm font-semibold hidden sm:inline">
+            Tráfico
+          </span>
+          {showTraffic && (
+            <span className="absolute -top-1 -right-1 flex h-3 w-3">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500"></span>
+            </span>
+          )}
+        </button>
       </div>
 
       {/* Legend Panel */}
