@@ -429,6 +429,7 @@ export default function ZonesPanel({
   const [showCompareModal, setShowCompareModal] = useState(false);
   const [comparisonData, setComparisonData] = useState({});
   const [selectedZoneId, setSelectedZoneId] = useState(null);
+  const [showOnlyFavorites, setShowOnlyFavorites] = useState(false);
   const inputRef = useRef(null);
   const autocompleteRef = useRef(null);
   const cardRefs = useRef({});
