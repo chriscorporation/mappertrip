@@ -117,8 +117,11 @@ export default function PerplexityNotesDisplay({ perplexityData }) {
                 <div className={`${securityConfig.iconBg} rounded-xl p-2 shadow-sm`}>
                   <BiShield className={`text-xl ${securityConfig.iconColor}`} aria-hidden="true" />
                 </div>
-                <h3 id="security-heading" className="font-bold text-sm text-gray-800">
-                  Evaluación de seguridad - {securityConfig.label}
+                <h3 id="security-heading" className="font-bold text-sm text-gray-800 flex items-center gap-2">
+                  Evaluación de seguridad -
+                  <span className={`px-3 py-1 rounded-full text-xs font-bold ${securityConfig.badgeBg} ${securityConfig.textColor}`}>
+                    {securityConfig.label}
+                  </span>
                 </h3>
               </div>
 
