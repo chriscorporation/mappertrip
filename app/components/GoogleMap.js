@@ -126,6 +126,11 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
         fullscreenControl: true,
         fullscreenControlOptions: {
           position: window.google.maps.ControlPosition.RIGHT_TOP,
+        },
+        // Añadir Overview Map (mini-mapa de navegación)
+        overviewMapControl: true,
+        overviewMapControlOptions: {
+          opened: false, // Minimizado por defecto para no saturar la UI
         }
       });
 
