@@ -17,6 +17,7 @@ import HistoryPanel from './components/HistoryPanel';
 import ComparisonDrawer from './components/ComparisonDrawer';
 import ExplorationProgress from './components/ExplorationProgress';
 import GlobalSearch from './components/GlobalSearch';
+import SmartRecommendations from './components/SmartRecommendations';
 import { useAuthStore } from './store/authStore';
 import { useAppStore } from './store/appStore';
 import { useToast } from './store/toastStore';
@@ -714,6 +715,15 @@ function HomeContent() {
 
       {/* Global Search */}
       <GlobalSearch />
+
+      {/* Smart Recommendations Panel */}
+      <SmartRecommendations
+        zones={places}
+        coworkingPlaces={coworkingPlaces}
+        instagramablePlaces={instagramablePlaces}
+        onZoneSelect={handleGoToPlace}
+        selectedCountry={selectedCountry}
+      />
 
     </div>
   );
