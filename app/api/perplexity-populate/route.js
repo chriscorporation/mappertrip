@@ -32,7 +32,7 @@ async function processPerplexityData(zone_id, zone, countryName, existing) {
 
     // Llamar a Perplexity para este campo
     try {
-      const prompt = PERPLEXITY_PROMPTS[searchType](zone.address, countryName);
+      const prompt = PERPLEXITY_PROMPTS[searchType](zone.address, countryName, zone.lat, zone.lng);
 
       const completionConfig = {
         messages: [
@@ -122,7 +122,7 @@ export async function POST(request) {
     // Obtener información de la zona
     const { data: zone, error: zoneError } = await supabaseRead
       .from('geoplaces')
-      .select('id, address, country_code')
+      .select('id, address, country_code, lat, lng')
       .eq('id', zone_id)
       .single();
 

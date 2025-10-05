@@ -627,6 +627,13 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
           radius: radiusToUse,
         });
 
+        // Agregar listener de clic para seleccionar el círculo
+        circle.addListener('click', function() {
+          if (onPolygonClick) {
+            onPolygonClick(place.id);
+          }
+        });
+
         circlesRef.current[place.id] = circle;
       }
     });

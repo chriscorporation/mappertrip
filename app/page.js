@@ -37,6 +37,7 @@ function HomeContent() {
   const [circleRadius, setCircleRadius] = useState(1000);
   const [editingCircleId, setEditingCircleId] = useState(null);
   const [editingRadius, setEditingRadius] = useState(1000);
+  const [insecurityLevels, setInsecurityLevels] = useState([]);
 
   // Sync selectedTab with URL on mount and when searchParams change
   useEffect(() => {
@@ -173,9 +174,13 @@ function HomeContent() {
     setPlaceToDelete(null);
   };
 
-  const handleColorChange = async (placeId, color) => {
+  const handleColorChange = async (placeId, safety_level_id) => {
+    // Obtener color desde los niveles cargados de la BD
+    const level = insecurityLevels.find(l => l.id === safety_level_id);
+    const color = level?.color || insecurityLevels[0]?.color || '#00C853';
+
     setPlaces(prev => prev.map(p =>
-      p.id === placeId ? { ...p, color } : p
+      p.id === placeId ? { ...p, safety_level_id, color } : p
     ));
 
     // Actualizar en Supabase
@@ -184,7 +189,7 @@ function HomeContent() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         id: placeId,
-        color
+        insecurity_level_id: safety_level_id
       })
     });
   };
@@ -233,6 +238,8 @@ function HomeContent() {
             placeId: p.place_id,
             polygon: p.polygon,
             color: p.color,
+            safety_level: p.safety_level,
+            safety_level_id: p.safety_level_id,
             country_code: p.country_code,
             is_turistic: p.is_turistic || false,
             circle_radius: p.circle_radius,
@@ -281,10 +288,23 @@ function HomeContent() {
       }
     };
 
+    const loadInsecurityLevels = async () => {
+      try {
+        const response = await fetch('/api/insecurity-levels');
+        const levels = await response.json();
+        if (isMounted && levels) {
+          setInsecurityLevels(levels);
+        }
+      } catch (error) {
+        console.error('Error loading insecurity levels:', error);
+      }
+    };
+
     loadPlaces();
     loadAirbnbs();
     loadCoworkingPlaces();
     loadInstagramablePlaces();
+    loadInsecurityLevels();
 
     return () => {
       isMounted = false;
@@ -320,7 +340,8 @@ function HomeContent() {
       const place = places.find(p => p.id === placeId);
       setPlaces(prev => prev.filter(p => p.id !== placeId));
 
-      if (place && place.polygon) {
+      // Eliminar de la base de datos si tiene polígono o círculo
+      if (place && (place.polygon || place.circle_radius)) {
         fetch(`/api/places?id=${placeId}`, { method: 'DELETE' });
       }
       setPlaceToDelete(null);
@@ -410,6 +431,7 @@ function HomeContent() {
         <ZonesPanel
           selectedCountry={selectedCountry}
           places={places}
+          insecurityLevels={insecurityLevels}
           onStartDrawing={handleStartDrawing}
           onDeletePlace={handleDeletePlace}
           onColorChange={handleColorChange}
@@ -426,7 +448,7 @@ function HomeContent() {
                 lng: placeData.lng,
                 placeId: placeData.placeId,
                 polygon: null, // Sin polígono todavía
-                color: placeData.color,
+                insecurity_level_id: placeData.insecurity_level_id ?? 0,
                 country_code: placeData.country_code
               };
 

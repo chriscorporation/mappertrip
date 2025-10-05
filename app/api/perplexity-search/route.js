@@ -40,7 +40,7 @@ export async function POST(request) {
     // Obtener información de la zona
     const { data: zone, error: zoneError } = await supabaseRead
       .from('geoplaces')
-      .select('id, address, country_code')
+      .select('id, address, country_code, lat, lng')
       .eq('id', zone_id)
       .single();
 
@@ -79,7 +79,7 @@ export async function POST(request) {
       });
     }
 
-    const prompt = PERPLEXITY_PROMPTS[search_type](zone.address, countryName);
+    const prompt = PERPLEXITY_PROMPTS[search_type](zone.address, countryName, zone.lat, zone.lng);
 
     // Configuración base para Perplexity
     const completionConfig = {

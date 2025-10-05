@@ -9,6 +9,7 @@ import { useAuthStore } from '../store/authStore';
 export default function ZonesPanel({
   selectedCountry,
   places,
+  insecurityLevels = [],
   onStartDrawing,
   onDeletePlace,
   onColorChange,
@@ -141,6 +142,7 @@ export default function ZonesPanel({
               return;
             }
 
+            const defaultLevel = insecurityLevels.find(l => l.id === 0) || insecurityLevels[0];
             const placeData = {
               id: Date.now(),
               address: place.formatted_address,
@@ -149,7 +151,8 @@ export default function ZonesPanel({
               placeId: place.place_id,
               polygon: null,
               isDrawing: false,
-              color: '#22c55e',
+              insecurity_level_id: 0, // Default: seguro
+              color: defaultLevel?.color || '#00C853',
               country_code: selectedCountry.country_code,
             };
 
@@ -368,6 +371,7 @@ export default function ZonesPanel({
               onChange={(e) => setPendingPlaceName(e.target.value)}
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && pendingPlaceName.trim()) {
+                  const defaultLevel = insecurityLevels.find(l => l.id === 0) || insecurityLevels[0];
                   const placeData = {
                     id: Date.now(),
                     address: pendingPlaceName.trim(),
@@ -376,7 +380,8 @@ export default function ZonesPanel({
                     placeId: null,
                     polygon: null,
                     isDrawing: false,
-                    color: '#22c55e',
+                    insecurity_level_id: 0, // Default: seguro
+                    color: defaultLevel?.color || '#00C853',
                     country_code: selectedCountry.country_code,
                   };
                   onAddPlace(placeData);
@@ -402,6 +407,7 @@ export default function ZonesPanel({
               onChange={(e) => setPendingPlaceName(e.target.value)}
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && pendingPlaceName.trim()) {
+                  const medioLevel = insecurityLevels.find(l => l.id === 1) || insecurityLevels[0];
                   const placeData = {
                     id: Date.now(),
                     address: pendingPlaceName.trim(),
@@ -411,7 +417,8 @@ export default function ZonesPanel({
                     polygon: null,
                     circle_radius: circleRadius,
                     isDrawing: false,
-                    color: '#8b5cf6',
+                    insecurity_level_id: 1, // Default: medio (azul) para círculos
+                    color: medioLevel?.color || '#2196F3',
                     country_code: selectedCountry.country_code,
                   };
                   onAddPlace(placeData);
@@ -568,36 +575,38 @@ export default function ZonesPanel({
 
                 {/* Safety Status Badge */}
                 <div className="mb-2">
-                  {place.color === '#22c55e' && (
+                  {place.safety_level_id === 0 && (
                     <span className="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-semibold bg-gradient-to-r from-green-100 to-emerald-100 text-green-800 border-2 border-green-200 shadow-sm hover:shadow-md transition-all duration-200 hover:scale-105">
                       <span className="animate-pulse mr-1.5">🟢</span> Zona Segura
                     </span>
                   )}
-                  {place.color === '#3b82f6' && (
+                  {place.safety_level_id === 1 && (
                     <span className="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-semibold bg-gradient-to-r from-blue-100 to-cyan-100 text-blue-800 border-2 border-blue-200 shadow-sm hover:shadow-md transition-all duration-200 hover:scale-105">
                       <span className="animate-pulse mr-1.5">🔵</span> Seguridad Media
                     </span>
                   )}
-                  {place.color === '#f97316' && (
+                  {place.safety_level_id === 2 && (
                     <span className="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-semibold bg-gradient-to-r from-orange-100 to-amber-100 text-orange-800 border-2 border-orange-200 shadow-sm hover:shadow-md transition-all duration-200 hover:scale-105">
                       <span className="animate-pulse mr-1.5">🟠</span> Seguridad Regular
                     </span>
                   )}
-                  {place.color === '#eab308' && (
+                  {place.safety_level_id === 3 && (
                     <span className="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-semibold bg-gradient-to-r from-yellow-100 to-amber-100 text-yellow-800 border-2 border-yellow-200 shadow-sm hover:shadow-md transition-all duration-200 hover:scale-105">
                       <span className="animate-pulse mr-1.5">🟡</span> Precaución
                     </span>
                   )}
-                  {place.color === '#dc2626' && (
+                  {place.safety_level_id === 4 && (
                     <span className="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-semibold bg-gradient-to-r from-red-100 to-rose-100 text-red-800 border-2 border-red-200 shadow-sm hover:shadow-md transition-all duration-200 hover:scale-105">
                       <span className="animate-pulse mr-1.5">🔴</span> Zona Insegura
                     </span>
                   )}
                 </div>
 
-                <p className="text-xs text-gray-500">
-                  Lat: {place.lat?.toFixed(6)}, Lng: {place.lng?.toFixed(6)}
-                </p>
+                {isAdminMode && (
+                  <p className="text-xs text-gray-500">
+                    Lat: {place.lat?.toFixed(6)}, Lng: {place.lng?.toFixed(6)}
+                  </p>
+                )}
 
                 {notes[place.id] && notes[place.id].length > 0 && (
                   <ul className="mt-2 text-xs text-gray-600 space-y-1">
@@ -639,7 +648,7 @@ export default function ZonesPanel({
                 )}
 
                 <div className="mt-2 flex gap-2 flex-col">
-                  {place.polygon && !place.isDrawing && (
+                  {isAdminMode && place.polygon && !place.isDrawing && (
                     <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-gradient-to-r from-emerald-50 to-teal-50 text-emerald-700 border border-emerald-200 w-fit shadow-sm hover:shadow transition-all duration-200">
                       <span className="mr-1">✓</span> Zona delimitada
                     </span>
@@ -717,16 +726,24 @@ export default function ZonesPanel({
               {isAdminMode && (
                 <div className="flex justify-around items-center pt-2 border-t border-gray-200">
                   <select
-                    value={place.color}
-                    onChange={(e) => onColorChange(place.id, e.target.value)}
+                    value={place.safety_level_id ?? 0}
+                    onChange={(e) => onColorChange(place.id, parseInt(e.target.value))}
                     className="text-xs px-2 py-1 border border-gray-300 rounded cursor-pointer"
                     style={{ color: place.color }}
                   >
-                    <option value="#22c55e" style={{ color: '#22c55e' }}>🟢 Seguro</option>
-                    <option value="#3b82f6" style={{ color: '#3b82f6' }}>🔵 Medio</option>
-                    <option value="#f97316" style={{ color: '#f97316' }}>🟠 Regular</option>
-                    <option value="#eab308" style={{ color: '#eab308' }}>🟡 Precaución</option>
-                    <option value="#dc2626" style={{ color: '#dc2626' }}>🔴 Inseguro</option>
+                    {insecurityLevels.map(level => {
+                      const emoji = ['🟢', '🔵', '🟠', '🟡', '🔴'][level.id] || '⚪';
+                      const label = level.name.charAt(0).toUpperCase() + level.name.slice(1);
+                      return (
+                        <option
+                          key={level.id}
+                          value={level.id}
+                          style={{ color: level.color }}
+                        >
+                          {emoji} {label}
+                        </option>
+                      );
+                    })}
                   </select>
                   {place.circle_radius ? (
                     <button
@@ -877,11 +894,11 @@ export default function ZonesPanel({
                   EVALUACIÓN DE SEGURIDAD
                 </h3>
                 {(() => {
-                  // Obtener la zona actual para usar su color real
+                  // Obtener la zona actual para usar su nivel de seguridad
                   const currentPlace = places.find(p => p.address === selectedZoneAddress);
-                  const zoneColor = currentPlace?.color || '#eab308';
+                  const safetyLevelId = currentPlace?.safety_level_id ?? 2;
 
-                  // Configuración basada en el color de la zona
+                  // Configuración basada en el nivel de seguridad de la zona
                   let safetyScore = 50;
                   let scoreColor = 'from-yellow-400 to-orange-500';
                   let bgColor = 'bg-yellow-50';
@@ -889,9 +906,9 @@ export default function ZonesPanel({
                   let icon = '⚠️';
                   let label = 'Media';
 
-                  // Mapeo de colores de zona a configuración de seguridad
-                  switch(zoneColor) {
-                    case '#22c55e': // Verde - Seguro
+                  // Mapeo de nivel de seguridad a configuración
+                  switch(safetyLevelId) {
+                    case 0: // Seguro
                       safetyScore = 90;
                       scoreColor = 'from-green-400 to-emerald-500';
                       bgColor = 'bg-green-50';
@@ -899,7 +916,7 @@ export default function ZonesPanel({
                       icon = '🛡️';
                       label = 'Alta';
                       break;
-                    case '#3b82f6': // Azul - Medio
+                    case 1: // Medio
                       safetyScore = 70;
                       scoreColor = 'from-blue-400 to-cyan-500';
                       bgColor = 'bg-blue-50';
@@ -907,7 +924,7 @@ export default function ZonesPanel({
                       icon = '🔷';
                       label = 'Media-Alta';
                       break;
-                    case '#f97316': // Naranja - Regular
+                    case 2: // Regular
                       safetyScore = 50;
                       scoreColor = 'from-orange-400 to-amber-500';
                       bgColor = 'bg-orange-50';
@@ -915,7 +932,7 @@ export default function ZonesPanel({
                       icon = '⚠️';
                       label = 'Media';
                       break;
-                    case '#eab308': // Amarillo - Precaución
+                    case 3: // Precaución
                       safetyScore = 30;
                       scoreColor = 'from-yellow-400 to-amber-400';
                       bgColor = 'bg-yellow-50';
@@ -923,7 +940,7 @@ export default function ZonesPanel({
                       icon = '⚡';
                       label = 'Precaución';
                       break;
-                    case '#dc2626': // Rojo - Inseguro
+                    case 4: // Inseguro
                       safetyScore = 15;
                       scoreColor = 'from-red-400 to-rose-500';
                       bgColor = 'bg-red-50';

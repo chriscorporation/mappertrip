@@ -13,18 +13,39 @@ const supabaseWrite = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY
 );
 
-// GET - Leer todos los lugares del usuario
+// GET - Leer todos los lugares del usuario con nivel de inseguridad y color
 export async function GET() {
   const { data, error } = await supabaseRead
     .from('geoplaces')
-    .select('*')
+    .select(`
+      *,
+      insecurity_level:insecurity_level_id (
+        id,
+        name,
+        color_insecurity:color_id (
+          id,
+          name,
+          hex_code
+        )
+      )
+    `)
     .order('created_at', { ascending: false });
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  return NextResponse.json(data);
+  // Normalizar datos para mantener compatibilidad con el frontend
+  const normalizedData = data.map(place => ({
+    ...place,
+    // Mantener el color existente o usar el de la relación
+    color: place.insecurity_level?.color_insecurity?.hex_code || place.color,
+    // Añadir información adicional del nivel de seguridad
+    safety_level: place.insecurity_level?.name,
+    safety_level_id: place.insecurity_level?.id
+  }));
+
+  return NextResponse.json(normalizedData);
 }
 
 // POST - Crear un nuevo lugar
@@ -39,10 +60,40 @@ export async function POST(request) {
     lng: parseFloat(body.lng),
     place_id: body.placeId,
     polygon: body.polygon,
-    color: body.color || '#22c55e',
     country_code: body.country_code || 'AR',
     is_turistic: body.is_turistic || false
   };
+
+  // Determinar insecurity_level_id basado en el color si viene del frontend antiguo
+  if (body.insecurity_level_id !== undefined) {
+    insertData.insecurity_level_id = body.insecurity_level_id;
+  } else if (body.color) {
+    // Mapeo de colores legacy a IDs de nivel de seguridad
+    const colorToLevelMap = {
+      '#00C853': 0, // seguro
+      '#2196F3': 1, // medio
+      '#FF9800': 2, // regular
+      '#FFC107': 3, // precaucion
+      '#F44336': 4, // inseguro
+      '#22c55e': 0, // legacy verde
+      '#eb4034': 4  // legacy rojo
+    };
+    insertData.insecurity_level_id = colorToLevelMap[body.color] || 0;
+  } else {
+    // Default: seguro
+    insertData.insecurity_level_id = 0;
+  }
+
+  // Obtener el color correcto desde la tabla
+  const { data: levelData } = await supabaseRead
+    .from('insecurity_level')
+    .select('color_insecurity(hex_code)')
+    .eq('id', insertData.insecurity_level_id)
+    .single();
+
+  if (levelData) {
+    insertData.color = levelData.color_insecurity.hex_code;
+  }
 
   // Agregar circle_radius solo si está definido
   if (body.circle_radius !== undefined) {
@@ -74,9 +125,32 @@ export async function PUT(request) {
   if (body.lng !== undefined) updateData.lng = parseFloat(body.lng);
   if (body.placeId !== undefined) updateData.place_id = body.placeId;
   if (body.polygon !== undefined) updateData.polygon = body.polygon;
-  if (body.color !== undefined) updateData.color = body.color;
   if (body.is_turistic !== undefined) updateData.is_turistic = body.is_turistic;
   if (body.circle_radius !== undefined) updateData.circle_radius = body.circle_radius;
+
+  // Manejar insecurity_level_id y color
+  if (body.insecurity_level_id !== undefined) {
+    updateData.insecurity_level_id = body.insecurity_level_id;
+
+    // Obtener el color correcto desde la tabla
+    const { data: levelData } = await supabaseRead
+      .from('insecurity_level')
+      .select('color_insecurity(hex_code)')
+      .eq('id', body.insecurity_level_id)
+      .single();
+
+    if (levelData) {
+      updateData.color = levelData.color_insecurity.hex_code;
+    }
+  } else if (body.color !== undefined) {
+    // Si viene solo color (legacy), mapear a insecurity_level_id
+    const colorToLevelMap = {
+      '#00C853': 0, '#2196F3': 1, '#FF9800': 2,
+      '#FFC107': 3, '#F44336': 4, '#22c55e': 0, '#eb4034': 4
+    };
+    updateData.insecurity_level_id = colorToLevelMap[body.color] || 0;
+    updateData.color = body.color;
+  }
 
   const { data, error } = await supabaseWrite
     .from('geoplaces')
