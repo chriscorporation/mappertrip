@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { BiMapPin, BiStar, BiDollar, BiLinkExternal } from 'react-icons/bi';
+import { BiMapPin, BiStar, BiDollar, BiLinkExternal, BiErrorCircle } from 'react-icons/bi';
 import { useAuthStore } from '../store/authStore';
 
 export default function AirbnbPanel({ onGoToLocation, selectedCountry }) {
@@ -301,8 +301,9 @@ export default function AirbnbPanel({ onGoToLocation, selectedCountry }) {
               )}
 
               {airbnb.error && (
-                <div className="mt-2 text-xs text-red-600 bg-red-50 p-2 rounded">
-                  ⚠️ {airbnb.error}
+                <div className="mt-2 text-xs text-red-600 bg-red-50 p-2 rounded flex items-center gap-1">
+                  <BiErrorCircle className="flex-shrink-0" />
+                  <span>{airbnb.error}</span>
                 </div>
               )}
             </div>

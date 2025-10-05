@@ -2,7 +2,7 @@
 
 import { useRef, useEffect, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
-import { BiDollar, BiShield, BiMapAlt, BiInfoCircle, BiMapPin } from 'react-icons/bi';
+import { BiDollar, BiShield, BiMapAlt, BiInfoCircle, BiMapPin, BiCircle, BiError, BiErrorCircle, BiXCircle, BiShieldAlt2 } from 'react-icons/bi';
 import { HiOutlineSparkles } from 'react-icons/hi';
 import { useAuthStore } from '../store/authStore';
 
@@ -577,27 +577,27 @@ export default function ZonesPanel({
                 <div className="mb-2">
                   {place.safety_level_id === 0 && (
                     <span className="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-semibold bg-gradient-to-r from-green-100 to-emerald-100 text-green-800 border-2 border-green-200 shadow-sm hover:shadow-md transition-all duration-200 hover:scale-105">
-                      <span className="animate-pulse mr-1.5">🟢</span> Zona Segura
+                      <BiCircle className="animate-pulse mr-1.5 text-green-600" /> Zona Segura
                     </span>
                   )}
                   {place.safety_level_id === 1 && (
                     <span className="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-semibold bg-gradient-to-r from-blue-100 to-cyan-100 text-blue-800 border-2 border-blue-200 shadow-sm hover:shadow-md transition-all duration-200 hover:scale-105">
-                      <span className="animate-pulse mr-1.5">🔵</span> Seguridad Media
+                      <BiCircle className="animate-pulse mr-1.5 text-blue-600" /> Seguridad Media
                     </span>
                   )}
                   {place.safety_level_id === 2 && (
                     <span className="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-semibold bg-gradient-to-r from-orange-100 to-amber-100 text-orange-800 border-2 border-orange-200 shadow-sm hover:shadow-md transition-all duration-200 hover:scale-105">
-                      <span className="animate-pulse mr-1.5">🟠</span> Seguridad Regular
+                      <BiCircle className="animate-pulse mr-1.5 text-orange-600" /> Seguridad Regular
                     </span>
                   )}
                   {place.safety_level_id === 3 && (
                     <span className="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-semibold bg-gradient-to-r from-yellow-100 to-amber-100 text-yellow-800 border-2 border-yellow-200 shadow-sm hover:shadow-md transition-all duration-200 hover:scale-105">
-                      <span className="animate-pulse mr-1.5">🟡</span> Precaución
+                      <BiCircle className="animate-pulse mr-1.5 text-yellow-600" /> Precaución
                     </span>
                   )}
                   {place.safety_level_id === 4 && (
                     <span className="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-semibold bg-gradient-to-r from-red-100 to-rose-100 text-red-800 border-2 border-red-200 shadow-sm hover:shadow-md transition-all duration-200 hover:scale-105">
-                      <span className="animate-pulse mr-1.5">🔴</span> Zona Insegura
+                      <BiCircle className="animate-pulse mr-1.5 text-red-600" /> Zona Insegura
                     </span>
                   )}
                 </div>
@@ -903,7 +903,7 @@ export default function ZonesPanel({
                   let scoreColor = 'from-yellow-400 to-orange-500';
                   let bgColor = 'bg-yellow-50';
                   let textColor = 'text-yellow-800';
-                  let icon = '⚠️';
+                  let IconComponent = BiError;
                   let label = 'Media';
 
                   // Mapeo de nivel de seguridad a configuración
@@ -913,7 +913,7 @@ export default function ZonesPanel({
                       scoreColor = 'from-green-400 to-emerald-500';
                       bgColor = 'bg-green-50';
                       textColor = 'text-green-800';
-                      icon = '🛡️';
+                      IconComponent = BiShield;
                       label = 'Alta';
                       break;
                     case 1: // Medio
@@ -921,7 +921,7 @@ export default function ZonesPanel({
                       scoreColor = 'from-blue-400 to-cyan-500';
                       bgColor = 'bg-blue-50';
                       textColor = 'text-blue-800';
-                      icon = '🔷';
+                      IconComponent = BiShieldAlt2;
                       label = 'Media-Alta';
                       break;
                     case 2: // Regular
@@ -929,7 +929,7 @@ export default function ZonesPanel({
                       scoreColor = 'from-orange-400 to-amber-500';
                       bgColor = 'bg-orange-50';
                       textColor = 'text-orange-800';
-                      icon = '⚠️';
+                      IconComponent = BiError;
                       label = 'Media';
                       break;
                     case 3: // Precaución
@@ -937,7 +937,7 @@ export default function ZonesPanel({
                       scoreColor = 'from-yellow-400 to-amber-400';
                       bgColor = 'bg-yellow-50';
                       textColor = 'text-yellow-800';
-                      icon = '⚡';
+                      IconComponent = BiErrorCircle;
                       label = 'Precaución';
                       break;
                     case 4: // Inseguro
@@ -945,7 +945,7 @@ export default function ZonesPanel({
                       scoreColor = 'from-red-400 to-rose-500';
                       bgColor = 'bg-red-50';
                       textColor = 'text-red-800';
-                      icon = '🚨';
+                      IconComponent = BiXCircle;
                       label = 'Baja';
                       break;
                     default:
@@ -977,7 +977,7 @@ export default function ZonesPanel({
                       {/* Security Level Badge */}
                       <div className={`${bgColor} rounded-xl p-3 flex items-center justify-between`}>
                         <div className="flex items-center gap-2">
-                          <span className="text-2xl">{icon}</span>
+                          <IconComponent className="text-2xl" />
                           <div>
                             <p className="text-xs text-gray-600 font-medium">Nivel de Seguridad</p>
                             <p className={`text-sm font-bold ${textColor}`}>{label}</p>
@@ -1008,7 +1008,7 @@ export default function ZonesPanel({
                 </div>
                 <div className="flex items-center gap-2">
                   <span
-                    className={`inline-flex items-center px-4 py-2 rounded-full text-sm font-bold shadow-sm ${
+                    className={`inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-bold shadow-sm ${
                       perplexityData.secure.toLowerCase().includes('buena') || perplexityData.secure.toLowerCase().includes('aceptable')
                         ? 'bg-gradient-to-r from-green-100 to-emerald-100 text-green-800 border-2 border-green-300'
                         : perplexityData.secure.toLowerCase().includes('media')
@@ -1018,8 +1018,8 @@ export default function ZonesPanel({
                     title={`Nivel de seguridad de la zona: ${perplexityData.secure}`}
                     aria-label={`Seguridad: ${perplexityData.secure}`}
                   >
-                    {perplexityData.secure.toLowerCase().includes('buena') || perplexityData.secure.toLowerCase().includes('aceptable') ? '🛡️' :
-                     perplexityData.secure.toLowerCase().includes('media') ? '⚠️' : '🚨'} {perplexityData.secure}
+                    {perplexityData.secure.toLowerCase().includes('buena') || perplexityData.secure.toLowerCase().includes('aceptable') ? <BiShield /> :
+                     perplexityData.secure.toLowerCase().includes('media') ? <BiError /> : <BiXCircle />} {perplexityData.secure}
                   </span>
                 </div>
               </div>
