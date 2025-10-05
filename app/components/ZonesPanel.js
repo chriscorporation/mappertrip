@@ -48,6 +48,7 @@ export default function ZonesPanel({
   const [tempTitle, setTempTitle] = useState('');
   const [streetViewPlace, setStreetViewPlace] = useState(null);
   const [streetViewLoading, setStreetViewLoading] = useState(false);
+  const [searchFilter, setSearchFilter] = useState('');
   const inputRef = useRef(null);
   const autocompleteRef = useRef(null);
   const cardRefs = useRef({});
@@ -345,12 +346,62 @@ export default function ZonesPanel({
 
   const countryPlaces = places.filter(p => p.country_code === selectedCountry.country_code);
 
+  // Filter zones based on search query
+  const filteredPlaces = countryPlaces.filter(place =>
+    place.address.toLowerCase().includes(searchFilter.toLowerCase())
+  );
+
   return (
     <div className="flex">
     <div className="w-80 bg-white border-r border-gray-300 flex flex-col">
       <div className="p-4 border-b border-gray-200">
         <h2 className="text-xl font-bold">Zones</h2>
         <p className="text-xs text-gray-500 mt-1">{selectedCountry.name}</p>
+      </div>
+
+      {/* Search/Filter Bar */}
+      <div className="px-4 py-3 border-b border-gray-200 bg-gradient-to-r from-gray-50 to-blue-50">
+        <div className="relative">
+          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+            <svg
+              className="h-4 w-4 text-gray-400"
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 20 20"
+              fill="currentColor"
+            >
+              <path fillRule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clipRule="evenodd" />
+            </svg>
+          </div>
+          <input
+            type="text"
+            value={searchFilter}
+            onChange={(e) => setSearchFilter(e.target.value)}
+            placeholder="Buscar zonas..."
+            className="w-full pl-10 pr-10 py-2 text-sm border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 bg-white"
+          />
+          {searchFilter && (
+            <button
+              onClick={() => setSearchFilter('')}
+              className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600 transition-colors"
+              title="Limpiar búsqueda"
+            >
+              <svg
+                className="h-4 w-4"
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 20 20"
+                fill="currentColor"
+              >
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+              </svg>
+            </button>
+          )}
+        </div>
+        {searchFilter && (
+          <p className="text-xs text-gray-600 mt-2 flex items-center gap-1">
+            <span className="font-semibold">{filteredPlaces.length}</span>
+            {filteredPlaces.length === 1 ? 'zona encontrada' : 'zonas encontradas'}
+          </p>
+        )}
       </div>
 
       {isAdminMode && (
@@ -495,12 +546,24 @@ export default function ZonesPanel({
             </p>
           </div>
         )}
-        {countryPlaces.length === 0 && !pendingPlace ? (
-          <p className="text-gray-500 text-sm text-center mt-4">
-            No hay zonas creadas para {selectedCountry.name}
-          </p>
+        {filteredPlaces.length === 0 && !pendingPlace && !pendingCircle ? (
+          <div className="text-center py-8">
+            {searchFilter ? (
+              <div className="space-y-2">
+                <div className="text-4xl">🔍</div>
+                <p className="text-gray-500 text-sm font-medium">No se encontraron zonas</p>
+                <p className="text-gray-400 text-xs">
+                  Intenta con otro término de búsqueda
+                </p>
+              </div>
+            ) : (
+              <p className="text-gray-500 text-sm">
+                No hay zonas creadas para {selectedCountry.name}
+              </p>
+            )}
+          </div>
         ) : (
-          countryPlaces.map(place => (
+          filteredPlaces.map(place => (
             <div
               key={place.id}
               ref={el => cardRefs.current[place.id] = el}
