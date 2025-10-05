@@ -1284,7 +1284,7 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
 
   return (
     <>
-      <div className="relative w-full h-full">
+      <div className="relative w-full h-full" data-tour-id="google-map">
         {/* Loading skeleton */}
         {isMapLoading && (
           <div className="absolute inset-0 z-10 bg-gradient-to-br from-gray-100 via-gray-50 to-blue-50 flex items-center justify-center animate-pulse">
