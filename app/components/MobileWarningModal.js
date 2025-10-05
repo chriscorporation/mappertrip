@@ -49,7 +49,7 @@ export default function MobileWarningModal() {
     >
       {/* Overlay */}
       <div
-        className="absolute bg-gray-900 bg-opacity-20"
+        className="absolute bg-gray-600 bg-opacity-20"
         style={{
           top: 0,
           left: 0,
