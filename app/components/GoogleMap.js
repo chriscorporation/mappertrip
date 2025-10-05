@@ -8,6 +8,7 @@ import MapLayersControl from './MapLayersControl';
 import StreetViewPreview from './StreetViewPreview';
 import ZoomControls from './ZoomControls';
 import HeatMapControl from './HeatMapControl';
+import FavoritesPanel from './FavoritesPanel';
 
 // Estilos de mapa predefinidos
 const MAP_STYLES = {
@@ -1838,6 +1839,21 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
 
       {/* Controles de zoom mejorados con indicador de escala */}
       <ZoomControls map={map} />
+
+      {/* Panel de favoritos flotante */}
+      <FavoritesPanel
+        onZoneSelect={(zone) => {
+          if (map && zone.lat && zone.lng) {
+            map.panTo({ lat: zone.lat, lng: zone.lng });
+            map.setZoom(14);
+            // Disparar evento de clic en el polígono si existe
+            if (onPolygonClick) {
+              onPolygonClick(zone);
+            }
+          }
+        }}
+        currentZoneId={selectedPlace?.id}
+      />
     </>
   );
 }

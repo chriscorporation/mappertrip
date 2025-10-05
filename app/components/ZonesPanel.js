@@ -4,10 +4,11 @@ import { useRef, useEffect, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { BiDollar, BiShield, BiMapAlt, BiInfoCircle, BiMapPin } from 'react-icons/bi';
 import { HiOutlineSparkles } from 'react-icons/hi';
-import { FiLayers, FiCheck } from 'react-icons/fi';
+import { FiLayers, FiCheck, FiHeart } from 'react-icons/fi';
 import { useAuthStore } from '../store/authStore';
 import { useToast } from '../store/toastStore';
 import { useComparisonStore } from '../store/comparisonStore';
+import { useFavoritesStore } from '../store/favoritesStore';
 import SkeletonLoader from './SkeletonLoader';
 
 // Componente para card de comparación
@@ -403,6 +404,7 @@ export default function ZonesPanel({
   const { isAuthenticated } = useAuthStore();
   const toast = useToast();
   const { addZoneToComparison, isZoneInComparison, comparedZones } = useComparisonStore();
+  const { addFavorite, removeFavorite, isFavorite } = useFavoritesStore();
   const isAdminMode = isAuthenticated;
   const [address, setAddress] = useState('');
   const [hoverEnabled, setHoverEnabled] = useState(false);
@@ -426,8 +428,7 @@ export default function ZonesPanel({
   const [selectedForCompare, setSelectedForCompare] = useState([]);
   const [showCompareModal, setShowCompareModal] = useState(false);
   const [comparisonData, setComparisonData] = useState({});
-  const [favorites, setFavorites] = useState([]);
-  const [showOnlyFavorites, setShowOnlyFavorites] = useState(false);
+  const [selectedZoneId, setSelectedZoneId] = useState(null);
   const inputRef = useRef(null);
   const autocompleteRef = useRef(null);
   const cardRefs = useRef({});
@@ -438,37 +439,29 @@ export default function ZonesPanel({
   const streetViewPanoramaRef = useRef(null);
   const streetViewDivRef = useRef(null);
 
-  // Cargar favoritos desde localStorage al montar el componente
-  useEffect(() => {
-    const savedFavorites = localStorage.getItem('maptrip_favorites');
-    if (savedFavorites) {
-      try {
-        setFavorites(JSON.parse(savedFavorites));
-      } catch (error) {
-        console.error('Error loading favorites:', error);
-      }
+  // Manejar toggle de favoritos
+  const handleToggleFavorite = (place) => {
+    if (isFavorite(place.id)) {
+      removeFavorite(place.id);
+      toast.showToast('Zona removida de favoritos', 'info');
+    } else {
+      addFavorite(place);
+      toast.showToast('Zona añadida a favoritos', 'success');
     }
-  }, []);
-
-  // Guardar favoritos en localStorage cuando cambian
-  useEffect(() => {
-    localStorage.setItem('maptrip_favorites', JSON.stringify(favorites));
-  }, [favorites]);
-
-  // Toggle favorito
-  const toggleFavorite = (placeId) => {
-    setFavorites(prev => {
-      const isRemoving = prev.includes(placeId);
-
-      if (isRemoving) {
-        toast.info('Zona eliminada de favoritos');
-        return prev.filter(id => id !== placeId);
-      } else {
-        toast.success('Zona añadida a favoritos');
-        return [...prev, placeId];
-      }
-    });
   };
+
+  // Manejar clic en zona (desde el panel o desde el mapa)
+  const handleZoneSelect = (zone) => {
+    setSelectedZoneId(zone.id);
+    if (onGoToPlace) {
+      onGoToPlace(zone);
+    }
+    // Abrir panel de detalles si es necesario
+    setShowPerplexityPanel(true);
+    setSelectedZoneAddress(zone.address);
+    fetchPerplexityData(zone.id);
+  };
+
 
   // Detectar cuando se agrega una nueva zona y hacer scroll + seleccionar
   useEffect(() => {
@@ -1665,25 +1658,60 @@ export default function ZonesPanel({
           aria-label="Panel de información de la zona"
         >
           <div className="sticky top-0 bg-white border-b border-gray-200 p-4 flex justify-between items-center">
-            <h2 className="text-lg font-bold text-gray-400" title={`Información sobre ${selectedZoneAddress}`}>
+            <h2 className="text-lg font-bold text-gray-400 flex-1" title={`Información sobre ${selectedZoneAddress}`}>
               {selectedZoneAddress}
             </h2>
-            <button
-              onClick={() => setShowPerplexityPanel(false)}
-              className="p-2 hover:bg-gray-100 rounded cursor-pointer"
-              title="Cerrar panel de información"
-              aria-label="Cerrar panel de información"
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="h-5 w-5"
-                viewBox="0 0 20 20"
-                fill="currentColor"
-                aria-hidden="true"
+            <div className="flex items-center gap-2">
+              {/* Botón de favoritos */}
+              <button
+                onClick={() => {
+                  const place = places.find(p => p.address === selectedZoneAddress);
+                  if (place) handleToggleFavorite(place);
+                }}
+                className={`p-2 rounded-lg transition-all duration-300 ${
+                  (() => {
+                    const place = places.find(p => p.address === selectedZoneAddress);
+                    return place && isFavorite(place.id)
+                      ? 'bg-pink-100 text-pink-600 hover:bg-pink-200'
+                      : 'hover:bg-gray-100 text-gray-600'
+                  })()
+                }`}
+                title={(() => {
+                  const place = places.find(p => p.address === selectedZoneAddress);
+                  return place && isFavorite(place.id) ? 'Remover de favoritos' : 'Añadir a favoritos';
+                })()}
+                aria-label={(() => {
+                  const place = places.find(p => p.address === selectedZoneAddress);
+                  return place && isFavorite(place.id) ? 'Remover de favoritos' : 'Añadir a favoritos';
+                })()}
               >
-                <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
-              </svg>
-            </button>
+                <FiHeart
+                  className="h-5 w-5"
+                  fill={(() => {
+                    const place = places.find(p => p.address === selectedZoneAddress);
+                    return place && isFavorite(place.id) ? 'currentColor' : 'none';
+                  })()}
+                />
+              </button>
+
+              {/* Botón de cerrar */}
+              <button
+                onClick={() => setShowPerplexityPanel(false)}
+                className="p-2 hover:bg-gray-100 rounded cursor-pointer"
+                title="Cerrar panel de información"
+                aria-label="Cerrar panel de información"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="h-5 w-5"
+                  viewBox="0 0 20 20"
+                  fill="currentColor"
+                  aria-hidden="true"
+                >
+                  <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                </svg>
+              </button>
+            </div>
           </div>
 
           <div className="p-4 space-y-4" role="region" aria-label="Información detallada de la zona">
