@@ -4,8 +4,9 @@ import { useState } from 'react';
 
 export default function QuickStatsPanel({ places, selectedCountry }) {
   const [isExpanded, setIsExpanded] = useState(true);
+  const [isVisible, setIsVisible] = useState(true);
 
-  if (!selectedCountry) return null;
+  if (!selectedCountry || !isVisible) return null;
 
   // Filtrar zonas del país seleccionado
   const countryPlaces = places.filter(p => p.country_code === selectedCountry.country_code);
@@ -30,26 +31,43 @@ export default function QuickStatsPanel({ places, selectedCountry }) {
     <div className="absolute bottom-24 right-6 z-20 animate-[fadeIn_0.4s_ease-out]">
       <div className="bg-white/95 backdrop-blur-sm rounded-2xl shadow-2xl border-2 border-gray-200 overflow-hidden max-w-xs">
         {/* Header */}
-        <div
-          className="bg-gradient-to-r from-indigo-600 to-purple-600 text-white p-4 cursor-pointer hover:from-indigo-700 hover:to-purple-700 transition-all duration-300"
-          onClick={() => setIsExpanded(!isExpanded)}
-        >
+        <div className="bg-gradient-to-r from-indigo-600 to-purple-600 text-white p-4">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
+            <div
+              className="flex items-center gap-2 flex-1 cursor-pointer hover:opacity-80 transition-opacity duration-200"
+              onClick={() => setIsExpanded(!isExpanded)}
+            >
               <span className="text-2xl">📊</span>
               <div>
                 <h3 className="font-bold text-sm">Estadísticas Rápidas</h3>
                 <p className="text-xs opacity-90">{selectedCountry.name}</p>
               </div>
             </div>
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              className={`h-5 w-5 transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''}`}
-              viewBox="0 0 20 20"
-              fill="currentColor"
-            >
-              <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
-            </svg>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setIsExpanded(!isExpanded)}
+                className="p-1 hover:bg-white/20 rounded-full transition-colors duration-200"
+                title={isExpanded ? "Minimizar" : "Expandir"}
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className={`h-5 w-5 transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''}`}
+                  viewBox="0 0 20 20"
+                  fill="currentColor"
+                >
+                  <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
+                </svg>
+              </button>
+              <button
+                onClick={() => setIsVisible(false)}
+                className="p-1 hover:bg-white/20 rounded-full transition-colors duration-200 cursor-pointer"
+                title="Cerrar panel"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                </svg>
+              </button>
+            </div>
           </div>
         </div>
 

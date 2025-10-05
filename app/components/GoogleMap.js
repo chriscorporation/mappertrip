@@ -198,6 +198,7 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
     caution: true,
     unsafe: true
   });
+  const [showFiltersPanel, setShowFiltersPanel] = useState(true);
   const [showFABMenu, setShowFABMenu] = useState(false);
   const [marker, setMarker] = useState(null);
   const [airbnbMarker, setAirbnbMarker] = useState(null);
@@ -1360,12 +1361,23 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
         )}
 
         {/* Safety Filters */}
-        {!isMapLoading && (
+        {!isMapLoading && showFiltersPanel && (
           <div className="absolute top-6 right-6 z-20 flex flex-col gap-2">
             <div className="bg-white/95 backdrop-blur-sm rounded-xl shadow-lg border-2 border-gray-200 p-3">
               <div className="flex items-center gap-2 mb-2">
-                <span className="text-lg">🔍</span>
-                <span className="text-xs font-bold text-gray-700">Filtros de Seguridad</span>
+                <div className="flex items-center gap-2 flex-1">
+                  <span className="text-lg">🔍</span>
+                  <span className="text-xs font-bold text-gray-700">Filtros de Seguridad</span>
+                </div>
+                <button
+                  onClick={() => setShowFiltersPanel(false)}
+                  className="p-1 hover:bg-gray-100 rounded-full transition-colors duration-200 cursor-pointer"
+                  title="Cerrar panel"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-gray-500" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                  </svg>
+                </button>
               </div>
               <div className="flex flex-col gap-2">
                 <button

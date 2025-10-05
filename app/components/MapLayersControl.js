@@ -10,6 +10,7 @@ export default function MapLayersControl({
   onLayersChange
 }) {
   const [isExpanded, setIsExpanded] = useState(false);
+  const [isVisible, setIsVisible] = useState(true);
   const [layers, setLayers] = useState({
     zones: true,
     airbnbs: true,
@@ -66,6 +67,8 @@ export default function MapLayersControl({
 
   const totalActive = Object.entries(layers).filter(([key, value]) => value).length;
 
+  if (!isVisible) return null;
+
   return (
     <div className="absolute top-36 right-6 z-20 flex flex-col items-end gap-2">
       {/* Botón principal compacto */}
@@ -93,15 +96,26 @@ export default function MapLayersControl({
               <span className="text-xl">🗂️</span>
               <h3 className="font-bold text-sm text-gray-800">Control de Capas</h3>
             </div>
-            <button
-              onClick={() => setIsExpanded(false)}
-              className="p-1 hover:bg-gray-100 rounded-full transition-colors duration-200"
-              title="Minimizar"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-gray-500" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
-              </svg>
-            </button>
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => setIsExpanded(false)}
+                className="p-1 hover:bg-gray-100 rounded-full transition-colors duration-200 cursor-pointer"
+                title="Minimizar"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-gray-500" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M14.707 12.707a1 1 0 01-1.414 0L10 9.414l-3.293 3.293a1 1 0 01-1.414-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 010 1.414z" clipRule="evenodd" />
+                </svg>
+              </button>
+              <button
+                onClick={() => setIsVisible(false)}
+                className="p-1 hover:bg-gray-100 rounded-full transition-colors duration-200 cursor-pointer"
+                title="Cerrar panel"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-gray-500" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                </svg>
+              </button>
+            </div>
           </div>
 
           {/* Botón toggle all */}

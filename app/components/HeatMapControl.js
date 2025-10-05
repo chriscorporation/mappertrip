@@ -13,6 +13,7 @@ export default function HeatMapControl({ map, places, selectedCountry, isMapLoad
   const [heatMapLayer, setHeatMapLayer] = useState(null);
   const [intensity, setIntensity] = useState(1);
   const [showSettings, setShowSettings] = useState(false);
+  const [isVisible, setIsVisible] = useState(true);
 
   // Track heatmap feature usage
   useEffect(() => {
@@ -176,54 +177,72 @@ export default function HeatMapControl({ map, places, selectedCountry, isMapLoad
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [showSettings]);
 
-  // No mostrar el control si el mapa está cargando
-  if (isMapLoading) return null;
+  // No mostrar el control si el mapa está cargando o no es visible
+  if (isMapLoading || !isVisible) return null;
 
   return (
     <div className="absolute top-32 right-6 z-20 heatmap-control">
       {/* Botón principal del control */}
       <div className="bg-white/95 backdrop-blur-sm rounded-xl shadow-lg border-2 border-gray-200 overflow-hidden">
-        <button
-          onClick={() => setShowHeatMap(!showHeatMap)}
-          className={`
-            flex items-center gap-3 px-4 py-3 w-full transition-all duration-300
-            ${showHeatMap
-              ? 'bg-gradient-to-r from-red-500 to-orange-500 text-white shadow-lg'
-              : 'hover:bg-gray-50'
-            }
-          `}
-          title={showHeatMap ? "Desactivar mapa de calor" : "Activar mapa de calor"}
-        >
-          <span className={`text-xl ${showHeatMap ? 'animate-pulse' : ''}`}>🔥</span>
-          <div className="flex flex-col items-start">
-            <span className={`text-sm font-semibold ${showHeatMap ? 'text-white' : 'text-gray-700'}`}>
-              Mapa de Calor
-            </span>
-            <span className={`text-xs ${showHeatMap ? 'text-white/80' : 'text-gray-500'}`}>
-              {showHeatMap ? 'Activado' : 'Desactivado'}
-            </span>
-          </div>
-          {showHeatMap && (
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                setShowSettings(!showSettings);
-              }}
-              className="ml-auto p-1 hover:bg-white/20 rounded-full transition-colors"
-              title="Configuración"
-            >
-              <svg
-                className={`w-4 h-4 text-white transition-transform duration-300 ${showSettings ? 'rotate-90' : ''}`}
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
+        <div className="relative">
+          <button
+            onClick={() => setShowHeatMap(!showHeatMap)}
+            className={`
+              flex items-center gap-3 px-4 py-3 w-full transition-all duration-300
+              ${showHeatMap
+                ? 'bg-gradient-to-r from-red-500 to-orange-500 text-white shadow-lg'
+                : 'hover:bg-gray-50'
+              }
+            `}
+            title={showHeatMap ? "Desactivar mapa de calor" : "Activar mapa de calor"}
+          >
+            <span className={`text-xl ${showHeatMap ? 'animate-pulse' : ''}`}>🔥</span>
+            <div className="flex flex-col items-start flex-1">
+              <span className={`text-sm font-semibold ${showHeatMap ? 'text-white' : 'text-gray-700'}`}>
+                Mapa de Calor
+              </span>
+              <span className={`text-xs ${showHeatMap ? 'text-white/80' : 'text-gray-500'}`}>
+                {showHeatMap ? 'Activado' : 'Desactivado'}
+              </span>
+            </div>
+            <div className="flex items-center gap-1">
+              {showHeatMap && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setShowSettings(!showSettings);
+                  }}
+                  className="p-1 hover:bg-white/20 rounded-full transition-colors cursor-pointer"
+                  title="Configuración"
+                >
+                  <svg
+                    className={`w-4 h-4 text-white transition-transform duration-300 ${showSettings ? 'rotate-90' : ''}`}
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                  </svg>
+                </button>
+              )}
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setIsVisible(false);
+                }}
+                className={`p-1 rounded-full transition-colors cursor-pointer ${
+                  showHeatMap ? 'hover:bg-white/20' : 'hover:bg-gray-100'
+                }`}
+                title="Cerrar panel"
               >
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-              </svg>
-            </button>
-          )}
-        </button>
+                <svg xmlns="http://www.w3.org/2000/svg" className={`h-4 w-4 ${showHeatMap ? 'text-white' : 'text-gray-500'}`} viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                </svg>
+              </button>
+            </div>
+          </button>
+        </div>
 
         {/* Panel de configuración */}
         {showHeatMap && showSettings && (
