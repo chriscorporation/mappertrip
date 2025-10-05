@@ -15,6 +15,7 @@ import RealTimeMetrics from './components/RealTimeMetrics';
 import OnboardingTour from './components/OnboardingTour';
 import HistoryPanel from './components/HistoryPanel';
 import ComparisonDrawer from './components/ComparisonDrawer';
+import ExplorationProgress from './components/ExplorationProgress';
 import { useAuthStore } from './store/authStore';
 import { useAppStore } from './store/appStore';
 import { useToast } from './store/toastStore';
@@ -209,6 +210,10 @@ function HomeContent() {
     // Agregar al historial si es una zona válida
     if (place && place.id && place.address) {
       addVisitedZone(place);
+      // Track zone visit for gamification
+      if (window.trackZoneVisit) {
+        window.trackZoneVisit(place.id);
+      }
     }
   };
 
@@ -326,6 +331,11 @@ function HomeContent() {
   const handleSelectCountry = (country) => {
     setSelectedCountry(country);
     router.push('/?tab=zones');
+
+    // Track country visit for gamification
+    if (window.trackCountryVisit) {
+      window.trackCountryVisit(country.country_code);
+    }
 
     // Primero calcular bounds para zonas
     const countryPlaces = places.filter(p => p.country_code === country.country_code);
@@ -633,6 +643,10 @@ function HomeContent() {
             const clickedPlace = places.find(p => p.id === placeId);
             if (clickedPlace) {
               addVisitedZone(clickedPlace);
+              // Track zone visit for gamification
+              if (window.trackZoneVisit) {
+                window.trackZoneVisit(placeId);
+              }
             }
           }}
           onBoundsChanged={setMapBounds}
@@ -693,6 +707,9 @@ function HomeContent() {
           </span>
         </button>
       )}
+
+      {/* Exploration Progress Badge */}
+      <ExplorationProgress />
 
     </div>
   );
