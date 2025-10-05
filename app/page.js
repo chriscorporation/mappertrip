@@ -630,6 +630,7 @@ function HomeContent() {
           circleRadius={circleRadius}
           editingCircleId={editingCircleId}
           editingRadius={editingRadius}
+          selectedCountry={selectedCountry}
         />
 
         {/* Country Stats Panel - floating over map */}
