@@ -1,12 +1,21 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { getPreference, setPreference } from '../utils/userPreferences';
 
 export default function OverviewMap({ mainMap, selectedCountry }) {
   const overviewMapRef = useRef(null);
   const [overviewMap, setOverviewMap] = useState(null);
-  const [isCollapsed, setIsCollapsed] = useState(false);
+  const [isCollapsed, setIsCollapsed] = useState(() => {
+    // Initialize from localStorage (default to true as it was before)
+    return getPreference('overviewMapCollapsed', true);
+  });
   const rectangleRef = useRef(null);
+
+  // Persist collapse state to localStorage whenever it changes
+  useEffect(() => {
+    setPreference('overviewMapCollapsed', isCollapsed);
+  }, [isCollapsed]);
 
   useEffect(() => {
     if (!window.google?.maps || !overviewMapRef.current) return;

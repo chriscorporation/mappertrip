@@ -1,10 +1,19 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { BiShield, BiChart, BiChevronDown, BiChevronUp } from 'react-icons/bi';
+import { getPreference, setPreference } from '../utils/userPreferences';
 
 export default function CountryStatsPanel({ selectedCountry, places }) {
-  const [isCollapsed, setIsCollapsed] = useState(false);
+  const [isCollapsed, setIsCollapsed] = useState(() => {
+    // Initialize from localStorage
+    return getPreference('statsPanelCollapsed', false);
+  });
+
+  // Persist collapse state to localStorage whenever it changes
+  useEffect(() => {
+    setPreference('statsPanelCollapsed', isCollapsed);
+  }, [isCollapsed]);
 
   // Calculate statistics for the selected country
   const stats = useMemo(() => {

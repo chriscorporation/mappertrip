@@ -5,6 +5,7 @@ import ReactMarkdown from 'react-markdown';
 import { BiDollar, BiShield, BiMapAlt, BiInfoCircle, BiMapPin } from 'react-icons/bi';
 import { HiOutlineSparkles } from 'react-icons/hi';
 import { useAuthStore } from '../store/authStore';
+import { getPreference, setPreference } from '../utils/userPreferences';
 
 export default function ZonesPanel({
   selectedCountry,
@@ -31,7 +32,10 @@ export default function ZonesPanel({
   const { isAuthenticated } = useAuthStore();
   const isAdminMode = isAuthenticated;
   const [address, setAddress] = useState('');
-  const [hoverEnabled, setHoverEnabled] = useState(false);
+  const [hoverEnabled, setHoverEnabled] = useState(() => {
+    // Initialize hover state from localStorage
+    return getPreference('hoverEnabled', false);
+  });
   const [notes, setNotes] = useState({});
   const [newNote, setNewNote] = useState({});
   const [perplexityData, setPerplexityData] = useState(null);
@@ -550,7 +554,11 @@ export default function ZonesPanel({
           <input
             type="checkbox"
             checked={hoverEnabled}
-            onChange={(e) => setHoverEnabled(e.target.checked)}
+            onChange={(e) => {
+              const newValue = e.target.checked;
+              setHoverEnabled(newValue);
+              setPreference('hoverEnabled', newValue);
+            }}
             className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
           />
           <span>Activar roll over</span>
