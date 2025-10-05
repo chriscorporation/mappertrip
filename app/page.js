@@ -385,11 +385,6 @@ function HomeContent() {
 
   return (
     <div className="flex flex-col h-screen">
-      {/* Version indicator bar */}
-      <div className="bg-gradient-to-r from-blue-600 to-purple-600 text-white text-center py-1 text-xs font-medium">
-        Claude bot
-      </div>
-
       {/* Header */}
       <Header isAdminMode={isAdminMode} />
 
