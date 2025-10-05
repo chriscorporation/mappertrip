@@ -53,6 +53,7 @@ export default function ZonesPanel({
   const [selectedForComparison, setSelectedForComparison] = useState([]);
   const [showComparisonPanel, setShowComparisonPanel] = useState(false);
   const [comparisonData, setComparisonData] = useState({});
+  const [copiedZoneId, setCopiedZoneId] = useState(null);
   const inputRef = useRef(null);
   const autocompleteRef = useRef(null);
   const cardRefs = useRef({});
@@ -228,6 +229,29 @@ export default function ZonesPanel({
 
     initAutocomplete();
   }, [selectedCountry, onAddPlace]);
+
+  // Función para compartir zona
+  const handleShareZone = async (place, e) => {
+    e.stopPropagation();
+
+    // Construir URL con parámetros de zona
+    const baseUrl = window.location.origin;
+    const shareUrl = `${baseUrl}/?tab=zones&country=${encodeURIComponent(selectedCountry.country_code)}&zone=${encodeURIComponent(place.id)}&lat=${place.lat}&lng=${place.lng}`;
+
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+      setCopiedZoneId(place.id);
+
+      // Resetear el estado después de 2 segundos
+      setTimeout(() => {
+        setCopiedZoneId(null);
+      }, 2000);
+    } catch (error) {
+      console.error('Error copying to clipboard:', error);
+      // Fallback: mostrar alert con la URL
+      alert(`Copia este enlace:\n${shareUrl}`);
+    }
+  };
 
   // Cargar notas bajo demanda
   const loadNotesForPlace = async (placeId) => {
@@ -792,6 +816,25 @@ export default function ZonesPanel({
                         <path fillRule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" />
                       </svg>
                     </a>
+                    <button
+                      onClick={(e) => handleShareZone(place, e)}
+                      className={`transition-all duration-200 hover:scale-110 ${
+                        copiedZoneId === place.id
+                          ? 'text-green-600'
+                          : 'text-gray-400 hover:text-emerald-600'
+                      }`}
+                      title={copiedZoneId === place.id ? '¡Enlace copiado!' : 'Compartir zona'}
+                    >
+                      {copiedZoneId === place.id ? (
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                          <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                        </svg>
+                      ) : (
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                          <path d="M15 8a3 3 0 10-2.977-2.63l-4.94 2.47a3 3 0 100 4.319l4.94 2.47a3 3 0 10.895-1.789l-4.94-2.47a3.027 3.027 0 000-.74l4.94-2.47C13.456 7.68 14.19 8 15 8z" />
+                        </svg>
+                      )}
+                    </button>
                   </div>
                 </div>
 
