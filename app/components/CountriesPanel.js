@@ -77,7 +77,7 @@ export default function CountriesPanel({ selectedCountry, onSelectCountry, place
   }
 
   return (
-    <div className="w-80 bg-gradient-to-b from-white to-gray-50 border-r border-gray-300 flex flex-col">
+    <div className="w-80 bg-gradient-to-b from-white to-gray-50 border-r border-gray-300 flex flex-col" data-tour-id="countries-panel">
       {/* Header con gradiente sutil */}
       <div className="p-4 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-purple-50">
         <h2 className="text-xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">

@@ -789,7 +789,7 @@ export default function ZonesPanel({
 
   return (
     <div className="flex relative">
-    <div className="w-80 bg-white border-r border-gray-300 flex flex-col">
+    <div className="w-80 bg-white border-r border-gray-300 flex flex-col" data-tour-id="zones-panel">
       <div className="p-4 border-b border-gray-200">
         <h2 className="text-xl font-bold">Zones</h2>
         <p className="text-xs text-gray-500 mt-1">{selectedCountry.name}</p>
