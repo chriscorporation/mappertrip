@@ -12,6 +12,7 @@ import InstagramablePlacesPanel from './components/InstagramablePlacesPanel';
 import Header from './components/Header';
 import CountryStatsPanel from './components/CountryStatsPanel';
 import KeyboardShortcuts from './components/KeyboardShortcuts';
+import Breadcrumbs from './components/Breadcrumbs';
 import { useAuthStore } from './store/authStore';
 import { useAppStore } from './store/appStore';
 
@@ -467,6 +468,13 @@ function HomeContent() {
 
       {/* Header */}
       <Header isAdminMode={isAdminMode} />
+
+      {/* Breadcrumbs de navegación */}
+      <Breadcrumbs
+        selectedCountry={selectedCountry}
+        selectedTab={selectedTab}
+        places={places}
+      />
 
       {/* Contenido principal */}
       <div className="flex flex-1 overflow-hidden">
