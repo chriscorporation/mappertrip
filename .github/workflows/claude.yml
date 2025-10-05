@@ -52,6 +52,14 @@ jobs:
             ISSUE BODY: ${{ github.event.issue.body }}
             COMMENT: ${{ github.event.comment.body }}
 
+            PROJECT MISSION:
+            CRITICAL: Before implementing any changes, read and understand the file GOAL.md at the root of the repository.
+            This file contains the PRIMARY MISSION and core objectives of MapTrips.
+            ALL your decisions and implementations MUST align with the three pillars defined in GOAL.md:
+            1. Reliability - Prioritize user safety and data integrity
+            2. Speed & Performance - Optimize load times and responsiveness
+            3. Incredible Usability - Enhance user experience and intuitive interface
+
             YOUR ROLE: You are a senior software engineer dedicated to making incremental improvements to this project.
             Your decisions should enhance:
             - Visual appearance and UI/UX design
