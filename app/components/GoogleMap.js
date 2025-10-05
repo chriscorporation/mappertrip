@@ -599,13 +599,17 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
       if (place.circle_radius) {
         // Determinar el radio a usar (editingRadius si se está editando, o el radio guardado)
         const radiusToUse = editingCircleId === place.id ? editingRadius : place.circle_radius;
+        const isHighlighted = highlightedPlace === place.id;
+        const isEditing = editingCircleId === place.id;
 
         // Si ya está renderizado, solo actualizar opciones
         if (circlesRef.current[place.id]) {
           const existingCircle = circlesRef.current[place.id];
           existingCircle.setOptions({
             fillColor: place.color || '#8b5cf6',
-            strokeColor: place.color || '#8b5cf6',
+            strokeColor: isEditing ? '#8b5cf6' : (isHighlighted ? '#FFEB3B' : (place.color || '#8b5cf6')),
+            strokeWeight: isHighlighted || isEditing ? 4 : 2,
+            fillOpacity: isHighlighted || isEditing ? 0.45 : 0.35,
             radius: radiusToUse,
           });
           return;
@@ -613,11 +617,11 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
 
         // Si no está renderizado, crearlo
         const circle = new window.google.maps.Circle({
-          strokeColor: place.color || '#8b5cf6',
+          strokeColor: isEditing ? '#8b5cf6' : (isHighlighted ? '#FFEB3B' : (place.color || '#8b5cf6')),
           strokeOpacity: 0.8,
-          strokeWeight: 2,
+          strokeWeight: isHighlighted || isEditing ? 4 : 2,
           fillColor: place.color || '#8b5cf6',
-          fillOpacity: 0.35,
+          fillOpacity: isHighlighted || isEditing ? 0.45 : 0.35,
           map: map,
           center: { lat: place.lat, lng: place.lng },
           radius: radiusToUse,
@@ -635,7 +639,7 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
         delete circlesRef.current[placeId];
       }
     });
-  }, [places, map, editingCircleId, editingRadius]);
+  }, [places, map, editingCircleId, editingRadius, highlightedPlace]);
 
   // Renderizar círculo temporal mientras se ajusta el radio
   useEffect(() => {
