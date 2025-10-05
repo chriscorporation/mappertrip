@@ -175,7 +175,7 @@ const MAP_STYLES = {
   }
 };
 
-export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocation, onSavePolygon, onPolygonClick, onBoundsChanged, coworkingPlaces, instagramablePlaces, mapClickMode, onMapClick, highlightedPlace, pendingCircle, circleRadius, editingCircleId, editingRadius }) {
+export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocation, onSavePolygon, onPolygonClick, onBoundsChanged, coworkingPlaces, instagramablePlaces, mapClickMode, onMapClick, highlightedPlace, pendingCircle, circleRadius, editingCircleId, editingRadius, triggerLegendToggle, triggerStyleToggle }) {
   const mapRef = useRef(null);
   const [map, setMap] = useState(null);
   const [isMapLoading, setIsMapLoading] = useState(true);
@@ -228,6 +228,20 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
       localStorage.setItem('mapStyle', mapStyle);
     }
   }, [map, mapStyle]);
+
+  // Responder a trigger de toggle de leyenda desde atajos de teclado
+  useEffect(() => {
+    if (triggerLegendToggle > 0) {
+      setShowLegend(prev => !prev);
+    }
+  }, [triggerLegendToggle]);
+
+  // Responder a trigger de toggle de selector de estilo desde atajos de teclado
+  useEffect(() => {
+    if (triggerStyleToggle > 0) {
+      setShowStyleSelector(prev => !prev);
+    }
+  }, [triggerStyleToggle]);
 
   useEffect(() => {
     const loadGoogleMaps = () => {
