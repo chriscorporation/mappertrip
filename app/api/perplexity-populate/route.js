@@ -19,13 +19,20 @@ const client = new Perplexity({
 });
 
 async function processPerplexityData(zone_id, zone, countryName, existing) {
-  const searchTypes = ['notes', 'rent', 'tourism', 'secure', 'places'];
+  const searchTypes = ['notes', 'rent', 'tourism', 'secure', 'places', 'orientation'];
   const results = {};
+  let orientationValue = null;
 
   // Procesar cada tipo de búsqueda
   for (const searchType of searchTypes) {
+    // Para orientation, verificamos si ya existe en geoplaces
+    if (searchType === 'orientation' && zone.orientation) {
+      orientationValue = zone.orientation;
+      continue;
+    }
+
     // Si el campo ya tiene información, omitir
-    if (existing && existing[searchType]) {
+    if (searchType !== 'orientation' && existing && existing[searchType]) {
       results[searchType] = existing[searchType];
       continue;
     }
@@ -47,7 +54,7 @@ async function processPerplexityData(zone_id, zone, countryName, existing) {
         }
       };
 
-      // Para "secure" y "rent" agregamos response_format con JSON schema
+      // Para campos con schema JSON agregamos response_format
       if (PERPLEXITY_RESPONSE_SCHEMAS[searchType]) {
         completionConfig.response_format = PERPLEXITY_RESPONSE_SCHEMAS[searchType];
       }
@@ -77,18 +84,28 @@ async function processPerplexityData(zone_id, zone, countryName, existing) {
           console.error('Error parsing rent response:', e);
           aiResponse = null;
         }
+      } else if (searchType === 'orientation' && aiResponse) {
+        try {
+          const parsed = JSON.parse(aiResponse);
+          orientationValue = parsed.orientacion;
+        } catch (e) {
+          console.error('Error parsing orientation response:', e);
+          orientationValue = null;
+        }
       }
 
-      if (aiResponse) {
+      if (searchType !== 'orientation' && aiResponse) {
         results[searchType] = aiResponse;
       }
     } catch (error) {
       console.error(`Error executing ${searchType} search:`, error);
-      results[searchType] = null;
+      if (searchType !== 'orientation') {
+        results[searchType] = null;
+      }
     }
   }
 
-  // Guardar todos los resultados en un solo upsert
+  // Guardar perplexity_notes en un solo upsert
   try {
     await supabaseWrite
       .from('perplexity_notes')
@@ -106,6 +123,18 @@ async function processPerplexityData(zone_id, zone, countryName, existing) {
   } catch (error) {
     console.error('Error saving perplexity data:', error);
   }
+
+  // Guardar orientation en geoplaces
+  if (orientationValue) {
+    try {
+      await supabaseWrite
+        .from('geoplaces')
+        .update({ orientation: orientationValue })
+        .eq('id', zone_id);
+    } catch (error) {
+      console.error('Error saving orientation to geoplaces:', error);
+    }
+  }
 }
 
 export async function POST(request) {
@@ -122,7 +151,7 @@ export async function POST(request) {
     // Obtener información de la zona
     const { data: zone, error: zoneError } = await supabaseRead
       .from('geoplaces')
-      .select('id, address, country_code, lat, lng')
+      .select('id, address, country_code, lat, lng, orientation')
       .eq('id', zone_id)
       .single();
 

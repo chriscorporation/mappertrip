@@ -12,7 +12,10 @@ export const PERPLEXITY_PROMPTS = {
     `Busca información reciente sobre seguridad ${address ? `en "${address}, ${country}"` : `en la zona ubicada en las coordenadas (${lat}, ${lng}) en ${country}`}. Analiza opiniones de locales, extranjeros residentes, policía, paginas oficiales del gobierno y viajeros frecuentes. Responde ÚNICAMENTE con una de estas frases exactas: "Seguridad buena", "Seguridad aceptable", "Seguridad media", "Seguridad baja", o "Sin seguridad".`,
 
   places: (address, country, lat, lng) =>
-    `Busca opiniones, comentarios y recomendaciones de youtubers del país, turistas, extranjeros y sobre todo gente local, de lugares representativos que existan ${address ? `en "${address}, ${country}"` : `en la zona ubicada en las coordenadas (${lat}, ${lng}) en ${country}`} o cercanos para visitar. Si no hay atracciones principales, sugiere restaurantes populares, mercados de fin de semana, o eventos importantes que ocurran en la zona. Recomienda al menos 3 a 5 lugares con sus nombres específicos. IMPORTANTE: Usa formato Markdown para poner en negritas **todos los nombres de lugares de interés, atracciones, restaurantes, mercados o eventos**. No debe superar los 200 palabras la respuesta. Sin incluir referencias, números entre corchetes ni links.`
+    `Busca opiniones, comentarios y recomendaciones de youtubers del país, turistas, extranjeros y sobre todo gente local, de lugares representativos que existan ${address ? `en "${address}, ${country}"` : `en la zona ubicada en las coordenadas (${lat}, ${lng}) en ${country}`} o cercanos para visitar. Si no hay atracciones principales, sugiere restaurantes populares, mercados de fin de semana, o eventos importantes que ocurran en la zona. Recomienda al menos 3 a 5 lugares con sus nombres específicos. IMPORTANTE: Usa formato Markdown para poner en negritas **todos los nombres de lugares de interés, atracciones, restaurantes, mercados o eventos**. No debe superar los 200 palabras la respuesta. Sin incluir referencias, números entre corchetes ni links.`,
+
+  orientation: (address, country, lat, lng) =>
+    `Analiza la ubicación geográfica ${address ? `de "${address}, ${country}"` : `en las coordenadas (${lat}, ${lng}) en ${country}`}. Determina en qué orientación cardinal o intercardinal se encuentra respecto al centro de la ciudad principal de ${country}. Responde ÚNICAMENTE con una de estas opciones exactas: "Norte", "Sur", "Este", "Oeste", "Noreste", "Noroeste", "Sureste", "Suroeste", o "Centro".`
 };
 
 export const PERPLEXITY_RESPONSE_SCHEMAS = {
@@ -42,6 +45,21 @@ export const PERPLEXITY_RESPONSE_SCHEMAS = {
           }
         },
         required: ["rent"]
+      }
+    }
+  },
+  orientation: {
+    type: 'json_schema',
+    json_schema: {
+      schema: {
+        type: 'object',
+        properties: {
+          orientacion: {
+            type: 'string',
+            enum: ["Norte", "Sur", "Este", "Oeste", "Noreste", "Noroeste", "Sureste", "Suroeste", "Centro"]
+          }
+        },
+        required: ["orientacion"]
       }
     }
   }

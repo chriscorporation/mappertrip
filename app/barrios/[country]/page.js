@@ -78,7 +78,7 @@ async function getCountryData(countrySlug) {
   // Get zones for this country
   const { data: places } = await supabase
     .from('geoplaces')
-    .select('*')
+    .select('id, address, lat, lng, country_code, orientation')
     .eq('country_code', country.country_code);
 
   // Get perplexity notes for each zone
@@ -139,18 +139,32 @@ export default async function BarriosPais({ params }) {
                     <BackButton />
                   </div>
                 ) : (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-10">
+                  <div className="flex flex-col gap-8 mb-10">
                     {zones.map((zone) => {
                       const notes = zone.perplexityNotes;
 
                       return (
                         <div key={zone.id} className="w-full">
-                          <div className="w-full block p-8 bg-white border-2 border-gray-200 rounded-3xl shadow-lg hover:shadow-xl transition-shadow duration-300">
-                            <h2 className="font-heading mb-6 text-2xl font-black">
-                              <span className="text-transparent bg-clip-text bg-gradient-to-r from-gray-600 to-gray-900">
-                                {zone.address}
-                              </span>
-                            </h2>
+                          <div className="w-full block p-10 bg-white border-2 border-gray-200 rounded-3xl shadow-lg">
+                            <div className="mb-6">
+                              <h2 className="font-heading mb-2 text-3xl font-black">
+                                <span className="text-transparent bg-clip-text bg-gradient-to-r from-gray-500 to-gray-900">
+                                  {zone.address} {zone.orientation ? `(${zone.orientation})` : ''}
+                                </span>
+                              </h2>
+                              <a
+                                href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(zone.address + ' @' + zone.lat + ',' + zone.lng)}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-1 text-sm text-blue-600 hover:text-blue-800 hover:underline font-medium"
+                              >
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                                </svg>
+                                Ver en Google Maps
+                              </a>
+                            </div>
 
                             <PerplexityNotesDisplay perplexityData={notes} />
                           </div>
