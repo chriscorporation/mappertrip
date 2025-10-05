@@ -8,10 +8,10 @@ on:
 
 jobs:
   claude-job:
-    # Solo ejecutar para el issue #7 con @claude, o si es issue #7 nuevo/editado/reabierto
+    # Solo ejecutar para issue con título "Improvements" cuando se menciona @claude
     if: |
-      (github.event_name == 'issues' && github.event.issue.number == 7) ||
-      (github.event_name == 'issue_comment' && github.event.issue.number == 7 && contains(github.event.comment.body, '@claude'))
+      (github.event_name == 'issues' && github.event.issue.title == 'Improvements') ||
+      (github.event_name == 'issue_comment' && github.event.issue.title == 'Improvements' && contains(github.event.comment.body, '@claude'))
 
     runs-on: ubuntu-latest
     timeout-minutes: 30
@@ -46,52 +46,29 @@ jobs:
 
           # Prompt personalizado para el bot
           prompt: |
-            REPOSITORY: ${{ github.repository }}
-            ISSUE NUMBER: ${{ github.event.issue.number }}
-            ISSUE TITLE: ${{ github.event.issue.title }}
-            ISSUE BODY: ${{ github.event.issue.body }}
-            COMMENT: ${{ github.event.comment.body }}
+            ISSUE: #${{ github.event.issue.number }} - ${{ github.event.issue.title }}
+            REQUEST: ${{ github.event.issue.body }}${{ github.event.comment.body }}
 
-            PROJECT MISSION:
-            CRITICAL: Before implementing any changes, read and understand the file GOAL.md at the root of the repository.
-            This file contains the PRIMARY MISSION and core objectives of this project.
-            ALL your decisions and implementations MUST align with the goals and principles defined in GOAL.md.
-            Always prioritize the project's stated mission and ensure your changes support its core objectives.
+            ROLE: Senior engineer making incremental improvements. Read GOAL.md first - align ALL changes with project mission.
 
-            YOUR ROLE: You are a senior software engineer dedicated to making incremental improvements to this project.
-            Your decisions should enhance:
-            - Visual appearance and UI/UX design
-            - Code usability and developer experience
-            - Performance and optimization
-            - Code quality and maintainability
+            APPROACH:
+            - Make proactive decisions based on context
+            - Prioritize small, focused improvements
+            - Ensure backward compatibility
 
-            DECISION-MAKING PHILOSOPHY:
-            - BE PROACTIVE: Make educated decisions even with incomplete information
-            - BE BOLD: Don't ask for clarification - take action based on context
-            - BE INTUITIVE: If the user doesn't specify which file/component, analyze the codebase and choose the most logical location
-            - BE CONFIDENT: The user trusts you to make the right call on implementation details
-            - CONTEXT CLUES: Use issue title, existing code structure, and project conventions to guide your decisions
-            - Example: If asked to "add a header", examine the main page layout and add it in the most appropriate component
+            WORKFLOW (MANDATORY):
+            1. Read GOAL.md and analyze request
+            2. Create branch: feature/{descriptive-name}
+            3. Implement changes with clear commits
+            4. Run build
+            5. Fix any errors and commit fixes
+            6. Push branch to remote
+            7. Create PR to current base branch (check with git)
+            8. Comment on issue with PR link and summary
+            9. Close issue: gh issue close ${{ github.event.issue.number }}
 
-            WORKFLOW (MANDATORY - DO NOT SKIP ANY STEP):
-            1. Analyze the issue/comment and implement the solution (make decisions proactively)
-            2. CRITICAL: Create a new git branch (use feature/ prefix, e.g., feature/add-header)
-            3. CRITICAL: Make commits to that branch with your changes
-            4. CRITICAL: Run 'npm run build' to verify the code compiles without errors
-            5. CRITICAL: If build fails, fix the errors and commit the fixes
-            6. CRITICAL: Push the branch to remote
-            7. CRITICAL: Create a Pull Request to 'claude_bot' branch using gh CLI
-            8. CRITICAL: Add a comment to the issue with the PR link and summary of changes
-            9. CRITICAL: Close the issue using 'gh issue close' command - THIS IS MANDATORY
-
-            IMPORTANT REMINDERS:
-            - You MUST create a branch and PR - do not just make changes without committing
-            - Use git/gh commands via Bash tool to create branch, commit, push, and create PR
-            - Branch naming: feature/{descriptive-name}
-            - Base branch for PR: claude_bot
-            - Example: git checkout -b feature/add-version-banner && git push -u origin feature/add-version-banner
-            - After making changes, review the code to ensure there are no syntax errors
-            - LANGUAGE: Write ALL commit messages, PR descriptions, and issue comments in the SAME LANGUAGE as the original issue/comment (Spanish if issue is in Spanish, English if in English, etc.)
-            - ALWAYS CLOSE THE ISSUE: After creating PR and commenting, you MUST run 'gh issue close {issue_number}' - this is REQUIRED even for reopened issues
-
-            Now, address the request in the ISSUE TITLE, ISSUE BODY, or COMMENT above.
+            CRITICAL:
+            - Match language of original issue (ES/EN)
+            - Never skip build verification
+            - Always create PR, never direct commits
+            - MUST close issue after PR creation
