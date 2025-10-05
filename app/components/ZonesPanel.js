@@ -450,15 +450,17 @@ export default function ZonesPanel({
             <div
               key={place.id}
               ref={el => cardRefs.current[place.id] = el}
-              className={`p-3 bg-gray-50 rounded-lg transition-colors ${hoverEnabled ? 'cursor-pointer hover:bg-gray-100' : ''} ${
+              className={`p-3 bg-gradient-to-br from-white to-gray-50 rounded-xl transition-all duration-300 ease-out transform ${
+                hoverEnabled ? 'cursor-pointer hover:shadow-lg hover:-translate-y-0.5 hover:from-blue-50 hover:to-cyan-50' : ''
+              } ${
                 highlightedPlace === place.id
-                  ? 'border-2 border-blue-400'
+                  ? 'border-2 border-blue-400 shadow-md scale-[1.02]'
                   : 'border border-gray-200'
               }`}
               onMouseEnter={() => hoverEnabled && onGoToPlace(place)}
             >
               <div className="mb-2">
-                <div className="flex items-start justify-between">
+                <div className="flex items-start justify-between mb-2">
                   {editingTitleId === place.id ? (
                     <input
                       type="text"
@@ -477,7 +479,7 @@ export default function ZonesPanel({
                     />
                   ) : (
                     <h3
-                      className="font-semibold text-sm mb-1 cursor-pointer hover:text-blue-600 transition-colors flex-1"
+                      className="font-semibold text-sm mb-1 cursor-pointer hover:text-blue-600 transition-all duration-200 flex-1 hover:translate-x-1"
                       onDoubleClick={(e) => {
                         e.stopPropagation();
                         setEditingTitleId(place.id);
@@ -563,6 +565,36 @@ export default function ZonesPanel({
                     </svg>
                   </a>
                 </div>
+
+                {/* Safety Status Badge */}
+                <div className="mb-2">
+                  {place.color === '#22c55e' && (
+                    <span className="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-semibold bg-gradient-to-r from-green-100 to-emerald-100 text-green-800 border-2 border-green-200 shadow-sm hover:shadow-md transition-all duration-200 hover:scale-105">
+                      <span className="animate-pulse mr-1.5">🟢</span> Zona Segura
+                    </span>
+                  )}
+                  {place.color === '#3b82f6' && (
+                    <span className="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-semibold bg-gradient-to-r from-blue-100 to-cyan-100 text-blue-800 border-2 border-blue-200 shadow-sm hover:shadow-md transition-all duration-200 hover:scale-105">
+                      <span className="animate-pulse mr-1.5">🔵</span> Seguridad Media
+                    </span>
+                  )}
+                  {place.color === '#f97316' && (
+                    <span className="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-semibold bg-gradient-to-r from-orange-100 to-amber-100 text-orange-800 border-2 border-orange-200 shadow-sm hover:shadow-md transition-all duration-200 hover:scale-105">
+                      <span className="animate-pulse mr-1.5">🟠</span> Seguridad Regular
+                    </span>
+                  )}
+                  {place.color === '#eab308' && (
+                    <span className="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-semibold bg-gradient-to-r from-yellow-100 to-amber-100 text-yellow-800 border-2 border-yellow-200 shadow-sm hover:shadow-md transition-all duration-200 hover:scale-105">
+                      <span className="animate-pulse mr-1.5">🟡</span> Precaución
+                    </span>
+                  )}
+                  {place.color === '#dc2626' && (
+                    <span className="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-semibold bg-gradient-to-r from-red-100 to-rose-100 text-red-800 border-2 border-red-200 shadow-sm hover:shadow-md transition-all duration-200 hover:scale-105">
+                      <span className="animate-pulse mr-1.5">🔴</span> Zona Insegura
+                    </span>
+                  )}
+                </div>
+
                 <p className="text-xs text-gray-500">
                   Lat: {place.lat?.toFixed(6)}, Lng: {place.lng?.toFixed(6)}
                 </p>
@@ -608,8 +640,8 @@ export default function ZonesPanel({
 
                 <div className="mt-2 flex gap-2 flex-col">
                   {place.polygon && !place.isDrawing && (
-                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 w-fit">
-                      ✓ Zona delimitada
+                    <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-gradient-to-r from-emerald-50 to-teal-50 text-emerald-700 border border-emerald-200 w-fit shadow-sm hover:shadow transition-all duration-200">
+                      <span className="mr-1">✓</span> Zona delimitada
                     </span>
                   )}
                   {place.isDrawing && (
@@ -674,8 +706,8 @@ export default function ZonesPanel({
                           </div>
                         </div>
                       ) : (
-                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800 w-fit">
-                          ⭕ Radio: {(place.circle_radius / 1000).toFixed(1)}km
+                        <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-gradient-to-r from-purple-50 to-violet-50 text-purple-700 border border-purple-200 w-fit shadow-sm hover:shadow transition-all duration-200">
+                          <span className="mr-1">⭕</span> Radio: {(place.circle_radius / 1000).toFixed(1)}km
                         </span>
                       )}
                     </>
@@ -829,7 +861,7 @@ export default function ZonesPanel({
             </button>
           </div>
 
-          <div className="p-4 space-y-6" role="region" aria-label="Información detallada de la zona">
+          <div className="p-4 space-y-4" role="region" aria-label="Información detallada de la zona">
             {loadingPerplexity ? (
               <div className="flex flex-col items-center justify-center py-12">
                 <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
@@ -837,56 +869,163 @@ export default function ZonesPanel({
               </div>
             ) : (
               <>
-            {/* Rent */}
-            {perplexityData?.rent && (
-              <div role="article" aria-labelledby="rent-heading">
-                <div className="flex items-center gap-2 mb-2">
-                  <BiDollar className="text-base text-gray-600 flex-shrink-0" aria-hidden="true" />
-                  <h3 id="rent-heading" className="font-semibold text-sm text-gray-700">Costo de renta promedio</h3>
-                </div>
-                <span
-                  className="inline-block px-3 py-1.5 rounded-full text-xs font-semibold bg-gray-100 text-gray-800"
-                  title={`Costo promedio de renta mensual: $${Math.round(perplexityData.rent)} USD`}
-                  aria-label={`Costo de renta: ${Math.round(perplexityData.rent)} dólares por mes`}
-                >
-                  ${Math.round(perplexityData.rent)} USD/mes
-                </span>
-                <p className="text-xs text-gray-500 mt-2">Monoambiente (máx. 2 personas)</p>
+            {/* Visual Safety Score Gauge - New Feature */}
+            {perplexityData?.secure && (
+              <div className="bg-gradient-to-br from-slate-50 to-gray-100 border-2 border-gray-300 rounded-2xl p-5 shadow-lg">
+                <h3 className="text-sm font-bold text-gray-700 mb-3 flex items-center gap-2">
+                  <BiShield className="text-xl text-gray-600" />
+                  EVALUACIÓN DE SEGURIDAD
+                </h3>
+                {(() => {
+                  const secureText = perplexityData.secure.toLowerCase();
+                  let safetyScore = 50;
+                  let scoreColor = 'from-yellow-400 to-orange-500';
+                  let bgColor = 'bg-yellow-50';
+                  let textColor = 'text-yellow-800';
+                  let icon = '⚠️';
+                  let label = 'Media';
+
+                  if (secureText.includes('buena') || secureText.includes('aceptable') || secureText.includes('alta') || secureText.includes('segur')) {
+                    safetyScore = 85;
+                    scoreColor = 'from-green-400 to-emerald-500';
+                    bgColor = 'bg-green-50';
+                    textColor = 'text-green-800';
+                    icon = '🛡️';
+                    label = 'Alta';
+                  } else if (secureText.includes('media') || secureText.includes('moderada')) {
+                    safetyScore = 60;
+                    scoreColor = 'from-blue-400 to-cyan-500';
+                    bgColor = 'bg-blue-50';
+                    textColor = 'text-blue-800';
+                    icon = '🔷';
+                    label = 'Media';
+                  } else if (secureText.includes('baja') || secureText.includes('peligro') || secureText.includes('insegur') || secureText.includes('riesgo')) {
+                    safetyScore = 25;
+                    scoreColor = 'from-red-400 to-rose-500';
+                    bgColor = 'bg-red-50';
+                    textColor = 'text-red-800';
+                    icon = '🚨';
+                    label = 'Baja';
+                  }
+
+                  return (
+                    <>
+                      <div className="relative mb-4">
+                        {/* Progress Bar Background */}
+                        <div className="h-8 bg-gray-200 rounded-full overflow-hidden shadow-inner">
+                          {/* Animated Progress Fill */}
+                          <div
+                            className={`h-full bg-gradient-to-r ${scoreColor} transition-all duration-1000 ease-out flex items-center justify-end pr-3`}
+                            style={{ width: `${safetyScore}%` }}
+                          >
+                            <span className="text-white font-bold text-sm drop-shadow-lg">
+                              {safetyScore}%
+                            </span>
+                          </div>
+                        </div>
+                        {/* Score Labels */}
+                        <div className="flex justify-between mt-2 text-xs text-gray-500">
+                          <span>Riesgo Alto</span>
+                          <span>Seguridad Óptima</span>
+                        </div>
+                      </div>
+                      {/* Security Level Badge */}
+                      <div className={`${bgColor} rounded-xl p-3 flex items-center justify-between`}>
+                        <div className="flex items-center gap-2">
+                          <span className="text-2xl">{icon}</span>
+                          <div>
+                            <p className="text-xs text-gray-600 font-medium">Nivel de Seguridad</p>
+                            <p className={`text-sm font-bold ${textColor}`}>{label}</p>
+                          </div>
+                        </div>
+                        <div className={`px-3 py-1 rounded-full text-xs font-bold ${textColor} bg-white/60`}>
+                          {perplexityData.secure}
+                        </div>
+                      </div>
+                    </>
+                  );
+                })()}
               </div>
             )}
 
-            {/* Secure */}
+            {/* Secure - Prioridad #1 según GOAL.md */}
             {perplexityData?.secure && (
-              <div role="article" aria-labelledby="security-heading">
-                <div className="flex items-center gap-2 mb-2">
-                  <BiShield className="text-lg text-blue-600" aria-hidden="true" />
-                  <h3 id="security-heading" className="font-semibold text-sm text-gray-700">Seguridad</h3>
+              <div
+                role="article"
+                aria-labelledby="security-heading"
+                className="bg-gradient-to-br from-blue-50 to-cyan-50 border-2 border-blue-200 rounded-xl p-4 shadow-sm hover:shadow-md transition-all duration-300 animate-[fadeIn_0.5s_ease-out]"
+              >
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="p-2 bg-white rounded-lg shadow-sm">
+                    <BiShield className="text-2xl text-blue-600" aria-hidden="true" />
+                  </div>
+                  <h3 id="security-heading" className="font-bold text-base text-gray-800">Nivel de Seguridad</h3>
                 </div>
-                <span
-                  className={`inline-block px-3 py-1.5 rounded-full text-xs font-semibold bg-gray-100 ${
-                    perplexityData.secure.toLowerCase().includes('buena') || perplexityData.secure.toLowerCase().includes('aceptable')
-                      ? 'text-green-700'
-                      : perplexityData.secure.toLowerCase().includes('media')
-                      ? 'text-blue-600'
-                      : 'text-red-600'
-                  }`}
-                  title={`Nivel de seguridad de la zona: ${perplexityData.secure}`}
-                  aria-label={`Seguridad: ${perplexityData.secure}`}
-                >
-                  {perplexityData.secure}
-                </span>
+                <div className="flex items-center gap-2">
+                  <span
+                    className={`inline-flex items-center px-4 py-2 rounded-full text-sm font-bold shadow-sm ${
+                      perplexityData.secure.toLowerCase().includes('buena') || perplexityData.secure.toLowerCase().includes('aceptable')
+                        ? 'bg-gradient-to-r from-green-100 to-emerald-100 text-green-800 border-2 border-green-300'
+                        : perplexityData.secure.toLowerCase().includes('media')
+                        ? 'bg-gradient-to-r from-blue-100 to-cyan-100 text-blue-800 border-2 border-blue-300'
+                        : 'bg-gradient-to-r from-red-100 to-rose-100 text-red-800 border-2 border-red-300'
+                    }`}
+                    title={`Nivel de seguridad de la zona: ${perplexityData.secure}`}
+                    aria-label={`Seguridad: ${perplexityData.secure}`}
+                  >
+                    {perplexityData.secure.toLowerCase().includes('buena') || perplexityData.secure.toLowerCase().includes('aceptable') ? '🛡️' :
+                     perplexityData.secure.toLowerCase().includes('media') ? '⚠️' : '🚨'} {perplexityData.secure}
+                  </span>
+                </div>
+              </div>
+            )}
+
+            {/* Rent */}
+            {perplexityData?.rent && (
+              <div
+                role="article"
+                aria-labelledby="rent-heading"
+                className="bg-gradient-to-br from-emerald-50 to-teal-50 border-2 border-emerald-200 rounded-xl p-4 shadow-sm hover:shadow-md transition-all duration-300 animate-[fadeIn_0.6s_ease-out]"
+              >
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="p-2 bg-white rounded-lg shadow-sm">
+                    <BiDollar className="text-2xl text-emerald-600" aria-hidden="true" />
+                  </div>
+                  <h3 id="rent-heading" className="font-bold text-base text-gray-800">Costo de Renta</h3>
+                </div>
+                <div className="space-y-2">
+                  <div className="flex items-baseline gap-2">
+                    <span
+                      className="text-2xl font-extrabold text-emerald-700"
+                      title={`Costo promedio de renta mensual: $${Math.round(perplexityData.rent)} USD`}
+                      aria-label={`Costo de renta: ${Math.round(perplexityData.rent)} dólares por mes`}
+                    >
+                      ${Math.round(perplexityData.rent)}
+                    </span>
+                    <span className="text-sm font-medium text-emerald-600">USD/mes</span>
+                  </div>
+                  <p className="text-xs text-gray-600 bg-white/60 rounded-lg px-3 py-1.5 inline-block">
+                    📐 Monoambiente (máx. 2 personas)
+                  </p>
+                </div>
               </div>
             )}
 
             {/* Tourism */}
             {perplexityData?.tourism && (
-              <div role="article" aria-labelledby="tourism-heading">
-                <div className="flex items-center gap-2 mb-2">
-                  <BiMapAlt className="text-lg text-purple-600" aria-hidden="true" />
-                  <h3 id="tourism-heading" className="font-semibold text-sm text-gray-700">Turismo</h3>
+              <div
+                role="article"
+                aria-labelledby="tourism-heading"
+                className="bg-gradient-to-br from-purple-50 to-pink-50 border-2 border-purple-200 rounded-xl p-4 shadow-sm hover:shadow-md transition-all duration-300 animate-[fadeIn_0.7s_ease-out]"
+              >
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="p-2 bg-white rounded-lg shadow-sm">
+                    <BiMapAlt className="text-2xl text-purple-600" aria-hidden="true" />
+                  </div>
+                  <h3 id="tourism-heading" className="font-bold text-base text-gray-800">Turismo</h3>
                 </div>
                 <div
-                  className="text-xs text-gray-600 leading-relaxed prose prose-sm max-w-none"
+                  className="text-sm text-gray-700 leading-relaxed prose prose-sm max-w-none bg-white/40 rounded-lg p-3"
                   title="Información turística de la zona"
                 >
                   <ReactMarkdown>{perplexityData.tourism}</ReactMarkdown>
@@ -894,31 +1033,21 @@ export default function ZonesPanel({
               </div>
             )}
 
-            {/* Notes */}
-            {perplexityData?.notes && (
-              <div role="article" aria-labelledby="notes-heading">
-                <div className="flex items-center gap-2 mb-2">
-                  <BiInfoCircle className="text-lg text-gray-600" aria-hidden="true" />
-                  <h3 id="notes-heading" className="font-semibold text-sm text-gray-700">Notas Generales</h3>
-                </div>
-                <div
-                  className="text-xs text-gray-600 leading-relaxed prose prose-sm max-w-none"
-                  title="Notas generales sobre la zona"
-                >
-                  <ReactMarkdown>{perplexityData.notes}</ReactMarkdown>
-                </div>
-              </div>
-            )}
-
             {/* Places */}
             {perplexityData?.places && (
-              <div role="article" aria-labelledby="places-heading">
-                <div className="flex items-center gap-2 mb-2">
-                  <BiMapPin className="text-lg text-red-600" aria-hidden="true" />
-                  <h3 id="places-heading" className="font-semibold text-sm text-gray-700">Lugares de Interés</h3>
+              <div
+                role="article"
+                aria-labelledby="places-heading"
+                className="bg-gradient-to-br from-rose-50 to-orange-50 border-2 border-rose-200 rounded-xl p-4 shadow-sm hover:shadow-md transition-all duration-300 animate-[fadeIn_0.8s_ease-out]"
+              >
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="p-2 bg-white rounded-lg shadow-sm">
+                    <BiMapPin className="text-2xl text-rose-600" aria-hidden="true" />
+                  </div>
+                  <h3 id="places-heading" className="font-bold text-base text-gray-800">Lugares de Interés</h3>
                 </div>
                 <div
-                  className="text-xs text-gray-600 leading-relaxed prose prose-sm max-w-none"
+                  className="text-sm text-gray-700 leading-relaxed prose prose-sm max-w-none bg-white/40 rounded-lg p-3"
                   title="Lugares de interés en la zona"
                 >
                   <ReactMarkdown
@@ -933,7 +1062,7 @@ export default function ZonesPanel({
                                 href={searchUrl}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="text-blue-600 hover:text-blue-800 hover:underline cursor-pointer"
+                                className="text-blue-600 hover:text-blue-800 hover:underline cursor-pointer transition-colors duration-200"
                                 title={`Buscar ${text} en Google Maps`}
                                 aria-label={`Buscar ${text} en Google Maps, se abrirá en una nueva ventana`}
                               >
@@ -952,10 +1081,33 @@ export default function ZonesPanel({
               </div>
             )}
 
+            {/* Notes */}
+            {perplexityData?.notes && (
+              <div
+                role="article"
+                aria-labelledby="notes-heading"
+                className="bg-gradient-to-br from-gray-50 to-slate-50 border-2 border-gray-200 rounded-xl p-4 shadow-sm hover:shadow-md transition-all duration-300 animate-[fadeIn_0.9s_ease-out]"
+              >
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="p-2 bg-white rounded-lg shadow-sm">
+                    <BiInfoCircle className="text-2xl text-gray-600" aria-hidden="true" />
+                  </div>
+                  <h3 id="notes-heading" className="font-bold text-base text-gray-800">Notas Generales</h3>
+                </div>
+                <div
+                  className="text-sm text-gray-700 leading-relaxed prose prose-sm max-w-none bg-white/40 rounded-lg p-3"
+                  title="Notas generales sobre la zona"
+                >
+                  <ReactMarkdown>{perplexityData.notes}</ReactMarkdown>
+                </div>
+              </div>
+            )}
+
             {/* No data message */}
             {!perplexityData?.notes && !perplexityData?.rent && !perplexityData?.tourism && !perplexityData?.secure && !perplexityData?.places && (
-              <div className="text-center py-8">
-                <p className="text-sm text-gray-500">No hay información disponible para esta zona</p>
+              <div className="text-center py-12 bg-gradient-to-br from-gray-50 to-slate-50 rounded-xl border-2 border-gray-200">
+                <div className="text-4xl mb-3">📭</div>
+                <p className="text-sm text-gray-600 font-medium">No hay información disponible para esta zona</p>
               </div>
             )}
             </>
