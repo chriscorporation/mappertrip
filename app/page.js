@@ -98,6 +98,52 @@ function HomeContent() {
     }
   }, [searchParams, selectedCountry, router, _hasHydrated]);
 
+  // Manejar enlaces compartidos de zonas
+  useEffect(() => {
+    if (!_hasHydrated || places.length === 0) return;
+
+    const zoneId = searchParams.get('zone');
+    const countryCode = searchParams.get('country');
+    const lat = searchParams.get('lat');
+    const lng = searchParams.get('lng');
+
+    // Si hay parámetros de zona compartida
+    if (zoneId && countryCode && lat && lng) {
+      // Buscar la zona en los datos cargados
+      const sharedZone = places.find(p => p.id === parseInt(zoneId));
+
+      if (sharedZone) {
+        // Seleccionar el país si no está seleccionado
+        if (!selectedCountry || selectedCountry.country_code !== countryCode) {
+          // Aquí asumimos que el país está en el store o necesitamos cargarlo
+          // Por simplicidad, vamos a establecer el país basado en el country_code
+          setSelectedCountry({ country_code: countryCode, name: countryCode });
+        }
+
+        // Centrar el mapa en la zona compartida
+        setSelectedPlace(sharedZone);
+        setHighlightedPlace(sharedZone.id);
+
+        // Asegurarse de que estamos en el tab correcto
+        if (selectedTab !== 'zones') {
+          setSelectedTab('zones');
+        }
+
+        // Limpiar highlighted después de un tiempo
+        setTimeout(() => {
+          setHighlightedPlace(null);
+        }, 3000);
+      } else {
+        // Si la zona no se encuentra, centrar en las coordenadas proporcionadas
+        setSelectedPlace({
+          lat: parseFloat(lat),
+          lng: parseFloat(lng),
+          address: 'Zona compartida'
+        });
+      }
+    }
+  }, [_hasHydrated, searchParams, places, selectedCountry, selectedTab, setSelectedCountry]);
+
   // Efecto para ajustar viewport cuando se carga la página en /?tab=zones con país seleccionado
   useEffect(() => {
     console.log('[page.js] Viewport effect triggered - hasHydrated:', _hasHydrated, 'country:', selectedCountry?.name, 'places:', places.length, 'tab:', selectedTab);
