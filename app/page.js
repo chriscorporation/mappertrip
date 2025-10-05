@@ -13,6 +13,7 @@ import Header from './components/Header';
 import CountryStatsPanel from './components/CountryStatsPanel';
 import KeyboardShortcuts from './components/KeyboardShortcuts';
 import Breadcrumbs from './components/Breadcrumbs';
+import QuickActions from './components/QuickActions';
 import { useAuthStore } from './store/authStore';
 import { useAppStore } from './store/appStore';
 
@@ -40,6 +41,8 @@ function HomeContent() {
   const [circleRadius, setCircleRadius] = useState(1000);
   const [editingCircleId, setEditingCircleId] = useState(null);
   const [editingRadius, setEditingRadius] = useState(1000);
+  const [mapType, setMapType] = useState('roadmap');
+  const mapRef = useRef(null);
 
 
   // Handler para atajos de teclado
@@ -299,6 +302,30 @@ function HomeContent() {
     setPlaces(prev => prev.map(p =>
       p.id === placeId ? { ...p, ...updates } : p
     ));
+  };
+
+  // Handlers para QuickActions
+  const handleToggleMapType = () => {
+    setMapType(prev => prev === 'roadmap' ? 'satellite' : 'roadmap');
+  };
+
+  const handleResetZoom = () => {
+    if (!selectedCountry) return;
+
+    const countryPlaces = places.filter(p => p.country_code === selectedCountry.country_code);
+
+    if (countryPlaces.length > 0) {
+      if (countryPlaces.length === 1) {
+        setSelectedPlace(countryPlaces[0]);
+      } else {
+        setSelectedPlace({
+          fitBounds: true,
+          places: countryPlaces
+        });
+      }
+      // Limpiar después para no persistir
+      setTimeout(() => setSelectedPlace(null), 1000);
+    }
   };
 
   // Cargar lugares, airbnbs y coworking places desde Supabase al iniciar
@@ -677,6 +704,8 @@ function HomeContent() {
           editingCircleId={editingCircleId}
           editingRadius={editingRadius}
           selectedCountry={selectedCountry}
+          currentMapType={mapType}
+          onMapTypeChange={setMapType}
         />
 
         {/* Country Stats Panel - floating over map */}
@@ -689,6 +718,16 @@ function HomeContent() {
 
       {/* Keyboard Shortcuts - floating button */}
       <KeyboardShortcuts onShortcut={handleKeyboardShortcut} />
+
+      {/* Quick Actions - FAB floating button */}
+      <QuickActions
+        selectedCountry={selectedCountry}
+        selectedPlace={selectedPlace}
+        places={places}
+        onResetZoom={handleResetZoom}
+        onToggleMapType={handleToggleMapType}
+        currentMapType={mapType}
+      />
 
     </div>
   );
