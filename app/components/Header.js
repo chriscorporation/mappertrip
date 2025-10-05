@@ -13,7 +13,44 @@ export default function Header({ isAdminMode }) {
   const [newZonesCount, setNewZonesCount] = useState(0);
   const usernameInputRef = useRef(null);
 
+  // Sticky header scroll behavior
+  const [isSticky, setIsSticky] = useState(false);
+  const [isVisible, setIsVisible] = useState(true);
+  const [lastScrollY, setLastScrollY] = useState(0);
+
   const { login, logout, isLoading, error, isAuthenticated, user, clearError } = useAuthStore();
+
+  // Sticky header scroll behavior
+  useEffect(() => {
+    let ticking = false;
+
+    const handleScroll = () => {
+      if (!ticking) {
+        window.requestAnimationFrame(() => {
+          const currentScrollY = window.scrollY;
+
+          // Determinar si el header debe ser sticky (después de 50px de scroll)
+          setIsSticky(currentScrollY > 50);
+
+          // Determinar si el header debe ser visible
+          if (currentScrollY > lastScrollY && currentScrollY > 100) {
+            // Scrolling down - hide header
+            setIsVisible(false);
+          } else {
+            // Scrolling up - show header
+            setIsVisible(true);
+          }
+
+          setLastScrollY(currentScrollY);
+          ticking = false;
+        });
+        ticking = true;
+      }
+    };
+
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, [lastScrollY]);
 
   // Cargar contador de zonas nuevas (últimas 48 horas)
   useEffect(() => {
@@ -77,29 +114,50 @@ export default function Header({ isAdminMode }) {
 
   return (
     <>
-      <header className="relative bg-gradient-to-r from-white via-blue-50/30 to-purple-50/30 border-b border-gray-200 px-6 py-3 flex justify-between items-center shadow-sm">
+      <header className={`
+        fixed top-0 left-0 right-0 z-50
+        bg-gradient-to-r from-white via-blue-50/30 to-purple-50/30
+        border-b border-gray-200
+        flex justify-between items-center
+        transition-all duration-300 ease-in-out
+        ${isSticky ? 'shadow-lg backdrop-blur-md bg-white/95' : 'shadow-sm'}
+        ${isVisible ? 'translate-y-0' : '-translate-y-full'}
+        ${isSticky ? 'px-4 py-2' : 'px-6 py-3'}
+      `}>
         <div className="flex items-center gap-6">
-          {/* Logo con gradiente y animación */}
+          {/* Logo con gradiente y animación - se reduce cuando es sticky */}
           <h1
             onClick={() => router.push('/')}
-            className="text-lg font-bold bg-gradient-to-r from-blue-600 via-purple-600 to-blue-600 bg-clip-text text-transparent cursor-pointer hover:scale-105 transition-all duration-300 ease-out animate-gradient bg-[length:200%_auto]"
+            className={`
+              font-bold bg-gradient-to-r from-blue-600 via-purple-600 to-blue-600
+              bg-clip-text text-transparent cursor-pointer hover:scale-105
+              transition-all duration-300 ease-out animate-gradient bg-[length:200%_auto]
+              ${isSticky ? 'text-base' : 'text-lg'}
+            `}
           >
             Mapper Trip - Real and secure trips
           </h1>
 
-          {/* Badge de Admin mejorado */}
+          {/* Badge de Admin mejorado - se reduce cuando es sticky */}
           {isAdminMode && (
-            <span className="relative text-xs bg-gradient-to-r from-blue-500 to-purple-600 text-white px-3 py-1 rounded-full font-semibold shadow-md hover:shadow-lg transition-all duration-300 hover:scale-105 animate-pulse-slow">
+            <span className={`
+              relative bg-gradient-to-r from-blue-500 to-purple-600 text-white
+              rounded-full font-semibold shadow-md hover:shadow-lg
+              transition-all duration-300 hover:scale-105 animate-pulse-slow
+              ${isSticky ? 'text-[10px] px-2 py-0.5' : 'text-xs px-3 py-1'}
+            `}>
               <span className="absolute inset-0 bg-gradient-to-r from-blue-400 to-purple-500 rounded-full blur opacity-50"></span>
               <span className="relative">Admin</span>
             </span>
           )}
 
-          {/* Navegación mejorada */}
-          <nav className="flex items-center gap-1">
+          {/* Navegación mejorada - se compacta cuando es sticky */}
+          <nav className={`flex items-center transition-all duration-300 ${isSticky ? 'gap-0.5' : 'gap-1'}`}>
             <button
               onClick={() => router.push('/')}
-              className={`group relative px-3 py-2 text-sm font-medium transition-all duration-300 rounded-lg ${
+              className={`group relative font-medium transition-all duration-300 rounded-lg ${
+                isSticky ? 'px-2 py-1 text-xs' : 'px-3 py-2 text-sm'
+              } ${
                 isActiveRoute('/')
                   ? 'text-blue-700 bg-blue-50'
                   : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
@@ -123,7 +181,9 @@ export default function Header({ isAdminMode }) {
 
             <button
               onClick={() => router.push('/nomadas-digitales')}
-              className={`group relative px-3 py-2 text-sm font-medium transition-all duration-300 rounded-lg ${
+              className={`group relative font-medium transition-all duration-300 rounded-lg ${
+                isSticky ? 'px-2 py-1 text-xs' : 'px-3 py-2 text-sm'
+              } ${
                 isActiveRoute('/nomadas-digitales')
                   ? 'text-blue-700 bg-blue-50'
                   : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
@@ -138,7 +198,9 @@ export default function Header({ isAdminMode }) {
 
             <button
               onClick={() => router.push('/zonas-seguras-para-viajar')}
-              className={`group relative px-3 py-2 text-sm font-medium transition-all duration-300 rounded-lg ${
+              className={`group relative font-medium transition-all duration-300 rounded-lg ${
+                isSticky ? 'px-2 py-1 text-xs' : 'px-3 py-2 text-sm'
+              } ${
                 isActiveRoute('/zonas-seguras-para-viajar')
                   ? 'text-blue-700 bg-blue-50'
                   : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
@@ -160,7 +222,9 @@ export default function Header({ isAdminMode }) {
               href="https://vuelahoy.com/"
               target="_blank"
               rel="noopener noreferrer"
-              className="group relative px-3 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-50 transition-all duration-300 rounded-lg"
+              className={`group relative font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-50 transition-all duration-300 rounded-lg ${
+                isSticky ? 'px-2 py-1 text-xs' : 'px-3 py-2 text-sm'
+              }`}
             >
               <span className="relative z-10 flex items-center gap-1">
                 Vuelos
@@ -173,7 +237,9 @@ export default function Header({ isAdminMode }) {
 
             <button
               onClick={() => router.push('/barrios')}
-              className={`group relative px-3 py-2 text-sm font-medium transition-all duration-300 rounded-lg ${
+              className={`group relative font-medium transition-all duration-300 rounded-lg ${
+                isSticky ? 'px-2 py-1 text-xs' : 'px-3 py-2 text-sm'
+              } ${
                 isActiveRoute('/barrios')
                   ? 'text-blue-700 bg-blue-50'
                   : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
@@ -188,21 +254,25 @@ export default function Header({ isAdminMode }) {
           </nav>
         </div>
 
-        {/* Sección de autenticación mejorada */}
+        {/* Sección de autenticación mejorada - se compacta cuando es sticky */}
         {isAuthenticated ? (
-          <div className="flex items-center gap-3 animate-fadeIn">
-            <div className="flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg border border-blue-100">
-              <svg className="w-4 h-4 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
+          <div className={`flex items-center animate-fadeIn transition-all duration-300 ${isSticky ? 'gap-2' : 'gap-3'}`}>
+            <div className={`flex items-center gap-2 bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg border border-blue-100 transition-all duration-300 ${
+              isSticky ? 'px-2 py-1' : 'px-3 py-1.5'
+            }`}>
+              <svg className={`text-blue-600 transition-all duration-300 ${isSticky ? 'w-3 h-3' : 'w-4 h-4'}`} fill="currentColor" viewBox="0 0 20 20">
                 <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
               </svg>
-              <span className="text-sm font-medium text-gray-700">{user?.email}</span>
+              <span className={`font-medium text-gray-700 transition-all duration-300 ${isSticky ? 'text-xs' : 'text-sm'}`}>{user?.email}</span>
             </div>
             <button
               onClick={handleLogout}
-              className="group relative px-4 py-2 text-sm font-semibold text-red-600 hover:text-red-700 transition-all duration-300 rounded-lg hover:bg-red-50"
+              className={`group relative font-semibold text-red-600 hover:text-red-700 transition-all duration-300 rounded-lg hover:bg-red-50 ${
+                isSticky ? 'px-3 py-1 text-xs' : 'px-4 py-2 text-sm'
+              }`}
             >
               <span className="relative z-10 flex items-center gap-1">
-                <svg className="w-4 h-4 group-hover:rotate-12 transition-transform duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className={`group-hover:rotate-12 transition-all duration-300 ${isSticky ? 'w-3 h-3' : 'w-4 h-4'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
                 </svg>
                 Salir
@@ -212,11 +282,13 @@ export default function Header({ isAdminMode }) {
         ) : (
           <button
             onClick={() => setShowLoginModal(!showLoginModal)}
-            className="group relative px-5 py-2 text-sm font-semibold bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg shadow-md hover:shadow-xl transition-all duration-300 hover:scale-105 overflow-hidden"
+            className={`group relative font-semibold bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg shadow-md hover:shadow-xl transition-all duration-300 hover:scale-105 overflow-hidden ${
+              isSticky ? 'px-3 py-1 text-xs' : 'px-5 py-2 text-sm'
+            }`}
           >
             <span className="absolute inset-0 bg-gradient-to-r from-blue-500 to-purple-500 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></span>
             <span className="relative z-10 flex items-center gap-2">
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className={`transition-all duration-300 ${isSticky ? 'w-3 h-3' : 'w-4 h-4'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
               </svg>
               Iniciar sesión

@@ -425,6 +425,9 @@ function HomeContent() {
 
   return (
     <div className="flex flex-col h-screen">
+      {/* Spacer for fixed header */}
+      <div className="h-[52px]"></div>
+
       {/* Dynamic contextual banner */}
       <div className="relative bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-600 text-white overflow-hidden">
         {/* Animated background pattern */}
