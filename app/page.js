@@ -14,10 +14,13 @@ import CountryQuickSelector from './components/CountryQuickSelector';
 import RealTimeMetrics from './components/RealTimeMetrics';
 import OnboardingTour from './components/OnboardingTour';
 import HistoryPanel from './components/HistoryPanel';
+import ComparisonDrawer from './components/ComparisonDrawer';
 import { useAuthStore } from './store/authStore';
 import { useAppStore } from './store/appStore';
 import { useToast } from './store/toastStore';
 import { useHistoryStore } from './store/historyStore';
+import { useComparisonStore } from './store/comparisonStore';
+import { FiLayers } from 'react-icons/fi';
 
 // Home page component with tab-based navigation for countries, zones, airbnb, coworking, and instagramable places
 function HomeContent() {
@@ -27,6 +30,7 @@ function HomeContent() {
   const { selectedCountry, setSelectedCountry, _hasHydrated } = useAppStore();
   const { addVisitedZone } = useHistoryStore();
   const toast = useToast();
+  const { comparedZones, isDrawerOpen, removeZoneFromComparison, clearComparison, openDrawer, closeDrawer } = useComparisonStore();
   const isAdminMode = isAuthenticated;
 
   const [airbnbLocation, setAirbnbLocation] = useState(null);
@@ -660,6 +664,35 @@ function HomeContent() {
 
       {/* History Panel */}
       <HistoryPanel onGoToZone={handleGoToPlace} countries={countries} />
+
+      {/* Comparison Drawer */}
+      {isDrawerOpen && (
+        <ComparisonDrawer
+          zones={comparedZones}
+          onRemoveZone={removeZoneFromComparison}
+          onClose={closeDrawer}
+        />
+      )}
+
+      {/* Floating Comparison Button - Only show if there are zones to compare */}
+      {comparedZones.length > 0 && !isDrawerOpen && (
+        <button
+          onClick={openDrawer}
+          className="fixed bottom-6 right-6 z-40 bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 text-white p-4 rounded-full shadow-2xl hover:shadow-purple-500/50 transition-all duration-300 hover:scale-110 border-2 border-white group"
+          title="Abrir comparador de zonas"
+        >
+          <div className="relative">
+            <FiLayers className="text-2xl" />
+            {/* Badge con contador */}
+            <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center animate-pulse">
+              {comparedZones.length}
+            </span>
+          </div>
+          <span className="absolute bottom-full right-0 mb-2 bg-gray-900 text-white text-xs px-3 py-1 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
+            {comparedZones.length} zona{comparedZones.length > 1 ? 's' : ''} para comparar
+          </span>
+        </button>
+      )}
 
     </div>
   );
