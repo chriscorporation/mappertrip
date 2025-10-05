@@ -40,9 +40,6 @@ function HomeContent() {
   const [editingCircleId, setEditingCircleId] = useState(null);
   const [editingRadius, setEditingRadius] = useState(1000);
 
-  // Estados para controlar mapa desde atajos de teclado
-  const [triggerLegendToggle, setTriggerLegendToggle] = useState(0);
-  const [triggerStyleToggle, setTriggerStyleToggle] = useState(0);
 
   // Handler para atajos de teclado
   const handleKeyboardShortcut = (shortcut) => {
@@ -70,14 +67,6 @@ function HomeContent() {
             searchInput.focus();
           }
         }
-        break;
-      case 'legend':
-        // Toggle leyenda del mapa
-        setTriggerLegendToggle(prev => prev + 1);
-        break;
-      case 'mapStyle':
-        // Toggle selector de estilo de mapa
-        setTriggerStyleToggle(prev => prev + 1);
         break;
       case 'escape':
         // Cerrar paneles/modales abiertos
@@ -633,8 +622,6 @@ function HomeContent() {
           circleRadius={circleRadius}
           editingCircleId={editingCircleId}
           editingRadius={editingRadius}
-          triggerLegendToggle={triggerLegendToggle}
-          triggerStyleToggle={triggerStyleToggle}
         />
 
         {/* Country Stats Panel - floating over map */}

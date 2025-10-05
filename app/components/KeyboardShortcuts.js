@@ -14,8 +14,6 @@ export default function KeyboardShortcuts({ onShortcut }) {
     { key: '4', description: 'Ver CoWorking', category: 'Navegación' },
     { key: '5', description: 'Ver Instagramable', category: 'Navegación' },
     { key: '/', description: 'Buscar zonas', category: 'Búsqueda' },
-    { key: 'L', description: 'Toggle leyenda', category: 'Mapa' },
-    { key: 'M', description: 'Cambiar estilo mapa', category: 'Mapa' },
   ];
 
   useEffect(() => {
@@ -58,20 +56,6 @@ export default function KeyboardShortcuts({ onShortcut }) {
       if (e.key === '/') {
         e.preventDefault();
         onShortcut?.('search');
-        return;
-      }
-
-      // Toggle leyenda con L
-      if (e.key === 'l' || e.key === 'L') {
-        e.preventDefault();
-        onShortcut?.('legend');
-        return;
-      }
-
-      // Cambiar estilo mapa con M
-      if (e.key === 'm' || e.key === 'M') {
-        e.preventDefault();
-        onShortcut?.('mapStyle');
         return;
       }
     };
