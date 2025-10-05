@@ -177,11 +177,12 @@ const MAP_STYLES = {
   }
 };
 
-export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocation, onSavePolygon, onPolygonClick, onBoundsChanged, coworkingPlaces, instagramablePlaces, mapClickMode, onMapClick, highlightedPlace, pendingCircle, circleRadius, editingCircleId, editingRadius, triggerLegendToggle, triggerStyleToggle, selectedCountry }) {
+export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocation, onSavePolygon, onPolygonClick, onBoundsChanged, coworkingPlaces, instagramablePlaces, mapClickMode, onMapClick, highlightedPlace, pendingCircle, circleRadius, editingCircleId, editingRadius, triggerLegendToggle, triggerStyleToggle, selectedCountry, onMapTypeChange, currentMapType }) {
   const mapRef = useRef(null);
   const [map, setMap] = useState(null);
   const [isMapLoading, setIsMapLoading] = useState(true);
   const [mapStyle, setMapStyle] = useState('standard');
+  const [mapType, setMapType] = useState(currentMapType || 'roadmap');
   const [marker, setMarker] = useState(null);
   const [airbnbMarker, setAirbnbMarker] = useState(null);
   const [drawingManager, setDrawingManager] = useState(null);
@@ -217,6 +218,30 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
       localStorage.setItem('mapStyle', mapStyle);
     }
   }, [map, mapStyle]);
+
+  // Sincronizar mapType externo
+  useEffect(() => {
+    if (!map || !currentMapType) return;
+    setMapType(currentMapType);
+    map.setMapTypeId(currentMapType);
+  }, [map, currentMapType]);
+
+  // Escuchar cambios de mapType del usuario (desde controles nativos)
+  useEffect(() => {
+    if (!map) return;
+
+    const listener = map.addListener('maptypeid_changed', () => {
+      const newType = map.getMapTypeId();
+      setMapType(newType);
+      if (onMapTypeChange) {
+        onMapTypeChange(newType);
+      }
+    });
+
+    return () => {
+      if (listener) window.google.maps.event.removeListener(listener);
+    };
+  }, [map, onMapTypeChange]);
 
 
   useEffect(() => {
