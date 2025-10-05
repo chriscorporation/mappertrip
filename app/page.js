@@ -16,6 +16,7 @@ import Breadcrumbs from './components/Breadcrumbs';
 import QuickActions from './components/QuickActions';
 import { useAuthStore } from './store/authStore';
 import { useAppStore } from './store/appStore';
+import { useToastStore } from './store/toastStore';
 
 // Home page component with tab-based navigation for countries, zones, airbnb, coworking, and instagramable places
 function HomeContent() {
@@ -23,6 +24,7 @@ function HomeContent() {
   const searchParams = useSearchParams();
   const { isAuthenticated } = useAuthStore();
   const { selectedCountry, setSelectedCountry, _hasHydrated } = useAppStore();
+  const toast = useToastStore();
   const isAdminMode = isAuthenticated;
 
   const [airbnbLocation, setAirbnbLocation] = useState(null);
@@ -468,9 +470,13 @@ function HomeContent() {
         const savedPlace = await response.json();
         setCoworkingPlaces(prev => [savedPlace, ...prev]);
         setSelectedPlace(savedPlace);
+        toast.success('Espacio de coworking agregado');
+      } else {
+        toast.error('Error al agregar espacio de coworking');
       }
     } catch (error) {
       console.error('Error adding coworking place:', error);
+      toast.error('Error al agregar espacio de coworking');
     }
   };
 
@@ -478,8 +484,10 @@ function HomeContent() {
     try {
       await fetch(`/api/coworking?id=${placeId}`, { method: 'DELETE' });
       setCoworkingPlaces(prev => prev.filter(p => p.id !== placeId));
+      toast.info('Espacio de coworking eliminado');
     } catch (error) {
       console.error('Error deleting coworking place:', error);
+      toast.error('Error al eliminar espacio de coworking');
     }
   };
 
@@ -495,9 +503,13 @@ function HomeContent() {
         const savedPlace = await response.json();
         setInstagramablePlaces(prev => [savedPlace, ...prev]);
         setSelectedPlace(savedPlace);
+        toast.success('Lugar instagrameable agregado');
+      } else {
+        toast.error('Error al agregar lugar instagrameable');
       }
     } catch (error) {
       console.error('Error adding instagramable place:', error);
+      toast.error('Error al agregar lugar instagrameable');
     }
   };
 
@@ -505,8 +517,10 @@ function HomeContent() {
     try {
       await fetch(`/api/instagramable?id=${placeId}`, { method: 'DELETE' });
       setInstagramablePlaces(prev => prev.filter(p => p.id !== placeId));
+      toast.info('Lugar instagrameable eliminado');
     } catch (error) {
       console.error('Error deleting instagramable place:', error);
+      toast.error('Error al eliminar lugar instagrameable');
     }
   };
 
@@ -623,6 +637,7 @@ function HomeContent() {
 
               if (!response.ok) {
                 console.error('Error creando zona');
+                toast.error('Error al crear la zona');
                 return;
               }
 
@@ -630,6 +645,7 @@ function HomeContent() {
 
               // Actualizar estado con ID de Supabase
               setPlaces(prev => [savedPlace, ...prev]);
+              toast.success('Zona creada exitosamente');
 
               // Hacer zoom a la nueva zona, pero limpiar después para no persistir
               setSelectedPlace(savedPlace);
@@ -649,6 +665,7 @@ function HomeContent() {
               }
             } catch (error) {
               console.error('Error:', error);
+              toast.error('Error al crear la zona');
             }
           }}
           onMapClickModeChange={(isActive, callback) => {

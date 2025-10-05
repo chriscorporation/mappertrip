@@ -7,6 +7,7 @@ import { HiOutlineSparkles } from 'react-icons/hi';
 import { useAuthStore } from '../store/authStore';
 import { getPreference, setPreference } from '../utils/userPreferences';
 import { getFavorites, toggleFavorite, isFavorite } from '../utils/favoritesManager';
+import { useToastStore } from '../store/toastStore';
 
 export default function ZonesPanel({
   selectedCountry,
@@ -31,6 +32,7 @@ export default function ZonesPanel({
   onUpdatePlace
 }) {
   const { isAuthenticated } = useAuthStore();
+  const toast = useToastStore();
   const isAdminMode = isAuthenticated;
   const [address, setAddress] = useState('');
   const [hoverEnabled, setHoverEnabled] = useState(() => {
@@ -240,8 +242,16 @@ export default function ZonesPanel({
   // Función para manejar favoritos
   const handleToggleFavorite = (zoneId, e) => {
     e.stopPropagation();
+    const wasFavorite = isFavorite(zoneId);
     toggleFavorite(zoneId);
     setFavorites(getFavorites());
+
+    // Mostrar notificación toast
+    if (wasFavorite) {
+      toast.info('Zona eliminada de favoritos');
+    } else {
+      toast.success('Zona agregada a favoritos');
+    }
   };
 
   // Función para compartir zona
@@ -255,6 +265,7 @@ export default function ZonesPanel({
     try {
       await navigator.clipboard.writeText(shareUrl);
       setCopiedZoneId(place.id);
+      toast.success('Enlace copiado al portapapeles');
 
       // Resetear el estado después de 2 segundos
       setTimeout(() => {
@@ -262,6 +273,7 @@ export default function ZonesPanel({
       }, 2000);
     } catch (error) {
       console.error('Error copying to clipboard:', error);
+      toast.error('No se pudo copiar el enlace');
       // Fallback: mostrar alert con la URL
       alert(`Copia este enlace:\n${shareUrl}`);
     }
