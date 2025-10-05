@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, useMemo } from 'react';
 import MapToolbar from './MapToolbar';
+import OverviewMap from './OverviewMap';
 
 // Estilos de mapa predefinidos
 const MAP_STYLES = {
@@ -176,7 +177,7 @@ const MAP_STYLES = {
   }
 };
 
-export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocation, onSavePolygon, onPolygonClick, onBoundsChanged, coworkingPlaces, instagramablePlaces, mapClickMode, onMapClick, highlightedPlace, pendingCircle, circleRadius, editingCircleId, editingRadius, triggerLegendToggle, triggerStyleToggle }) {
+export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocation, onSavePolygon, onPolygonClick, onBoundsChanged, coworkingPlaces, instagramablePlaces, mapClickMode, onMapClick, highlightedPlace, pendingCircle, circleRadius, editingCircleId, editingRadius, triggerLegendToggle, triggerStyleToggle, selectedCountry }) {
   const mapRef = useRef(null);
   const [map, setMap] = useState(null);
   const [isMapLoading, setIsMapLoading] = useState(true);
@@ -1176,6 +1177,14 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
           <MapToolbar
             mapStyle={mapStyle}
             onMapStyleChange={setMapStyle}
+          />
+        )}
+
+        {/* Overview Map - Mini-mapa de ubicación global */}
+        {!isMapLoading && map && (
+          <OverviewMap
+            mainMap={map}
+            selectedCountry={selectedCountry}
           />
         )}
       </div>
