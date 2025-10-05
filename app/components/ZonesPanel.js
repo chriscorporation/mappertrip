@@ -1728,7 +1728,11 @@ export default function ZonesPanel({
                   EVALUACIÓN DE SEGURIDAD
                 </h3>
                 {(() => {
-                  const secureText = perplexityData.secure.toLowerCase();
+                  // Obtener la zona actual para usar su color real
+                  const currentPlace = places.find(p => p.address === selectedZoneAddress);
+                  const zoneColor = currentPlace?.color || '#eab308';
+
+                  // Configuración basada en el color de la zona
                   let safetyScore = 50;
                   let scoreColor = 'from-yellow-400 to-orange-500';
                   let bgColor = 'bg-yellow-50';
@@ -1736,27 +1740,51 @@ export default function ZonesPanel({
                   let icon = '⚠️';
                   let label = 'Media';
 
-                  if (secureText.includes('buena') || secureText.includes('aceptable') || secureText.includes('alta') || secureText.includes('segur')) {
-                    safetyScore = 85;
-                    scoreColor = 'from-green-400 to-emerald-500';
-                    bgColor = 'bg-green-50';
-                    textColor = 'text-green-800';
-                    icon = '🛡️';
-                    label = 'Alta';
-                  } else if (secureText.includes('media') || secureText.includes('moderada')) {
-                    safetyScore = 60;
-                    scoreColor = 'from-blue-400 to-cyan-500';
-                    bgColor = 'bg-blue-50';
-                    textColor = 'text-blue-800';
-                    icon = '🔷';
-                    label = 'Media';
-                  } else if (secureText.includes('baja') || secureText.includes('peligro') || secureText.includes('insegur') || secureText.includes('riesgo')) {
-                    safetyScore = 25;
-                    scoreColor = 'from-red-400 to-rose-500';
-                    bgColor = 'bg-red-50';
-                    textColor = 'text-red-800';
-                    icon = '🚨';
-                    label = 'Baja';
+                  // Mapeo de colores de zona a configuración de seguridad
+                  switch(zoneColor) {
+                    case '#22c55e': // Verde - Seguro
+                      safetyScore = 90;
+                      scoreColor = 'from-green-400 to-emerald-500';
+                      bgColor = 'bg-green-50';
+                      textColor = 'text-green-800';
+                      icon = '🛡️';
+                      label = 'Alta';
+                      break;
+                    case '#3b82f6': // Azul - Medio
+                      safetyScore = 70;
+                      scoreColor = 'from-blue-400 to-cyan-500';
+                      bgColor = 'bg-blue-50';
+                      textColor = 'text-blue-800';
+                      icon = '🔷';
+                      label = 'Media-Alta';
+                      break;
+                    case '#f97316': // Naranja - Regular
+                      safetyScore = 50;
+                      scoreColor = 'from-orange-400 to-amber-500';
+                      bgColor = 'bg-orange-50';
+                      textColor = 'text-orange-800';
+                      icon = '⚠️';
+                      label = 'Media';
+                      break;
+                    case '#eab308': // Amarillo - Precaución
+                      safetyScore = 30;
+                      scoreColor = 'from-yellow-400 to-amber-400';
+                      bgColor = 'bg-yellow-50';
+                      textColor = 'text-yellow-800';
+                      icon = '⚡';
+                      label = 'Precaución';
+                      break;
+                    case '#dc2626': // Rojo - Inseguro
+                      safetyScore = 15;
+                      scoreColor = 'from-red-400 to-rose-500';
+                      bgColor = 'bg-red-50';
+                      textColor = 'text-red-800';
+                      icon = '🚨';
+                      label = 'Baja';
+                      break;
+                    default:
+                      // Mantener valores por defecto
+                      break;
                   }
 
                   return (
