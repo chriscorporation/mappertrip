@@ -10,6 +10,7 @@ import AirbnbPanel from './components/AirbnbPanel';
 import CoWorkingPanel from './components/CoWorkingPanel';
 import InstagramablePlacesPanel from './components/InstagramablePlacesPanel';
 import Header from './components/Header';
+import CountryStatsPanel from './components/CountryStatsPanel';
 import { useAuthStore } from './store/authStore';
 import { useAppStore } from './store/appStore';
 
@@ -558,7 +559,7 @@ function HomeContent() {
       )}
 
       {/* Panel derecho - Mapa de Google */}
-      <div className="flex-1">
+      <div className="flex-1 relative">
         <GoogleMap
           selectedPlace={selectedPlace}
           places={places}
@@ -583,6 +584,12 @@ function HomeContent() {
           circleRadius={circleRadius}
           editingCircleId={editingCircleId}
           editingRadius={editingRadius}
+        />
+
+        {/* Country Stats Panel - floating over map */}
+        <CountryStatsPanel
+          selectedCountry={selectedCountry}
+          places={places}
         />
       </div>
       </div>
