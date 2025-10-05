@@ -69,17 +69,40 @@ const InstagramableIcon = ({ className }) => (
   </div>
 );
 
-export default function Sidebar({ selectedTab, selectedCountry, isZonesEnabled }) {
+export default function Sidebar({ selectedTab, selectedCountry, isZonesEnabled, places, airbnbs, coworkingPlaces, instagramablePlaces, countries }) {
   const router = useRouter();
   const [hoveredTab, setHoveredTab] = useState(null);
   const [rippleEffect, setRippleEffect] = useState(null);
+
+  // Calcular cantidades para cada tab
+  const getTabCount = (tabId) => {
+    switch (tabId) {
+      case 'countries':
+        return countries?.length || 0;
+      case 'zones':
+        if (!selectedCountry) return 0;
+        return places?.filter(p => p.country_code === selectedCountry.country_code).length || 0;
+      case 'airbnb':
+        if (!selectedCountry) return 0;
+        return airbnbs?.filter(a => a.country_code === selectedCountry.country_code).length || 0;
+      case 'coworking':
+        if (!selectedCountry) return 0;
+        return coworkingPlaces?.filter(c => c.country_code === selectedCountry.country_code).length || 0;
+      case 'instagramable':
+        if (!selectedCountry) return 0;
+        return instagramablePlaces?.filter(i => i.country_code === selectedCountry.country_code).length || 0;
+      default:
+        return 0;
+    }
+  };
 
   const tabs = [
     {
       id: 'countries',
       label: 'Countries',
       Icon: CountriesIcon,
-      tooltip: 'Explora países de Latinoamérica'
+      tooltip: 'Explora países de Latinoamérica',
+      count: getTabCount('countries')
     },
     {
       id: 'zones',
@@ -88,7 +111,8 @@ export default function Sidebar({ selectedTab, selectedCountry, isZonesEnabled }
       disabled: !isZonesEnabled,
       tooltip: isZonesEnabled
         ? 'Zonas seguras y de riesgo'
-        : 'Selecciona un país primero'
+        : 'Selecciona un país primero',
+      count: getTabCount('zones')
     },
     {
       id: 'airbnb',
@@ -97,7 +121,8 @@ export default function Sidebar({ selectedTab, selectedCountry, isZonesEnabled }
       disabled: !isZonesEnabled,
       tooltip: isZonesEnabled
         ? 'Alojamientos disponibles'
-        : 'Selecciona un país primero'
+        : 'Selecciona un país primero',
+      count: getTabCount('airbnb')
     },
     {
       id: 'coworking',
@@ -106,7 +131,8 @@ export default function Sidebar({ selectedTab, selectedCountry, isZonesEnabled }
       disabled: !isZonesEnabled,
       tooltip: isZonesEnabled
         ? 'Espacios de trabajo'
-        : 'Selecciona un país primero'
+        : 'Selecciona un país primero',
+      count: getTabCount('coworking')
     },
     {
       id: 'instagramable',
@@ -115,7 +141,8 @@ export default function Sidebar({ selectedTab, selectedCountry, isZonesEnabled }
       disabled: !isZonesEnabled,
       tooltip: isZonesEnabled
         ? 'Lugares fotogénicos'
-        : 'Selecciona un país primero'
+        : 'Selecciona un país primero',
+      count: getTabCount('instagramable')
     }
   ];
 
@@ -191,6 +218,26 @@ export default function Sidebar({ selectedTab, selectedCountry, isZonesEnabled }
               `}>
                 {tab.label}
               </span>
+
+              {/* Count badge - solo mostrar si hay elementos */}
+              {tab.count > 0 && (
+                <div className={`
+                  absolute top-2 right-2 z-20
+                  min-w-[20px] h-5 px-1.5 rounded-full
+                  flex items-center justify-center
+                  text-[10px] font-bold
+                  transition-all duration-300 shadow-sm
+                  ${isActive
+                    ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white scale-110'
+                    : tab.disabled
+                      ? 'bg-gray-300 text-gray-500'
+                      : 'bg-gradient-to-r from-gray-600 to-gray-700 text-white'
+                  }
+                  ${!tab.disabled && isHovered ? 'scale-125 from-blue-500 to-blue-600' : ''}
+                `}>
+                  {tab.count > 99 ? '99+' : tab.count}
+                </div>
+              )}
 
               {/* Active indicator pulse */}
               {isActive && (
