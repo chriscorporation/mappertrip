@@ -14,6 +14,13 @@ export default function HeatMapControl({ map, places, selectedCountry, isMapLoad
   const [intensity, setIntensity] = useState(1);
   const [showSettings, setShowSettings] = useState(false);
 
+  // Track heatmap feature usage
+  useEffect(() => {
+    if (showHeatMap && window.trackFeatureUse) {
+      window.trackFeatureUse('heatmap');
+    }
+  }, [showHeatMap]);
+
   // Crear y actualizar la capa de calor cuando se activa o cambian los datos
   useEffect(() => {
     if (!map || !window.google?.maps?.visualization?.HeatmapLayer) return;

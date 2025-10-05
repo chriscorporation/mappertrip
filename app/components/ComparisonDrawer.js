@@ -15,6 +15,13 @@ const ComparisonDrawer = ({ zones = [], onRemoveZone, onClose }) => {
   const [isExpanded, setIsExpanded] = useState(true);
   const [hoveredZone, setHoveredZone] = useState(null);
 
+  // Track comparison feature usage
+  useEffect(() => {
+    if (zones.length > 0 && window.trackFeatureUse) {
+      window.trackFeatureUse('comparison');
+    }
+  }, [zones.length]);
+
   // Calcular estadísticas de comparación
   const getComparativeStats = () => {
     if (zones.length === 0) return null;
