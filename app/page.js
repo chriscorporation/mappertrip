@@ -16,6 +16,7 @@ import OnboardingTour from './components/OnboardingTour';
 import HistoryPanel from './components/HistoryPanel';
 import ComparisonDrawer from './components/ComparisonDrawer';
 import ExplorationProgress from './components/ExplorationProgress';
+import GlobalSearch from './components/GlobalSearch';
 import { useAuthStore } from './store/authStore';
 import { useAppStore } from './store/appStore';
 import { useToast } from './store/toastStore';
@@ -710,6 +711,9 @@ function HomeContent() {
 
       {/* Exploration Progress Badge */}
       <ExplorationProgress />
+
+      {/* Global Search */}
+      <GlobalSearch />
 
     </div>
   );
