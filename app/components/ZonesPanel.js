@@ -6,6 +6,7 @@ import { BiDollar, BiShield, BiMapAlt, BiInfoCircle, BiMapPin } from 'react-icon
 import { HiOutlineSparkles } from 'react-icons/hi';
 import { useAuthStore } from '../store/authStore';
 import { getPreference, setPreference } from '../utils/userPreferences';
+import { getFavorites, toggleFavorite, isFavorite } from '../utils/favoritesManager';
 
 export default function ZonesPanel({
   selectedCountry,
@@ -58,6 +59,8 @@ export default function ZonesPanel({
   const [showComparisonPanel, setShowComparisonPanel] = useState(false);
   const [comparisonData, setComparisonData] = useState({});
   const [copiedZoneId, setCopiedZoneId] = useState(null);
+  const [favorites, setFavorites] = useState(() => getFavorites());
+  const [showOnlyFavorites, setShowOnlyFavorites] = useState(false);
   const inputRef = useRef(null);
   const autocompleteRef = useRef(null);
   const cardRefs = useRef({});
@@ -234,6 +237,13 @@ export default function ZonesPanel({
     initAutocomplete();
   }, [selectedCountry, onAddPlace]);
 
+  // Función para manejar favoritos
+  const handleToggleFavorite = (zoneId, e) => {
+    e.stopPropagation();
+    toggleFavorite(zoneId);
+    setFavorites(getFavorites());
+  };
+
   // Función para compartir zona
   const handleShareZone = async (place, e) => {
     e.stopPropagation();
@@ -378,10 +388,12 @@ export default function ZonesPanel({
 
   const countryPlaces = places.filter(p => p.country_code === selectedCountry.country_code);
 
-  // Filter zones based on search query
-  const filteredPlaces = countryPlaces.filter(place =>
-    place.address.toLowerCase().includes(searchFilter.toLowerCase())
-  );
+  // Filter zones based on search query and favorites
+  const filteredPlaces = countryPlaces.filter(place => {
+    const matchesSearch = place.address.toLowerCase().includes(searchFilter.toLowerCase());
+    const matchesFavorites = !showOnlyFavorites || favorites.includes(place.id);
+    return matchesSearch && matchesFavorites;
+  });
 
   return (
     <div className="flex">
@@ -433,6 +445,24 @@ export default function ZonesPanel({
             <span className="font-semibold">{filteredPlaces.length}</span>
             {filteredPlaces.length === 1 ? 'zona encontrada' : 'zonas encontradas'}
           </p>
+        )}
+
+        {/* Favorites Filter Toggle - Solo visible si hay favoritos */}
+        {favorites.length > 0 && (
+          <button
+            onClick={() => setShowOnlyFavorites(!showOnlyFavorites)}
+            className={`mt-2 w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg font-medium text-sm transition-all duration-300 ${
+              showOnlyFavorites
+                ? 'bg-gradient-to-r from-pink-500 to-rose-500 text-white shadow-lg hover:shadow-xl'
+                : 'bg-white text-gray-700 border-2 border-gray-300 hover:border-pink-400 hover:bg-pink-50'
+            }`}
+            title={showOnlyFavorites ? 'Mostrar todas las zonas' : 'Mostrar solo favoritas'}
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+              <path fillRule="evenodd" d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" clipRule="evenodd" />
+            </svg>
+            {showOnlyFavorites ? `Favoritas (${favorites.length})` : `Ver Favoritas (${favorites.length})`}
+          </button>
         )}
 
         {/* Comparison Mode Toggle - Solo visible si hay 2+ zonas */}
@@ -842,6 +872,19 @@ export default function ZonesPanel({
                           <path d="M15 8a3 3 0 10-2.977-2.63l-4.94 2.47a3 3 0 100 4.319l4.94 2.47a3 3 0 10.895-1.789l-4.94-2.47a3.027 3.027 0 000-.74l4.94-2.47C13.456 7.68 14.19 8 15 8z" />
                         </svg>
                       )}
+                    </button>
+                    <button
+                      onClick={(e) => handleToggleFavorite(place.id, e)}
+                      className={`transition-all duration-200 hover:scale-110 ${
+                        isFavorite(place.id)
+                          ? 'text-pink-600 hover:text-pink-700'
+                          : 'text-gray-400 hover:text-pink-500'
+                      }`}
+                      title={isFavorite(place.id) ? 'Quitar de favoritos' : 'Agregar a favoritos'}
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill={isFavorite(place.id) ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth={isFavorite(place.id) ? 0 : 2}>
+                        <path fillRule="evenodd" d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" clipRule="evenodd" />
+                      </svg>
                     </button>
                   </div>
                 </div>
