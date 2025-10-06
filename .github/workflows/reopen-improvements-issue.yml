@@ -2,8 +2,8 @@ name: Reopen Improvements Issue
 
 on:
   schedule:
-    # Ejecutar cada 2 horas
-    - cron: '0 */2 * * *'
+    # Ejecutar cada 4 horas
+    - cron: '0 */4 * * *'
   workflow_dispatch: # Permite ejecución manual
 
 jobs:
