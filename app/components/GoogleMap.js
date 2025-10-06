@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState, useMemo } from 'react';
+import * as turf from '@turf/turf';
 
 export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocation, onSavePolygon, onPolygonClick, onBoundsChanged, coworkingPlaces, instagramablePlaces, mapClickMode, onMapClick, highlightedPlace, pendingCircle, circleRadius, editingCircleId, editingRadius }) {
   const mapRef = useRef(null);
@@ -462,10 +463,35 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
         }
 
         // Si no está renderizado, crearlo
-        const coordinates = place.polygon.map(coord => ({
-          lat: coord[1],
-          lng: coord[0]
-        }));
+        let coordinates;
+
+        try {
+          // Crear polígono de Turf para aplicar buffer negativo (inset)
+          const turfPolygon = turf.polygon([place.polygon]);
+          // Aplicar buffer negativo de -30 metros (-0.03 km) para crear "aire" entre polígonos
+          const buffered = turf.buffer(turfPolygon, -0.03, { units: 'kilometers' });
+
+          if (buffered && buffered.geometry && buffered.geometry.coordinates && buffered.geometry.coordinates[0]) {
+            // Usar coordenadas con buffer negativo aplicado
+            coordinates = buffered.geometry.coordinates[0].map(coord => ({
+              lat: coord[1],
+              lng: coord[0]
+            }));
+          } else {
+            // Fallback: usar coordenadas originales si el buffer falla
+            coordinates = place.polygon.map(coord => ({
+              lat: coord[1],
+              lng: coord[0]
+            }));
+          }
+        } catch (error) {
+          // Si hay error con Turf, usar coordenadas originales
+          console.warn('Error applying buffer to polygon:', error);
+          coordinates = place.polygon.map(coord => ({
+            lat: coord[1],
+            lng: coord[0]
+          }));
+        }
 
         const polygon = new window.google.maps.Polygon({
           paths: coordinates,
@@ -584,6 +610,7 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
         strokeOpacity: 1,
         strokeColor: isEditing ? '#8b5cf6' : (isHighlighted ? '#FFEB3B' : (place.color || '#FFD700')),
         fillOpacity: isHighlighted || isEditing ? 0.25 : 0.15,
+        zIndex: isHighlighted ? 1000 : 1,
       });
     });
   }, [highlightedPlace, places, map]);
