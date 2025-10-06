@@ -23,7 +23,31 @@ export async function GET() {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  return NextResponse.json(data);
+  // Obtener todas las notas de airbnbs en una sola query
+  const airbnbIds = data.map(airbnb => airbnb.id);
+  const { data: notesData } = await supabaseRead
+    .from('notes')
+    .select('*')
+    .eq('related_type', 'airbnb')
+    .in('related_id', airbnbIds)
+    .order('created_at', { ascending: true });
+
+  // Agrupar notas por related_id
+  const notesByAirbnbId = (notesData || []).reduce((acc, note) => {
+    if (!acc[note.related_id]) {
+      acc[note.related_id] = [];
+    }
+    acc[note.related_id].push(note);
+    return acc;
+  }, {});
+
+  // Incluir notas en cada airbnb
+  const airbnbsWithNotes = data.map(airbnb => ({
+    ...airbnb,
+    notes: notesByAirbnbId[airbnb.id] || []
+  }));
+
+  return NextResponse.json(airbnbsWithNotes);
 }
 
 export async function DELETE(request) {

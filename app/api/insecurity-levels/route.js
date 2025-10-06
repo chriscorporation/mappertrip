@@ -16,7 +16,9 @@ export async function GET() {
       color_insecurity:color_id (
         id,
         name,
-        hex_code
+        hex_code,
+        gradient_from,
+        gradient_to
       )
     `)
     .order('id', { ascending: true });
@@ -30,7 +32,9 @@ export async function GET() {
     id: level.id,
     name: level.name,
     color: level.color_insecurity.hex_code,
-    color_name: level.color_insecurity.name
+    color_name: level.color_insecurity.name,
+    gradient_from: level.color_insecurity.gradient_from,
+    gradient_to: level.color_insecurity.gradient_to
   }));
 
   return NextResponse.json(normalizedData);

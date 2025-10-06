@@ -31,26 +31,24 @@ export default function AirbnbPanel({ onGoToLocation, selectedCountry }) {
     loadAirbnbs();
   }, []);
 
-  // Cargar notas para cada Airbnb
+  // Las notas ahora vienen incluidas en el objeto airbnb.notes desde la API
+  // Este useEffect se mantiene solo para sincronizar el estado local cuando cambian los airbnbs
   useEffect(() => {
-    const loadNotes = async () => {
-      const countryAirbnbs = airbnbs.filter(a => a.country_code === selectedCountry?.country_code);
+    const syncNotes = () => {
+      if (!airbnbs.length) return;
 
-      for (const airbnb of countryAirbnbs) {
-        try {
-          const response = await fetch(`/api/notes?related_type=airbnb&related_id=${airbnb.id}`);
-          const airbnbNotes = await response.json();
-          setNotes(prev => ({ ...prev, [airbnb.id]: airbnbNotes }));
-        } catch (error) {
-          console.error('Error loading notes:', error);
+      const updatedNotes = {};
+      airbnbs.forEach(airbnb => {
+        if (airbnb.notes) {
+          updatedNotes[airbnb.id] = airbnb.notes;
         }
-      }
+      });
+
+      setNotes(updatedNotes);
     };
 
-    if (selectedCountry && airbnbs.length > 0) {
-      loadNotes();
-    }
-  }, [selectedCountry, airbnbs]);
+    syncNotes();
+  }, [airbnbs]);
 
   const handleAddNote = async (airbnbId) => {
     const noteText = newNote[airbnbId]?.trim();

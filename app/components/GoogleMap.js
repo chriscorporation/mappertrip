@@ -138,12 +138,15 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
 
     // Si es fitBounds, ajustar para ver todos los puntos
     if (selectedPlace.fitBounds && selectedPlace.places) {
+      // Filtrar solo lugares activos (excluir active = null)
+      const activePlaces = selectedPlace.places.filter(p => p.active !== null);
+
       // Función para intentar fitBounds
       const attemptFitBounds = () => {
         const bounds = new window.google.maps.LatLngBounds();
         let hasValidBounds = false;
 
-        selectedPlace.places.forEach(place => {
+        activePlaces.forEach(place => {
           // Siempre extender con el punto central
           bounds.extend({ lat: place.lat, lng: place.lng });
           hasValidBounds = true;
@@ -183,7 +186,7 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
       };
 
       // Verificar si todas las formas (polígonos/círculos) están renderizadas
-      const allShapesRendered = selectedPlace.places.every(place => {
+      const allShapesRendered = activePlaces.every(place => {
         if (place.polygon) {
           return polygonsRef.current[place.id] !== undefined;
         }
@@ -193,7 +196,7 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
         return true; // Si no tiene ninguna forma, considerar como renderizado
       });
 
-      console.log('[GoogleMap] fitBounds requested for', selectedPlace.places.length, 'places');
+      console.log('[GoogleMap] fitBounds requested for', activePlaces.length, 'places');
       console.log('[GoogleMap] All shapes rendered:', allShapesRendered);
       console.log('[GoogleMap] Polygons ref:', Object.keys(polygonsRef.current).length);
       console.log('[GoogleMap] Circles ref:', Object.keys(circlesRef.current).length);
@@ -210,7 +213,7 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
         const maxAttempts = 5;
         const attemptInterval = setInterval(() => {
           attempts++;
-          const nowAllShapesRendered = selectedPlace.places.every(place => {
+          const nowAllShapesRendered = activePlaces.every(place => {
             if (place.polygon) {
               return polygonsRef.current[place.id] !== undefined;
             }
@@ -442,15 +445,18 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
   useEffect(() => {
     if (!map || !places) return;
 
-    places.forEach(place => {
+    // Filtrar solo lugares activos (excluir active = null)
+    const activePlaces = places.filter(p => p.active !== null);
+
+    activePlaces.forEach(place => {
       // Si el lugar tiene un polígono guardado
       if (place.polygon) {
         // Si ya está renderizado, solo actualizar opciones
         if (polygonsRef.current[place.id]) {
           const existingPolygon = polygonsRef.current[place.id];
           existingPolygon.setOptions({
-            fillColor: place.color || '#eb4034',
-            strokeColor: place.color || '#eb4034',
+            fillColor: place.color || '#FFD700',
+            strokeColor: place.color || '#FFD700',
           });
           return;
         }
@@ -463,10 +469,10 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
 
         const polygon = new window.google.maps.Polygon({
           paths: coordinates,
-          fillColor: place.color || '#eb4034',
+          fillColor: place.color || '#FFD700',
           fillOpacity: 0.15,
           strokeWeight: 3,
-          strokeColor: place.color || '#eb4034',
+          strokeColor: place.color || '#FFD700',
           editable: false,
           map: map,
         });
@@ -539,9 +545,11 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
       }
     });
 
-    // Limpiar polígonos de lugares eliminados
+    // Limpiar polígonos de lugares eliminados o inactivos
     Object.keys(polygonsRef.current).forEach(placeId => {
-      if (!places.find(p => p.id === parseInt(placeId))) {
+      const place = places.find(p => p.id === parseInt(placeId));
+      // Eliminar si no existe o si está inactivo (active = null)
+      if (!place || place.active === null) {
         const polygon = polygonsRef.current[placeId];
         polygon.setMap(null);
         // Limpiar listeners de teclado
@@ -574,7 +582,7 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
       polygon.setOptions({
         strokeWeight: isHighlighted || isEditing ? 5 : 3,
         strokeOpacity: 1,
-        strokeColor: isEditing ? '#8b5cf6' : (isHighlighted ? '#FFEB3B' : (place.color || '#eb4034')),
+        strokeColor: isEditing ? '#8b5cf6' : (isHighlighted ? '#FFEB3B' : (place.color || '#FFD700')),
         fillOpacity: isHighlighted || isEditing ? 0.25 : 0.15,
       });
     });
@@ -594,9 +602,16 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
   useEffect(() => {
     if (!map || !places) return;
 
-    places.forEach(place => {
-      // Si el lugar tiene circle_radius
-      if (place.circle_radius) {
+    // Filtrar solo lugares activos (excluir active = null)
+    const activePlaces = places.filter(p => p.active !== null);
+
+    activePlaces.forEach(place => {
+      // Verificar que NO sea coworking ni instagramable antes de pintar círculo
+      const isCoworkingPlace = coworkingPlaces?.some(p => p.id === place.id);
+      const isInstagramablePlace = instagramablePlaces?.some(p => p.id === place.id);
+
+      // Si el lugar tiene circle_radius Y NO es coworking ni instagramable
+      if (place.circle_radius && !isCoworkingPlace && !isInstagramablePlace) {
         // Determinar el radio a usar (editingRadius si se está editando, o el radio guardado)
         const radiusToUse = editingCircleId === place.id ? editingRadius : place.circle_radius;
         const isHighlighted = highlightedPlace === place.id;
@@ -638,15 +653,20 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
       }
     });
 
-    // Limpiar círculos de lugares eliminados
+    // Limpiar círculos de lugares eliminados, inactivos o que ahora sean coworking/instagramable
     Object.keys(circlesRef.current).forEach(placeId => {
-      if (!places.find(p => p.id === parseInt(placeId))) {
+      const place = places.find(p => p.id === parseInt(placeId));
+      const isCoworkingPlace = coworkingPlaces?.some(p => p.id === parseInt(placeId));
+      const isInstagramablePlace = instagramablePlaces?.some(p => p.id === parseInt(placeId));
+
+      // Eliminar círculo si el lugar fue eliminado O si está inactivo O si ahora es coworking/instagramable
+      if (!place || place.active === null || isCoworkingPlace || isInstagramablePlace) {
         const circle = circlesRef.current[placeId];
         circle.setMap(null);
         delete circlesRef.current[placeId];
       }
     });
-  }, [places, map, editingCircleId, editingRadius, highlightedPlace]);
+  }, [places, map, editingCircleId, editingRadius, highlightedPlace, coworkingPlaces, instagramablePlaces]);
 
   // Renderizar círculo temporal mientras se ajusta el radio
   useEffect(() => {

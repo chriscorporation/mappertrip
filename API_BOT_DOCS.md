@@ -12,7 +12,7 @@ API para alimentar datos de lugares desde fuentes externas (Telegram Bot, etc.)
 
 | Parámetro | Tipo | Opciones | Descripción |
 |-----------|------|----------|-------------|
-| `type` | string | `zone`, `airbnb`, `coworking`, `instagramable` | Tipo de lugar a crear |
+| `type` | string | `zone`, `coworking`, `instagramable` | Tipo de lugar a crear |
 | `title` | string | - | Nombre/título del lugar |
 | `lat` | number | - | Latitud |
 | `lng` | number | - | Longitud |
@@ -23,21 +23,21 @@ API para alimentar datos de lugares desde fuentes externas (Telegram Bot, etc.)
 
 | Parámetro | Tipo | Opciones | Descripción |
 |-----------|------|----------|-------------|
-| `safety_level` | string | `seguro`, `medio`, `regular`, `precaucion`, `inseguro` | Nivel de seguridad (REQUERIDO para `type=zone`) |
+| `insecurity_level_id` | number | `0`, `1`, `2`, `3`, `4` | ID del nivel de seguridad (default: `0` = Seguro) |
 
 ## Niveles de Seguridad (solo para zonas)
 
 Los niveles de seguridad están almacenados en la tabla `insecurity_level` con sus colores correspondientes en `color_insecurity`.
 
-| ID | Nivel | Color | Emoji | Descripción |
-|----|-------|-------|-------|-------------|
-| `0` | `seguro` | `#00C853` | 🟢 | Zona segura |
-| `1` | `medio` | `#2196F3` | 🔵 | Seguridad media |
-| `2` | `regular` | `#FF9800` | 🟠 | Seguridad regular |
-| `3` | `precaucion` | `#FFC107` | 🟡 | Precaución |
-| `4` | `inseguro` | `#F44336` | 🔴 | Zona insegura |
+| insecurity_level_id | Nivel | Color | Emoji | Descripción |
+|---------------------|-------|-------|-------|-------------|
+| `0` | Seguro | `#00C853` | 🟢 | Zona segura |
+| `1` | Medio | `#2196F3` | 🔵 | Seguridad media |
+| `2` | Regular | `#FF9800` | 🟠 | Seguridad regular |
+| `3` | Precaución | `#FFC107` | 🟡 | Precaución |
+| `4` | Inseguro | `#F44336` | 🔴 | Zona insegura |
 
-**Nota:** Los colores se obtienen automáticamente de la base de datos. No es necesario especificar el color, solo el `safety_level`.
+**Nota:** Los colores se obtienen automáticamente de la base de datos. Solo debes especificar el `insecurity_level_id` (número de 0 a 4).
 
 ## Ejemplos de Uso
 
@@ -52,7 +52,7 @@ curl -X POST https://mappertrip.vercel.app/api/apibot \
     "lat": 19.4326,
     "lng": -99.1332,
     "radius_km": 1,
-    "safety_level": "seguro",
+    "insecurity_level_id": 0,
     "country_code": "MX"
   }'
 ```
@@ -68,7 +68,7 @@ curl -X POST https://mappertrip.vercel.app/api/apibot \
     "lat": 19.4489,
     "lng": -99.1236,
     "radius_km": 0.5,
-    "safety_level": "inseguro",
+    "insecurity_level_id": 4,
     "country_code": "MX"
   }'
 ```
@@ -98,21 +98,6 @@ curl -X POST https://mappertrip.vercel.app/api/apibot \
     "title": "Ángel de la Independencia",
     "lat": 19.4270,
     "lng": -99.1677,
-    "radius_km": 0.5,
-    "country_code": "MX"
-  }'
-```
-
-### 5. Crear Airbnb
-
-```bash
-curl -X POST https://mappertrip.vercel.app/api/apibot \
-  -H "Content-Type: application/json" \
-  -d '{
-    "type": "airbnb",
-    "title": "Departamento Centro Histórico",
-    "lat": 19.4326,
-    "lng": -99.1332,
     "radius_km": 0.5,
     "country_code": "MX"
   }'
@@ -152,7 +137,7 @@ curl -X POST https://mappertrip.vercel.app/api/apibot \
 
 ```json
 {
-  "error": "Type inválido. Debe ser uno de: zone, airbnb, coworking, instagramable"
+  "error": "Type inválido. Debe ser uno de: zone, coworking, instagramable"
 }
 ```
 
@@ -164,7 +149,7 @@ curl -X POST https://mappertrip.vercel.app/api/apibot \
 
 ```json
 {
-  "error": "safety_level inválido. Debe ser uno de: seguro, medio, regular, precaucion, inseguro"
+  "error": "insecurity_level_id inválido. Debe ser uno de: 0, 1, 2, 3, 4 (0=Seguro, 1=Medio, 2=Regular, 3=Precaución, 4=Inseguro)"
 }
 ```
 
@@ -181,10 +166,11 @@ curl -X POST https://mappertrip.vercel.app/api/apibot \
 1. **Círculos vs Polígonos**: Todos los lugares creados vía este API se guardan como **círculos** (no polígonos)
 2. **Identificación**: Todos los registros se marcan con `type: "external"` para identificar que vinieron de fuentes externas
 3. **Radio**: El radio se convierte automáticamente de kilómetros a metros para almacenamiento (0.5km = 500m, 1km = 1000m, 2km = 2000m)
-4. **Zonas**: Para `type=zone`, el campo `safety_level` es **REQUERIDO**
+4. **Zonas**: Para `type=zone`, el campo `insecurity_level_id` es **opcional** (default: `0` = Seguro)
 5. **Colores**: Los colores se obtienen automáticamente desde las tablas `insecurity_level` y `color_insecurity` en Supabase
-6. **Normalización**: El sistema usa tablas de catálogo (`insecurity_level`, `color_insecurity`) para evitar hardcodear colores
+6. **Normalización**: El sistema usa tablas de catálogo (`insecurity_level`, `color_insecurity`) para evitar hardcodear colores y usar IDs en su lugar
 7. **Country Code**: Debe ser un código ISO 3166-1 alpha-2 válido (ej: AR, MX, BR, CO, CL, etc.)
+8. **IDs de Seguridad**: Siempre usar números (0-4) en lugar de strings para especificar niveles de seguridad
 
 ## Arquitectura de Datos
 

@@ -1,8 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 import { notFound } from 'next/navigation';
 import Header from '../../components/Header';
-import PerplexityNotesDisplay from '../../components/PerplexityNotesDisplay';
-import BackButton from './BackButton';
+import BarriosContent from './BarriosContent';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -58,7 +57,7 @@ export async function generateMetadata({ params }) {
   };
 }
 
-async function getCountryData(countrySlug) {
+async function getCountryData(countrySlug, page = 1) {
   // Get country info
   const { data: countries } = await supabase
     .from('countries')
@@ -75,11 +74,22 @@ async function getCountryData(countrySlug) {
 
   if (!country) return null;
 
-  // Get zones for this country
+  // Get total count of zones for this country
+  const { count } = await supabase
+    .from('geoplaces')
+    .select('*', { count: 'exact', head: true })
+    .eq('country_code', country.country_code);
+
+  const limit = 10;
+  const totalPages = Math.ceil(count / limit);
+  const offset = (page - 1) * limit;
+
+  // Get paginated zones for this country
   const { data: places } = await supabase
     .from('geoplaces')
     .select('id, address, lat, lng, country_code, orientation')
-    .eq('country_code', country.country_code);
+    .eq('country_code', country.country_code)
+    .range(offset, offset + limit - 1);
 
   // Get perplexity notes for each zone
   const zonesWithNotes = await Promise.all(
@@ -96,19 +106,30 @@ async function getCountryData(countrySlug) {
 
   return {
     country,
-    zones: zonesWithNotes
+    zones: zonesWithNotes,
+    pagination: {
+      currentPage: page,
+      totalPages,
+      totalItems: count,
+      itemsPerPage: limit,
+      hasNextPage: page < totalPages,
+      hasPrevPage: page > 1
+    }
   };
 }
 
-export default async function BarriosPais({ params }) {
+export default async function BarriosPais({ params, searchParams }) {
   const resolvedParams = await params;
-  const data = await getCountryData(resolvedParams.country);
+  const resolvedSearchParams = await searchParams;
+  const page = parseInt(resolvedSearchParams?.page || '1', 10);
+
+  const data = await getCountryData(resolvedParams.country, page);
 
   if (!data) {
     notFound();
   }
 
-  const { country, zones } = data;
+  const { country } = data;
 
   return (
     <div className="flex flex-col min-h-screen overflow-y-auto">
@@ -132,52 +153,7 @@ export default async function BarriosPais({ params }) {
                 </p>
               </div>
 
-              <div className="max-w-7xl mx-auto">
-                {zones.length === 0 ? (
-                  <div className="text-center py-12">
-                    <p className="text-gray-500 mb-4">No hay barrios disponibles para este país</p>
-                    <BackButton />
-                  </div>
-                ) : (
-                  <div className="flex flex-col gap-8 mb-10">
-                    {zones.map((zone) => {
-                      const notes = zone.perplexityNotes;
-
-                      return (
-                        <div key={zone.id} className="w-full">
-                          <div className="w-full block p-10 bg-white border-2 border-gray-200 rounded-3xl shadow-lg">
-                            <div className="mb-6">
-                              <h2 className="font-heading mb-2 text-3xl font-black">
-                                <span className="text-transparent bg-clip-text bg-gradient-to-r from-gray-500 to-gray-900">
-                                  {zone.address} {zone.orientation ? `(${zone.orientation})` : ''}
-                                </span>
-                              </h2>
-                              <a
-                                href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(zone.address + ' @' + zone.lat + ',' + zone.lng)}`}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="inline-flex items-center gap-1 text-sm text-blue-600 hover:text-blue-800 hover:underline font-medium"
-                              >
-                                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                                </svg>
-                                Ver en Google Maps
-                              </a>
-                            </div>
-
-                            <PerplexityNotesDisplay perplexityData={notes} />
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-
-                <div className="flex justify-center">
-                  <BackButton />
-                </div>
-              </div>
+              <BarriosContent countrySlug={resolvedParams.country} initialData={data} />
             </div>
           </div>
         </div>

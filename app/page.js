@@ -18,7 +18,7 @@ function HomeContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { isAuthenticated } = useAuthStore();
-  const { selectedCountry, setSelectedCountry, _hasHydrated } = useAppStore();
+  const { selectedCountry, setSelectedCountry, _hasHydrated, initialZoomDone, setInitialZoomDone } = useAppStore();
   const isAdminMode = isAuthenticated;
 
   const [airbnbLocation, setAirbnbLocation] = useState(null);
@@ -72,6 +72,12 @@ function HomeContent() {
       return;
     }
 
+    // Verificar si el zoom inicial ya ocurrió para este país
+    if (initialZoomDone[selectedCountry.country_code]) {
+      console.log('[page.js] Initial zoom already done for', selectedCountry.country_code);
+      return;
+    }
+
     // Filtrar zonas del país seleccionado (incluyendo polígonos y círculos)
     const countryPlaces = places.filter(p => p.country_code === selectedCountry.country_code);
 
@@ -94,6 +100,10 @@ function HomeContent() {
           places: countryPlaces
         });
       }
+
+      // Marcar que el zoom inicial ya ocurrió para este país
+      setInitialZoomDone(selectedCountry.country_code);
+
       // Limpiar después para no persistir el estado y permitir zoom manual del usuario
       setTimeout(() => {
         console.log('[page.js] Clearing selectedPlace');
@@ -102,7 +112,7 @@ function HomeContent() {
     }, 800);
 
     return () => clearTimeout(timeoutId);
-  }, [_hasHydrated, selectedCountry, places, selectedTab]);
+  }, [_hasHydrated, selectedCountry, places, selectedTab, initialZoomDone, setInitialZoomDone]);
 
   const handleStartDrawing = (placeId) => {
     // Limpiar selección del mapa al iniciar dibujo
@@ -243,6 +253,7 @@ function HomeContent() {
             country_code: p.country_code,
             is_turistic: p.is_turistic || false,
             circle_radius: p.circle_radius,
+            notes: p.notes || [],
             isDrawing: false
           }));
           setPlaces(placesWithDrawing);
@@ -331,19 +342,19 @@ function HomeContent() {
             places: countryPlaces
           });
         }
+        // Marcar que el zoom inicial ya ocurrió para este país
+        setInitialZoomDone(country.country_code);
       }
     }, 100);
   };
 
   const handleDeletePlace = (placeId, confirm = false) => {
     if (confirm) {
-      const place = places.find(p => p.id === placeId);
       setPlaces(prev => prev.filter(p => p.id !== placeId));
 
-      // Eliminar de la base de datos si tiene polígono o círculo
-      if (place && (place.polygon || place.circle_radius)) {
-        fetch(`/api/places?id=${placeId}`, { method: 'DELETE' });
-      }
+      // Eliminar de la base de datos siempre
+      fetch(`/api/places?id=${placeId}`, { method: 'DELETE' });
+
       setPlaceToDelete(null);
     } else {
       setPlaceToDelete(placeToDelete === placeId ? null : placeId);
@@ -470,12 +481,20 @@ function HomeContent() {
 
               const savedPlace = await response.json();
 
-              // Actualizar estado con ID de Supabase
-              setPlaces(prev => [savedPlace, ...prev]);
+              // Actualizar estado con ID de Supabase, preservando isDrawing
+              const placeWithDrawing = { ...savedPlace, isDrawing: placeData.isDrawing };
+              setPlaces(prev => [placeWithDrawing, ...prev]);
 
               // Hacer zoom a la nueva zona, pero limpiar después para no persistir
               setSelectedPlace(savedPlace);
               setTimeout(() => setSelectedPlace(null), 1000);
+
+              // Si la zona debe entrar en modo de dibujo, activarlo después de 0.5 segundos
+              if (placeData.isDrawing && !placeData.circle_radius) {
+                setTimeout(() => {
+                  handleStartDrawing(savedPlace.id);
+                }, 500);
+              }
 
               // Iniciar proceso de Perplexity en background
               try {

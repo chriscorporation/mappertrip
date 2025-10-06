@@ -16,6 +16,8 @@ export default function CoWorkingPanel({
   const [searchQuery, setSearchQuery] = useState('');
   const inputRef = useRef(null);
   const autocompleteRef = useRef(null);
+  const [notes, setNotes] = useState({});
+  const [newNote, setNewNote] = useState({});
 
   useEffect(() => {
     const initAutocomplete = () => {
@@ -71,6 +73,65 @@ export default function CoWorkingPanel({
       autocompleteRef.current.setBounds(mapBounds);
     }
   }, [mapBounds]);
+
+  // Las notas ahora vienen incluidas en el objeto place.notes desde la API
+  // Este useEffect se mantiene solo para sincronizar el estado local cuando cambian los lugares
+  useEffect(() => {
+    const syncNotes = () => {
+      if (!selectedCountry || !coworkingPlaces.length) return;
+
+      const countryPlaces = coworkingPlaces.filter(p => p.country_code === selectedCountry.country_code);
+      const updatedNotes = {};
+
+      countryPlaces.forEach(place => {
+        if (place.notes) {
+          updatedNotes[place.id] = place.notes;
+        }
+      });
+
+      setNotes(updatedNotes);
+    };
+
+    syncNotes();
+  }, [coworkingPlaces, selectedCountry]);
+
+  const handleAddNote = async (placeId) => {
+    const noteText = newNote[placeId]?.trim();
+    if (!noteText) return;
+
+    try {
+      const response = await fetch('/api/notes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          note_text: noteText,
+          related_type: 'coworking',
+          related_id: placeId
+        })
+      });
+
+      const savedNote = await response.json();
+      setNotes(prev => ({
+        ...prev,
+        [placeId]: [...(prev[placeId] || []), savedNote]
+      }));
+      setNewNote(prev => ({ ...prev, [placeId]: '' }));
+    } catch (error) {
+      console.error('Error adding note:', error);
+    }
+  };
+
+  const handleDeleteNote = async (noteId, placeId) => {
+    try {
+      await fetch(`/api/notes?id=${noteId}`, { method: 'DELETE' });
+      setNotes(prev => ({
+        ...prev,
+        [placeId]: prev[placeId].filter(note => note.id !== noteId)
+      }));
+    } catch (error) {
+      console.error('Error deleting note:', error);
+    }
+  };
 
   if (!selectedCountry) {
     return (
@@ -134,8 +195,50 @@ export default function CoWorkingPanel({
                   </a>
                 )}
               </div>
+
+              {/* Notas */}
+              {notes[place.id] && notes[place.id].length > 0 && (
+                <ul className="mt-2 text-xs text-gray-600 space-y-1">
+                  {notes[place.id].map(note => (
+                    <li key={note.id} className="flex items-start justify-between group">
+                      <div className="flex items-start">
+                        <span className="mr-1">•</span>
+                        <span>{note.note_text}</span>
+                      </div>
+                      {isAdminMode && (
+                        <button
+                          onClick={() => handleDeleteNote(note.id, place.id)}
+                          className="ml-2 opacity-0 group-hover:opacity-100 transition-opacity text-gray-400 hover:text-gray-600 cursor-pointer"
+                          title="Eliminar nota"
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" viewBox="0 0 20 20" fill="currentColor">
+                            <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
+                          </svg>
+                        </button>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              )}
+
+              {/* Input para añadir nota */}
               {isAdminMode && (
-                <div className="flex justify-end items-center pt-2 border-t border-gray-200">
+                <input
+                  type="text"
+                  value={newNote[place.id] || ''}
+                  onChange={(e) => setNewNote(prev => ({ ...prev, [place.id]: e.target.value }))}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      handleAddNote(place.id);
+                    }
+                  }}
+                  placeholder="Añadir nota..."
+                  className="w-full mt-2 px-2 py-1 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-transparent"
+                />
+              )}
+
+              {isAdminMode && (
+                <div className="flex justify-end items-center pt-2 border-t border-gray-200 mt-2">
                   <button
                     onClick={() => onDeleteCoworkingPlace(place.id)}
                     className="p-2 rounded hover:bg-gray-200 text-gray-500 cursor-pointer"

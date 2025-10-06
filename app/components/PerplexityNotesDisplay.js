@@ -85,96 +85,87 @@ export default function PerplexityNotesDisplay({ perplexityData }) {
   const securityConfig = perplexityData.secure ? getSecurityConfig(perplexityData.secure) : null;
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-      {/* Rent */}
-      {perplexityData.rent && (
-        <div role="article" aria-labelledby="rent-heading" className="relative overflow-hidden rounded-2xl border border-gray-300 bg-gradient-to-br from-gray-50 to-slate-50 p-4 shadow-md">
-          <div className="flex items-center gap-3">
-            <div className="bg-white rounded-xl p-2 shadow-sm">
-              <BiDollar className="text-2xl text-gray-600" aria-hidden="true" />
-            </div>
-            <div className="flex-1">
-              <h3 id="rent-heading" className="font-bold text-sm text-gray-800 mb-1">Costo de renta promedio</h3>
-              <div className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl border bg-gray-200 border-gray-400 shadow-sm">
-                <span className="text-base font-bold text-gray-800">
-                  ${Math.round(perplexityData.rent)} USD/mes
-                </span>
-              </div>
-              <p className="text-xs text-gray-600 mt-1">Monoambiente (máx. 2 personas)</p>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Tourism */}
-      {perplexityData.tourism && (
-        <div role="article" aria-labelledby="tourism-heading" className="relative overflow-hidden rounded-2xl border border-gray-300 bg-gradient-to-br from-gray-50 to-slate-50 p-4 shadow-md">
-          <div className="flex items-center gap-2 mb-3">
-            <div className="bg-white rounded-xl p-2 shadow-sm">
-              <BiMapAlt className="text-2xl text-gray-600" aria-hidden="true" />
-            </div>
-            <h3 id="tourism-heading" className="font-bold text-sm text-gray-800">Información Turística</h3>
-          </div>
-          <div
-            className="text-xs text-gray-700 leading-relaxed prose prose-xs max-w-none"
-            title="Información turística de la zona"
-          >
-            <ReactMarkdown>{perplexityData.tourism}</ReactMarkdown>
-          </div>
-        </div>
-      )}
-
-      {/* Security Evaluation - Estilo de la imagen */}
-      {perplexityData.secure && securityConfig && (
-        <div role="article" aria-labelledby="security-heading" className={`relative overflow-hidden rounded-2xl border ${securityConfig.borderColor} ${securityConfig.bgColor} p-4 shadow-md`}>
-          <div className="flex items-center gap-2 mb-3">
-            <div className={`${securityConfig.iconBg} rounded-xl p-2 shadow-sm`}>
-              <BiShield className={`text-xl ${securityConfig.iconColor}`} aria-hidden="true" />
-            </div>
-            <h3 id="security-heading" className="font-bold text-sm text-gray-800">
-              Evaluación de seguridad
-            </h3>
-          </div>
-
-          {/* Barra de progreso */}
-          <div className="mb-3">
-            <div className="relative h-8 bg-gray-200 rounded-full overflow-hidden shadow-inner">
-              <div
-                className={`absolute top-0 left-0 h-full bg-gradient-to-r ${securityConfig.barColor} rounded-full transition-all duration-1000 ease-out flex items-center justify-end pr-3`}
-                style={{ width: `${securityConfig.percentage}%` }}
-              >
-                <span className="text-white font-bold text-sm drop-shadow-md">{securityConfig.percentage}%</span>
+    <div className="space-y-4">
+      {/* Layout de 2 columnas: Izquierda (Rent + Security) y Derecha (Tourism) */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* Columna Izquierda: Rent y Security apilados */}
+        <div className="flex flex-col gap-4">
+          {/* Rent */}
+          {perplexityData.rent && (
+            <div role="article" aria-labelledby="rent-heading" className="relative overflow-hidden rounded-2xl border border-gray-300 bg-gradient-to-br from-gray-50 to-slate-50 p-4 shadow-md">
+              <div className="flex items-center gap-3">
+                <div className="bg-white rounded-xl p-2 shadow-sm">
+                  <BiDollar className="text-2xl text-gray-600" aria-hidden="true" />
+                </div>
+                <div className="flex-1">
+                  <h3 id="rent-heading" className="font-bold text-sm text-gray-800 mb-1">Costo de renta promedio</h3>
+                  <div className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl border bg-gray-200 border-gray-400 shadow-sm">
+                    <span className="text-base font-bold text-gray-800">
+                      ${Math.round(perplexityData.rent)} USD/mes
+                    </span>
+                  </div>
+                  <p className="text-xs text-gray-600 mt-1">Monoambiente (máx. 2 personas)</p>
+                </div>
               </div>
             </div>
-            <div className="flex justify-between mt-1 text-xs font-semibold text-gray-600">
-              <span>Riesgo Alto</span>
-              <span>Seguridad Óptima</span>
-            </div>
-          </div>
+          )}
 
-          {/* Nivel de seguridad */}
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <securityConfig.Icon className={`text-xl ${securityConfig.iconColor}`} />
+          {/* Security Evaluation */}
+          {perplexityData.secure && securityConfig && (
+            <div role="article" aria-labelledby="security-heading" className={`relative overflow-hidden rounded-2xl border ${securityConfig.borderColor} ${securityConfig.bgColor} p-4 shadow-md`}>
+              <div className="flex items-center gap-2 mb-3">
+                <div className={`${securityConfig.iconBg} rounded-xl p-2 shadow-sm`}>
+                  <BiShield className={`text-xl ${securityConfig.iconColor}`} aria-hidden="true" />
+                </div>
+                <h3 id="security-heading" className="font-bold text-sm text-gray-800 flex items-center gap-2">
+                  Evaluación de seguridad -
+                  <span className={`px-3 py-1 rounded-full text-xs font-bold ${securityConfig.badgeBg} ${securityConfig.textColor}`}>
+                    {securityConfig.label}
+                  </span>
+                </h3>
+              </div>
+
+              {/* Barra de progreso */}
               <div>
-                <p className="text-xs text-gray-600 font-medium">Nivel de Seguridad</p>
-                <p className={`text-lg font-bold ${securityConfig.textColor}`}>
-                  {securityConfig.label}
-                </p>
+                <div className="relative h-8 bg-gray-200 rounded-full overflow-hidden shadow-inner">
+                  <div
+                    className={`absolute top-0 left-0 h-full bg-gradient-to-r ${securityConfig.barColor} rounded-full transition-all duration-1000 ease-out flex items-center justify-end pr-3`}
+                    style={{ width: `${securityConfig.percentage}%` }}
+                  >
+                    <span className="text-white font-bold text-sm drop-shadow-md">{securityConfig.percentage}%</span>
+                  </div>
+                </div>
+                <div className="flex justify-between mt-1 text-xs font-semibold text-gray-600">
+                  <span>Riesgo Alto</span>
+                  <span>Seguridad Óptima</span>
+                </div>
               </div>
             </div>
-            <div className={`px-4 py-2 rounded-xl border ${securityConfig.badgeBg} shadow-sm`}>
-              <p className={`text-sm font-bold ${securityConfig.textColor}`}>
-                {perplexityData.secure.replace('Seguridad ', '')}
-              </p>
+          )}
+        </div>
+
+        {/* Columna Derecha: Tourism */}
+        {perplexityData.tourism && (
+          <div role="article" aria-labelledby="tourism-heading" className="relative overflow-hidden rounded-2xl border border-gray-300 bg-gradient-to-br from-gray-50 to-slate-50 p-4 shadow-md h-full">
+            <div className="flex items-center gap-2 mb-3">
+              <div className="bg-white rounded-xl p-2 shadow-sm">
+                <BiMapAlt className="text-2xl text-gray-600" aria-hidden="true" />
+              </div>
+              <h3 id="tourism-heading" className="font-bold text-sm text-gray-800">Información Turística</h3>
+            </div>
+            <div
+              className="text-xs text-gray-700 leading-relaxed prose prose-xs max-w-none"
+              title="Información turística de la zona"
+            >
+              <ReactMarkdown>{perplexityData.tourism}</ReactMarkdown>
             </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
 
       {/* Notes */}
       {perplexityData.notes && (
-        <div role="article" aria-labelledby="notes-heading" className="md:col-span-3 relative overflow-hidden rounded-2xl border border-gray-300 bg-gradient-to-br from-gray-50 to-slate-50 p-4 shadow-md">
+        <div role="article" aria-labelledby="notes-heading" className="relative overflow-hidden rounded-2xl border border-gray-300 bg-gradient-to-br from-gray-50 to-slate-50 p-4 shadow-md">
           <div className="flex items-center gap-2 mb-3">
             <div className="bg-white rounded-xl p-2 shadow-sm">
               <BiInfoCircle className="text-2xl text-gray-600" aria-hidden="true" />
@@ -192,7 +183,7 @@ export default function PerplexityNotesDisplay({ perplexityData }) {
 
       {/* Places */}
       {perplexityData.places && (
-        <div role="article" aria-labelledby="places-heading" className="md:col-span-3 relative overflow-hidden rounded-2xl border border-gray-300 bg-gradient-to-br from-gray-50 to-slate-50 p-4 shadow-md">
+        <div role="article" aria-labelledby="places-heading" className="relative overflow-hidden rounded-2xl border border-gray-300 bg-gradient-to-br from-gray-50 to-slate-50 p-4 shadow-md">
           <div className="flex items-center gap-2 mb-3">
             <div className="bg-white rounded-xl p-2 shadow-sm">
               <BiMap className="text-2xl text-gray-600" aria-hidden="true" />
