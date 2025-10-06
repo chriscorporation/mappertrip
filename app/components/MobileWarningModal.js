@@ -6,14 +6,10 @@ export default function MobileWarningModal() {
   const [isOpen, setIsOpen] = useState(false);
 
   useEffect(() => {
-    // Detectar si es móvil o tablet
+    // Detectar si la pantalla es menor a 600px
     const checkDevice = () => {
-      const userAgent = navigator.userAgent.toLowerCase();
-      const isMobileUserAgent = /iphone|ipad|ipod|android|blackberry|windows phone|opera mini|mobile/i.test(userAgent);
-      const isTabletUserAgent = /ipad|tablet|playbook|silk|android(?!.*mobile)/i.test(userAgent);
-      const isSmallScreen = window.innerWidth < 1024; // menos de 1024px se considera móvil/tablet
-
-      return isMobileUserAgent || isTabletUserAgent || isSmallScreen;
+      const isSmallScreen = window.innerWidth < 600;
+      return isSmallScreen;
     };
 
     // Función para actualizar el estado del modal

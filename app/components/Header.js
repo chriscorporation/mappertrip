@@ -9,6 +9,8 @@ export default function Header({ isAdminMode }) {
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
   const usernameInputRef = useRef(null);
 
   const { login, logout, isLoading, error, isAuthenticated, user, clearError } = useAuthStore();
@@ -40,21 +42,36 @@ export default function Header({ isAdminMode }) {
     }
   }, [showLoginModal]);
 
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 1024);
+    };
+
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
+
   return (
     <>
       <header className="bg-white border-b border-gray-300 px-6 py-2 flex justify-between items-center">
-        <div className="flex items-center gap-6">
-          <h1
-            onClick={() => router.push('/')}
-            className="text-lg font-bold text-gray-800 cursor-pointer hover:text-gray-600 transition-colors"
-          >
-            Mapper Trip - Real and secure trips
-          </h1>
-          {isAdminMode && (
-            <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">Admin</span>
-          )}
+        {/* Logo - siempre visible */}
+        <img
+          src="/images/logotipo-mapper-trip.png"
+          alt="Mapper Trip - Real and secure trips"
+          onClick={() => router.push('/')}
+          className="cursor-pointer hover:opacity-80 transition-opacity"
+          style={{ height: '50px' }}
+        />
 
-          <div className="flex items-center gap-4">
+        {/* Desktop Menu - solo visible en pantallas grandes */}
+        {!isMobile && (
+          <div className="flex items-center gap-6">
+            {isAdminMode && (
+              <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">Admin</span>
+            )}
+
             <button
               onClick={() => router.push('/')}
               className="text-sm text-gray-600 hover:text-gray-900 transition-colors cursor-pointer"
@@ -73,6 +90,12 @@ export default function Header({ isAdminMode }) {
             >
               Zonas seguras
             </button>
+            <button
+              onClick={() => router.push('/barrios')}
+              className="text-sm text-gray-600 hover:text-gray-900 transition-colors cursor-pointer"
+            >
+              Barrios
+            </button>
             <a
               href="https://vuelahoy.com/"
               target="_blank"
@@ -81,34 +104,137 @@ export default function Header({ isAdminMode }) {
             >
               Vuelos
             </a>
-            <button
-              onClick={() => router.push('/barrios')}
-              className="text-sm text-gray-600 hover:text-gray-900 transition-colors cursor-pointer"
-            >
-              Barrios
-            </button>
-          </div>
-        </div>
 
-        {isAuthenticated ? (
-          <div className="flex items-center gap-3">
-            <span className="text-sm text-gray-700">{user?.email}</span>
-            <button
-              onClick={handleLogout}
-              className="text-sm text-blue-600 hover:text-blue-800 font-medium hover:underline"
-            >
-              Salir
-            </button>
+            {isAuthenticated ? (
+              <>
+                <span className="text-sm text-gray-700">{user?.email}</span>
+                <button
+                  onClick={handleLogout}
+                  className="text-sm text-blue-600 hover:text-blue-800 font-medium hover:underline cursor-pointer"
+                >
+                  Salir
+                </button>
+              </>
+            ) : (
+              <button
+                onClick={() => setShowLoginModal(!showLoginModal)}
+                className="text-sm text-gray-700 hover:text-gray-900 font-medium cursor-pointer"
+              >
+                Iniciar sesión
+              </button>
+            )}
           </div>
-        ) : (
+        )}
+
+        {/* Mobile Menu - solo visible en pantallas pequeñas */}
+        {isMobile && (
           <button
-            onClick={() => setShowLoginModal(!showLoginModal)}
-            className="text-sm text-gray-700 hover:text-gray-900 font-medium"
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            className="text-gray-800 cursor-pointer hover:text-gray-600 transition-colors"
+            aria-label="Menu"
           >
-            Iniciar sesión
+            <svg
+              className="w-6 h-6"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M4 6h16M4 12h16M4 18h16"
+              />
+            </svg>
           </button>
         )}
       </header>
+
+      {/* Mobile Dropdown Menu */}
+      {isMobile && mobileMenuOpen && (
+        <div className="absolute top-14 right-0 bg-white border border-gray-300 rounded-lg shadow-xl w-64 z-50">
+          <div className="py-2">
+            {isAdminMode && (
+              <div className="px-4 py-2 border-b border-gray-200">
+                <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">Admin</span>
+              </div>
+            )}
+            <button
+              onClick={() => {
+                router.push('/');
+                setMobileMenuOpen(false);
+              }}
+              className="w-full text-left px-4 py-2 text-sm text-gray-600 hover:bg-gray-50 cursor-pointer"
+            >
+              Trip
+            </button>
+            <button
+              onClick={() => {
+                router.push('/nomadas-digitales');
+                setMobileMenuOpen(false);
+              }}
+              className="w-full text-left px-4 py-2 text-sm text-gray-600 hover:bg-gray-50 cursor-pointer"
+            >
+              Nómadas digitales
+            </button>
+            <button
+              onClick={() => {
+                router.push('/zonas-seguras-para-viajar');
+                setMobileMenuOpen(false);
+              }}
+              className="w-full text-left px-4 py-2 text-sm text-gray-600 hover:bg-gray-50 cursor-pointer"
+            >
+              Zonas seguras
+            </button>
+            <button
+              onClick={() => {
+                router.push('/barrios');
+                setMobileMenuOpen(false);
+              }}
+              className="w-full text-left px-4 py-2 text-sm text-gray-600 hover:bg-gray-50 cursor-pointer"
+            >
+              Barrios
+            </button>
+            <a
+              href="https://vuelahoy.com/"
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={() => setMobileMenuOpen(false)}
+              className="block px-4 py-2 text-sm text-gray-600 hover:bg-gray-50 cursor-pointer"
+            >
+              Vuelos
+            </a>
+
+            {isAuthenticated ? (
+              <>
+                <div className="px-4 py-2 border-t border-gray-200">
+                  <span className="text-sm text-gray-700">{user?.email}</span>
+                </div>
+                <button
+                  onClick={() => {
+                    handleLogout();
+                    setMobileMenuOpen(false);
+                  }}
+                  className="w-full text-left px-4 py-2 text-sm text-blue-600 hover:bg-gray-50 cursor-pointer"
+                >
+                  Salir
+                </button>
+              </>
+            ) : (
+              <button
+                onClick={() => {
+                  setShowLoginModal(true);
+                  setMobileMenuOpen(false);
+                }}
+                className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 cursor-pointer border-t border-gray-200"
+              >
+                Iniciar sesión
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
 
       {/* Modal de login sin overlay */}
       {showLoginModal && (

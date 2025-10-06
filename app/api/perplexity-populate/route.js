@@ -19,9 +19,29 @@ const client = new Perplexity({
 });
 
 async function processPerplexityData(zone_id, zone, countryName, existing) {
+  console.log(`\n=== Procesando Perplexity para zona ${zone_id} ===`);
+  console.log('Zona info:', {
+    id: zone_id,
+    address: zone.address,
+    country: countryName,
+    lat: zone.lat,
+    lng: zone.lng,
+    orientation: zone.orientation
+  });
+
   const searchTypes = ['notes', 'rent', 'tourism', 'secure', 'places', 'orientation'];
   const results = {};
   let orientationValue = null;
+  let insecurityLevelId = null;
+
+  // Mapeo de respuestas de Perplexity a insecurity_level_id
+  const SECURITY_LEVEL_MAP = {
+    'Seguridad buena': 0,
+    'Seguridad aceptable': 1,
+    'Seguridad media': 2,
+    'Seguridad baja': 3,
+    'Sin seguridad': 4
+  };
 
   // Procesar cada tipo de búsqueda
   for (const searchType of searchTypes) {
@@ -40,6 +60,9 @@ async function processPerplexityData(zone_id, zone, countryName, existing) {
     // Llamar a Perplexity para este campo
     try {
       const prompt = PERPLEXITY_PROMPTS[searchType](zone.address, countryName, zone.lat, zone.lng);
+
+      console.log(`\n--- Buscando ${searchType} ---`);
+      console.log('Prompt enviado:', prompt);
 
       const completionConfig = {
         messages: [
@@ -62,13 +85,25 @@ async function processPerplexityData(zone_id, zone, countryName, existing) {
       const completion = await client.chat.completions.create(completionConfig);
       let aiResponse = completion.choices?.[0]?.message?.content;
 
+      console.log(`Respuesta ${searchType}:`, aiResponse);
+
       // Procesar respuesta según el tipo
       if (searchType === 'secure' && aiResponse) {
         try {
           const parsed = JSON.parse(aiResponse);
           aiResponse = parsed.seguridad;
+          console.log(`Parsed secure: ${aiResponse}`);
+
+          // Mapear la respuesta al insecurity_level_id
+          if (aiResponse && SECURITY_LEVEL_MAP[aiResponse] !== undefined) {
+            insecurityLevelId = SECURITY_LEVEL_MAP[aiResponse];
+            console.log(`✅ Nivel de seguridad mapeado: "${aiResponse}" → ID ${insecurityLevelId}`);
+          } else {
+            console.log(`⚠️ Respuesta de seguridad no coincide con enum: "${aiResponse}"`);
+          }
         } catch (e) {
-          console.error('Error parsing secure response:', e);
+          console.error('❌ Error parsing secure response:', e.message);
+          console.error('Raw response was:', aiResponse);
           aiResponse = null;
         }
       } else if (searchType === 'rent' && aiResponse) {
@@ -77,28 +112,35 @@ async function processPerplexityData(zone_id, zone, countryName, existing) {
           const rentValue = parseFloat(parsed.rent);
           if (!isNaN(rentValue)) {
             aiResponse = Math.round(rentValue);
+            console.log(`Parsed rent: ${aiResponse} USD`);
           } else {
+            console.log(`⚠️  Rent value is NaN from parsed.rent: ${parsed.rent}`);
             aiResponse = null;
           }
         } catch (e) {
-          console.error('Error parsing rent response:', e);
+          console.error('❌ Error parsing rent response:', e.message);
+          console.error('Raw response was:', aiResponse);
           aiResponse = null;
         }
       } else if (searchType === 'orientation' && aiResponse) {
         try {
           const parsed = JSON.parse(aiResponse);
           orientationValue = parsed.orientacion;
+          console.log(`Parsed orientation: ${orientationValue}`);
         } catch (e) {
-          console.error('Error parsing orientation response:', e);
+          console.error('❌ Error parsing orientation response:', e.message);
+          console.error('Raw response was:', aiResponse);
           orientationValue = null;
         }
       }
 
       if (searchType !== 'orientation' && aiResponse) {
         results[searchType] = aiResponse;
+        console.log(`✅ ${searchType} guardado exitosamente`);
       }
     } catch (error) {
-      console.error(`Error executing ${searchType} search:`, error);
+      console.error(`❌ Error ejecutando búsqueda de ${searchType}:`, error.message);
+      console.error('Stack:', error.stack);
       if (searchType !== 'orientation') {
         results[searchType] = null;
       }
@@ -106,6 +148,9 @@ async function processPerplexityData(zone_id, zone, countryName, existing) {
   }
 
   // Guardar perplexity_notes en un solo upsert
+  console.log('\n--- Guardando resultados en perplexity_notes ---');
+  console.log('Datos a guardar:', { zone_id, ...results });
+
   try {
     await supabaseWrite
       .from('perplexity_notes')
@@ -120,21 +165,44 @@ async function processPerplexityData(zone_id, zone, countryName, existing) {
           ignoreDuplicates: false
         }
       );
+    console.log('✅ Perplexity notes guardadas exitosamente');
   } catch (error) {
-    console.error('Error saving perplexity data:', error);
+    console.error('❌ Error saving perplexity data:', error.message);
+    console.error('Stack:', error.stack);
   }
 
-  // Guardar orientation en geoplaces
+  // Actualizar orientation y/o insecurity_level_id en geoplaces
+  const geoplacesUpdate = {};
+
   if (orientationValue) {
+    geoplacesUpdate.orientation = orientationValue;
+  }
+
+  if (insecurityLevelId !== null) {
+    geoplacesUpdate.insecurity_level_id = insecurityLevelId;
+  }
+
+  if (Object.keys(geoplacesUpdate).length > 0) {
+    console.log(`\n--- Actualizando geoplaces con: ${JSON.stringify(geoplacesUpdate)} ---`);
     try {
       await supabaseWrite
         .from('geoplaces')
-        .update({ orientation: orientationValue })
+        .update(geoplacesUpdate)
         .eq('id', zone_id);
+
+      if (orientationValue) {
+        console.log(`✅ Orientation guardada: ${orientationValue}`);
+      }
+      if (insecurityLevelId !== null) {
+        console.log(`✅ Nivel de seguridad actualizado: ID ${insecurityLevelId}`);
+      }
     } catch (error) {
-      console.error('Error saving orientation to geoplaces:', error);
+      console.error('❌ Error updating geoplaces:', error.message);
+      console.error('Stack:', error.stack);
     }
   }
+
+  console.log(`\n=== Procesamiento completado para zona ${zone_id} ===\n`);
 }
 
 export async function POST(request) {

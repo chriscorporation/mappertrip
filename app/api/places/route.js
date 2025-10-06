@@ -29,11 +29,30 @@ export async function GET() {
         )
       )
     `)
+    .not('active', 'is', null)  // Solo traer registros con active != null
     .order('created_at', { ascending: false });
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
+
+  // Obtener todas las notas de zonas en una sola query
+  const placeIds = data.map(place => place.id);
+  const { data: notesData } = await supabaseRead
+    .from('notes')
+    .select('*')
+    .eq('related_type', 'zone')
+    .in('related_id', placeIds)
+    .order('created_at', { ascending: true });
+
+  // Agrupar notas por related_id
+  const notesByPlaceId = (notesData || []).reduce((acc, note) => {
+    if (!acc[note.related_id]) {
+      acc[note.related_id] = [];
+    }
+    acc[note.related_id].push(note);
+    return acc;
+  }, {});
 
   // Normalizar datos para mantener compatibilidad con el frontend
   const normalizedData = data.map(place => ({
@@ -42,7 +61,11 @@ export async function GET() {
     color: place.insecurity_level?.color_insecurity?.hex_code || place.color,
     // Añadir información adicional del nivel de seguridad
     safety_level: place.insecurity_level?.name,
-    safety_level_id: place.insecurity_level?.id
+    safety_level_id: place.insecurity_level?.id,
+    // Incluir notas del lugar
+    notes: notesByPlaceId[place.id] || [],
+    // Asegurar que active esté presente
+    active: place.active ?? null
   }));
 
   return NextResponse.json(normalizedData);
@@ -61,7 +84,8 @@ export async function POST(request) {
     place_id: body.placeId,
     polygon: body.polygon,
     country_code: body.country_code || 'AR',
-    is_turistic: body.is_turistic || false
+    is_turistic: body.is_turistic || false,
+    active: true  // Nuevas zonas activas por defecto
   };
 
   // Determinar insecurity_level_id basado en el color si viene del frontend antiguo

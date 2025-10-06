@@ -21,7 +21,31 @@ export async function GET() {
 
     if (error) throw error;
 
-    return Response.json(data || []);
+    // Obtener todas las notas de instagramable places en una sola query
+    const placeIds = data.map(place => place.id);
+    const { data: notesData } = await supabaseRead
+      .from('notes')
+      .select('*')
+      .eq('related_type', 'instagramable')
+      .in('related_id', placeIds)
+      .order('created_at', { ascending: true });
+
+    // Agrupar notas por related_id
+    const notesByPlaceId = (notesData || []).reduce((acc, note) => {
+      if (!acc[note.related_id]) {
+        acc[note.related_id] = [];
+      }
+      acc[note.related_id].push(note);
+      return acc;
+    }, {});
+
+    // Incluir notas en cada lugar
+    const placesWithNotes = data.map(place => ({
+      ...place,
+      notes: notesByPlaceId[place.id] || []
+    }));
+
+    return Response.json(placesWithNotes || []);
   } catch (error) {
     console.error('Error fetching instagramable places:', error);
     return Response.json({ error: error.message }, { status: 500 });

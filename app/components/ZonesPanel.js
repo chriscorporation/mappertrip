@@ -5,6 +5,7 @@ import ReactMarkdown from 'react-markdown';
 import { BiDollar, BiShield, BiMapAlt, BiInfoCircle, BiMapPin, BiCircle, BiError, BiErrorCircle, BiXCircle, BiShieldAlt2 } from 'react-icons/bi';
 import { HiOutlineSparkles } from 'react-icons/hi';
 import { useAuthStore } from '../store/authStore';
+import { cleanPostalCode } from '../utils/postalCodeRegex';
 
 export default function ZonesPanel({
   selectedCountry,
@@ -55,7 +56,7 @@ export default function ZonesPanel({
   const previousPlacesCountRef = useRef(places.length);
   const pollingIntervalRef = useRef(null);
 
-  // Detectar cuando se agrega una nueva zona y hacer scroll + seleccionar
+  // Detectar cuando se agrega una nueva zona y hacer scroll
   useEffect(() => {
     const countryPlaces = places.filter(p => p.country_code === selectedCountry?.country_code);
     const previousCount = previousPlacesCountRef.current;
@@ -66,18 +67,10 @@ export default function ZonesPanel({
       if (scrollContainerRef.current) {
         scrollContainerRef.current.scrollTop = 0;
       }
-
-      // Seleccionar la primera zona (más reciente)
-      if (countryPlaces.length > 0) {
-        const newestPlace = countryPlaces[0];
-        setTimeout(() => {
-          onGoToPlace(newestPlace);
-        }, 100);
-      }
     }
 
     previousPlacesCountRef.current = countryPlaces.length;
-  }, [places, selectedCountry, onGoToPlace]);
+  }, [places, selectedCountry]);
 
   // Cleanup polling interval on unmount or panel close
   useEffect(() => {
@@ -129,7 +122,11 @@ export default function ZonesPanel({
 
           if (place.geometry) {
             // Verificar si ya existe una zona con la misma dirección en el estado local
-            const countryPlaces = places.filter(p => p.country_code === selectedCountry.country_code);
+            const countryPlaces = places.filter(p => {
+    if (!p || !selectedCountry) return false;
+    // Mostrar todas EXCEPTO las que tienen active = null (no matchearon con geo_json)
+    return p.country_code === selectedCountry.country_code && p.active !== null;
+  });
             const isDuplicate = countryPlaces.some(p =>
               p.address.toLowerCase() === place.formatted_address.toLowerCase() ||
               p.placeId === place.place_id
@@ -142,15 +139,18 @@ export default function ZonesPanel({
               return;
             }
 
+            // Limpiar el formatted_address eliminando códigos postales según el país
+            const cleanAddress = cleanPostalCode(place.formatted_address, selectedCountry.country_code);
+
             const defaultLevel = insecurityLevels.find(l => l.id === 0) || insecurityLevels[0];
             const placeData = {
               id: Date.now(),
-              address: place.formatted_address,
+              address: cleanAddress,
               lat: place.geometry.location.lat(),
               lng: place.geometry.location.lng(),
               placeId: place.place_id,
               polygon: null,
-              isDrawing: false,
+              isDrawing: true, // Activar modo de dibujo automáticamente
               insecurity_level_id: 0, // Default: seguro
               color: defaultLevel?.color || '#00C853',
               country_code: selectedCountry.country_code,
@@ -173,18 +173,30 @@ export default function ZonesPanel({
     initAutocomplete();
   }, [selectedCountry, onAddPlace]);
 
-  // Cargar notas bajo demanda
-  const loadNotesForPlace = async (placeId) => {
-    if (notes[placeId]) return; // Ya están cargadas
+  // Las notas ahora vienen incluidas en el objeto place.notes desde la API
+  // Este useEffect se mantiene solo para sincronizar el estado local cuando cambian los lugares
+  useEffect(() => {
+    const syncNotes = () => {
+      if (!selectedCountry || !places.length) return;
 
-    try {
-      const response = await fetch(`/api/notes?related_type=zone&related_id=${placeId}`);
-      const placeNotes = await response.json();
-      setNotes(prev => ({ ...prev, [placeId]: placeNotes }));
-    } catch (error) {
-      console.error('Error loading notes:', error);
-    }
-  };
+      const countryPlaces = places.filter(p => {
+    if (!p || !selectedCountry) return false;
+    // Mostrar todas EXCEPTO las que tienen active = null (no matchearon con geo_json)
+    return p.country_code === selectedCountry.country_code && p.active !== null;
+  });
+      const updatedNotes = {};
+
+      countryPlaces.forEach(place => {
+        if (place.notes) {
+          updatedNotes[place.id] = place.notes;
+        }
+      });
+
+      setNotes(updatedNotes);
+    };
+
+    syncNotes();
+  }, [places, selectedCountry]);
 
   // Scroll a la card cuando se resalta
   useEffect(() => {
@@ -292,7 +304,11 @@ export default function ZonesPanel({
     );
   }
 
-  const countryPlaces = places.filter(p => p.country_code === selectedCountry.country_code);
+  const countryPlaces = places.filter(p => {
+    if (!p || !selectedCountry) return false;
+    // Mostrar todas EXCEPTO las que tienen active = null (no matchearon con geo_json)
+    return p.country_code === selectedCountry.country_code && p.active !== null;
+  });
 
   return (
     <div className="flex">
@@ -379,7 +395,7 @@ export default function ZonesPanel({
                     lng: pendingPlace.lng,
                     placeId: null,
                     polygon: null,
-                    isDrawing: false,
+                    isDrawing: true, // Activar modo de dibujo automáticamente
                     insecurity_level_id: 0, // Default: seguro
                     color: defaultLevel?.color || '#00C853',
                     country_code: selectedCountry.country_code,
@@ -509,9 +525,6 @@ export default function ZonesPanel({
                     setPerplexityData(null);
 
                     try {
-                      // Cargar notas primero
-                      await loadNotesForPlace(place.id);
-
                       // Función para cargar datos de Perplexity
                       const loadPerplexityData = async () => {
                         const response = await fetch(`/api/perplexity-notes?zone_id=${place.id}`);
@@ -573,33 +586,24 @@ export default function ZonesPanel({
                   </a>
                 </div>
 
-                {/* Safety Status Badge */}
+                {/* Safety Status Badge - Dinámico desde BD */}
                 <div className="mb-2">
-                  {place.safety_level_id === 0 && (
-                    <span className="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-semibold bg-gradient-to-r from-green-100 to-emerald-100 text-green-800 border-2 border-green-200 shadow-sm hover:shadow-md transition-all duration-200 hover:scale-105">
-                      <BiCircle className="animate-pulse mr-1.5 text-green-600" /> Zona Segura
-                    </span>
-                  )}
-                  {place.safety_level_id === 1 && (
-                    <span className="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-semibold bg-gradient-to-r from-blue-100 to-cyan-100 text-blue-800 border-2 border-blue-200 shadow-sm hover:shadow-md transition-all duration-200 hover:scale-105">
-                      <BiCircle className="animate-pulse mr-1.5 text-blue-600" /> Seguridad Media
-                    </span>
-                  )}
-                  {place.safety_level_id === 2 && (
-                    <span className="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-semibold bg-gradient-to-r from-orange-100 to-amber-100 text-orange-800 border-2 border-orange-200 shadow-sm hover:shadow-md transition-all duration-200 hover:scale-105">
-                      <BiCircle className="animate-pulse mr-1.5 text-orange-600" /> Seguridad Regular
-                    </span>
-                  )}
-                  {place.safety_level_id === 3 && (
-                    <span className="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-semibold bg-gradient-to-r from-yellow-100 to-amber-100 text-yellow-800 border-2 border-yellow-200 shadow-sm hover:shadow-md transition-all duration-200 hover:scale-105">
-                      <BiCircle className="animate-pulse mr-1.5 text-yellow-600" /> Precaución
-                    </span>
-                  )}
-                  {place.safety_level_id === 4 && (
-                    <span className="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-semibold bg-gradient-to-r from-red-100 to-rose-100 text-red-800 border-2 border-red-200 shadow-sm hover:shadow-md transition-all duration-200 hover:scale-105">
-                      <BiCircle className="animate-pulse mr-1.5 text-red-600" /> Zona Insegura
-                    </span>
-                  )}
+                  {(() => {
+                    const currentLevel = insecurityLevels.find(l => l.id === (place.safety_level_id ?? 0));
+                    if (!currentLevel) return null;
+
+                    return (
+                      <span
+                        className="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-semibold shadow-sm hover:shadow-md transition-all duration-200 hover:scale-105"
+                        style={{
+                          background: `linear-gradient(to right, ${currentLevel.gradient_from}, ${currentLevel.gradient_to})`,
+                          color: '#ffffff'
+                        }}
+                      >
+                        <BiCircle className="animate-pulse mr-1.5" /> {currentLevel.name}
+                      </span>
+                    );
+                  })()}
                 </div>
 
                 {isAdminMode && (
@@ -729,18 +733,19 @@ export default function ZonesPanel({
                     value={place.safety_level_id ?? 0}
                     onChange={(e) => onColorChange(place.id, parseInt(e.target.value))}
                     className="text-xs px-2 py-1 border border-gray-300 rounded cursor-pointer"
-                    style={{ color: place.color }}
+                    style={{
+                      color: insecurityLevels.find(l => l.id === (place.safety_level_id ?? 0))?.color || place.color
+                    }}
                   >
                     {insecurityLevels.map(level => {
-                      const emoji = ['🟢', '🔵', '🟠', '🟡', '🔴'][level.id] || '⚪';
-                      const label = level.name.charAt(0).toUpperCase() + level.name.slice(1);
+                      const emoji = ['🟢', '🔵', '🔵', '🟡', '🔴'][level.id] || '⚪';
                       return (
                         <option
                           key={level.id}
                           value={level.id}
                           style={{ color: level.color }}
                         >
-                          {emoji} {label}
+                          {emoji} {level.name}
                         </option>
                       );
                     })}
@@ -856,8 +861,8 @@ export default function ZonesPanel({
           role="complementary"
           aria-label="Panel de información de la zona"
         >
-          <div className="sticky top-0 bg-white border-b border-gray-200 p-4 flex justify-between items-center">
-            <h2 className="text-lg font-bold text-gray-400" title={`Información sobre ${selectedZoneAddress}`}>
+          <div className="sticky top-0 bg-white border-b border-gray-200 p-3 flex justify-between items-center">
+            <h2 className="text-sm font-semibold text-gray-600" title={`Información sobre ${selectedZoneAddress}`}>
               {selectedZoneAddress}
             </h2>
             <button
@@ -878,7 +883,7 @@ export default function ZonesPanel({
             </button>
           </div>
 
-          <div className="p-4 space-y-4" role="region" aria-label="Información detallada de la zona">
+          <div className="p-3 space-y-3" role="region" aria-label="Información detallada de la zona">
             {loadingPerplexity ? (
               <div className="flex flex-col items-center justify-center py-12">
                 <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
@@ -888,65 +893,59 @@ export default function ZonesPanel({
               <>
             {/* Visual Safety Score Gauge - New Feature */}
             {perplexityData?.secure && (
-              <div className="bg-gradient-to-br from-slate-50 to-gray-100 border-2 border-gray-300 rounded-2xl p-5 shadow-lg">
-                <h3 className="text-sm font-bold text-gray-700 mb-3 flex items-center gap-2">
-                  <BiShield className="text-xl text-gray-600" />
-                  EVALUACIÓN DE SEGURIDAD
+              <div className="bg-gradient-to-br from-slate-50 to-gray-100 border border-gray-200 rounded-lg p-3 shadow-sm">
+                <h3 className="text-sm font-semibold text-gray-700 mb-2 flex items-center gap-1.5">
+                  <BiShield className="text-base text-gray-600" />
+                  Evaluación de seguridad
                 </h3>
                 {(() => {
                   // Obtener la zona actual para usar su nivel de seguridad
                   const currentPlace = places.find(p => p.address === selectedZoneAddress);
                   const safetyLevelId = currentPlace?.safety_level_id ?? 2;
 
+                  // Obtener configuración desde insecurityLevels (base de datos)
+                  const currentLevel = insecurityLevels.find(l => l.id === safetyLevelId);
+
                   // Configuración basada en el nivel de seguridad de la zona
                   let safetyScore = 50;
-                  let scoreColor = 'from-yellow-400 to-orange-500';
-                  let bgColor = 'bg-yellow-50';
-                  let textColor = 'text-yellow-800';
-                  let IconComponent = BiError;
-                  let label = 'Media';
+                  let gradientFrom = currentLevel?.gradient_from || '#60a5fa';
+                  let gradientTo = currentLevel?.gradient_to || '#06b6d4';
+                  let bgColor = 'bg-blue-50';
+                  let textColor = 'text-blue-800';
+                  let IconComponent = BiShieldAlt2;
+                  let label = currentLevel?.name || 'Seguridad media';
 
-                  // Mapeo de nivel de seguridad a configuración
+                  // Mapeo de nivel de seguridad a configuración visual
                   switch(safetyLevelId) {
-                    case 0: // Seguro
+                    case 0: // Seguridad buena
                       safetyScore = 90;
-                      scoreColor = 'from-green-400 to-emerald-500';
                       bgColor = 'bg-green-50';
                       textColor = 'text-green-800';
                       IconComponent = BiShield;
-                      label = 'Alta';
                       break;
-                    case 1: // Medio
+                    case 1: // Seguridad aceptable
                       safetyScore = 70;
-                      scoreColor = 'from-blue-400 to-cyan-500';
                       bgColor = 'bg-blue-50';
                       textColor = 'text-blue-800';
                       IconComponent = BiShieldAlt2;
-                      label = 'Media-Alta';
                       break;
-                    case 2: // Regular
+                    case 2: // Seguridad media
                       safetyScore = 50;
-                      scoreColor = 'from-orange-400 to-amber-500';
-                      bgColor = 'bg-orange-50';
-                      textColor = 'text-orange-800';
-                      IconComponent = BiError;
-                      label = 'Media';
+                      bgColor = 'bg-blue-50';
+                      textColor = 'text-blue-800';
+                      IconComponent = BiShieldAlt2;
                       break;
-                    case 3: // Precaución
+                    case 3: // Seguridad baja
                       safetyScore = 30;
-                      scoreColor = 'from-yellow-400 to-amber-400';
                       bgColor = 'bg-yellow-50';
                       textColor = 'text-yellow-800';
                       IconComponent = BiErrorCircle;
-                      label = 'Precaución';
                       break;
-                    case 4: // Inseguro
+                    case 4: // Sin seguridad
                       safetyScore = 15;
-                      scoreColor = 'from-red-400 to-rose-500';
                       bgColor = 'bg-red-50';
                       textColor = 'text-red-800';
                       IconComponent = BiXCircle;
-                      label = 'Baja';
                       break;
                     default:
                       // Mantener valores por defecto
@@ -955,36 +954,36 @@ export default function ZonesPanel({
 
                   return (
                     <>
-                      <div className="relative mb-4">
+                      <div className="relative mb-3">
                         {/* Progress Bar Background */}
-                        <div className="h-8 bg-gray-200 rounded-full overflow-hidden shadow-inner">
+                        <div className="h-6 bg-gray-200 rounded-full overflow-hidden">
                           {/* Animated Progress Fill */}
                           <div
-                            className={`h-full bg-gradient-to-r ${scoreColor} transition-all duration-1000 ease-out flex items-center justify-end pr-3`}
-                            style={{ width: `${safetyScore}%` }}
+                            className="h-full transition-all duration-1000 ease-out flex items-center justify-end pr-2"
+                            style={{
+                              width: `${safetyScore}%`,
+                              background: `linear-gradient(to right, ${gradientFrom}, ${gradientTo})`
+                            }}
                           >
-                            <span className="text-white font-bold text-sm drop-shadow-lg">
+                            <span className="text-white font-semibold text-xs">
                               {safetyScore}%
                             </span>
                           </div>
                         </div>
                         {/* Score Labels */}
-                        <div className="flex justify-between mt-2 text-xs text-gray-500">
-                          <span>Riesgo Alto</span>
-                          <span>Seguridad Óptima</span>
+                        <div className="flex justify-between mt-1.5 text-xs text-gray-500">
+                          <span>Riesgo alto</span>
+                          <span>Seguridad óptima</span>
                         </div>
                       </div>
                       {/* Security Level Badge */}
-                      <div className={`${bgColor} rounded-xl p-3 flex items-center justify-between`}>
+                      <div className={`${bgColor} rounded-lg p-2 flex items-center justify-between`}>
                         <div className="flex items-center gap-2">
-                          <IconComponent className="text-2xl" />
-                          <div>
-                            <p className="text-xs text-gray-600 font-medium">Nivel de Seguridad</p>
-                            <p className={`text-sm font-bold ${textColor}`}>{label}</p>
-                          </div>
+                          <IconComponent className="text-lg" />
+                          <p className="text-xs text-gray-600">Nivel de seguridad</p>
                         </div>
-                        <div className={`px-3 py-1 rounded-full text-xs font-bold ${textColor} bg-white/60`}>
-                          {perplexityData.secure}
+                        <div className={`px-3 py-1 rounded-full text-sm font-semibold ${textColor} bg-white shadow-sm`}>
+                          {label}
                         </div>
                       </div>
                     </>
@@ -993,63 +992,30 @@ export default function ZonesPanel({
               </div>
             )}
 
-            {/* Secure - Prioridad #1 según GOAL.md */}
-            {perplexityData?.secure && (
-              <div
-                role="article"
-                aria-labelledby="security-heading"
-                className="bg-gradient-to-br from-blue-50 to-cyan-50 border-2 border-blue-200 rounded-xl p-4 shadow-sm hover:shadow-md transition-all duration-300 animate-[fadeIn_0.5s_ease-out]"
-              >
-                <div className="flex items-center gap-3 mb-3">
-                  <div className="p-2 bg-white rounded-lg shadow-sm">
-                    <BiShield className="text-2xl text-blue-600" aria-hidden="true" />
-                  </div>
-                  <h3 id="security-heading" className="font-bold text-base text-gray-800">Nivel de Seguridad</h3>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span
-                    className={`inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-bold shadow-sm ${
-                      perplexityData.secure.toLowerCase().includes('buena') || perplexityData.secure.toLowerCase().includes('aceptable')
-                        ? 'bg-gradient-to-r from-green-100 to-emerald-100 text-green-800 border-2 border-green-300'
-                        : perplexityData.secure.toLowerCase().includes('media')
-                        ? 'bg-gradient-to-r from-blue-100 to-cyan-100 text-blue-800 border-2 border-blue-300'
-                        : 'bg-gradient-to-r from-red-100 to-rose-100 text-red-800 border-2 border-red-300'
-                    }`}
-                    title={`Nivel de seguridad de la zona: ${perplexityData.secure}`}
-                    aria-label={`Seguridad: ${perplexityData.secure}`}
-                  >
-                    {perplexityData.secure.toLowerCase().includes('buena') || perplexityData.secure.toLowerCase().includes('aceptable') ? <BiShield /> :
-                     perplexityData.secure.toLowerCase().includes('media') ? <BiError /> : <BiXCircle />} {perplexityData.secure}
-                  </span>
-                </div>
-              </div>
-            )}
 
             {/* Rent */}
             {perplexityData?.rent && (
               <div
                 role="article"
                 aria-labelledby="rent-heading"
-                className="bg-gradient-to-br from-emerald-50 to-teal-50 border-2 border-emerald-200 rounded-xl p-4 shadow-sm hover:shadow-md transition-all duration-300 animate-[fadeIn_0.6s_ease-out]"
+                className="bg-gradient-to-br from-emerald-50 to-teal-50 border border-emerald-200 rounded-lg p-3 shadow-sm"
               >
-                <div className="flex items-center gap-3 mb-3">
-                  <div className="p-2 bg-white rounded-lg shadow-sm">
-                    <BiDollar className="text-2xl text-emerald-600" aria-hidden="true" />
-                  </div>
-                  <h3 id="rent-heading" className="font-bold text-base text-gray-800">Costo de Renta</h3>
+                <div className="flex items-center gap-2 mb-2">
+                  <BiDollar className="text-base text-emerald-600" aria-hidden="true" />
+                  <h3 id="rent-heading" className="font-semibold text-sm text-gray-700">Costo de renta</h3>
                 </div>
-                <div className="space-y-2">
-                  <div className="flex items-baseline gap-2">
+                <div className="space-y-1.5">
+                  <div className="flex items-baseline gap-1.5">
                     <span
-                      className="text-2xl font-extrabold text-emerald-700"
+                      className="text-xl font-bold text-emerald-700"
                       title={`Costo promedio de renta mensual: $${Math.round(perplexityData.rent)} USD`}
                       aria-label={`Costo de renta: ${Math.round(perplexityData.rent)} dólares por mes`}
                     >
                       ${Math.round(perplexityData.rent)}
                     </span>
-                    <span className="text-sm font-medium text-emerald-600">USD/mes</span>
+                    <span className="text-xs font-medium text-emerald-600">USD/mes</span>
                   </div>
-                  <p className="text-xs text-gray-600 bg-white/60 rounded-lg px-3 py-1.5 inline-block">
+                  <p className="text-xs text-gray-600 bg-white/60 rounded px-2 py-1 inline-block">
                     📐 Monoambiente (máx. 2 personas)
                   </p>
                 </div>
@@ -1061,16 +1027,14 @@ export default function ZonesPanel({
               <div
                 role="article"
                 aria-labelledby="tourism-heading"
-                className="bg-gradient-to-br from-purple-50 to-pink-50 border-2 border-purple-200 rounded-xl p-4 shadow-sm hover:shadow-md transition-all duration-300 animate-[fadeIn_0.7s_ease-out]"
+                className="bg-gradient-to-br from-gray-50 to-slate-50 border border-gray-200 rounded-lg p-3 shadow-sm"
               >
-                <div className="flex items-center gap-3 mb-3">
-                  <div className="p-2 bg-white rounded-lg shadow-sm">
-                    <BiMapAlt className="text-2xl text-purple-600" aria-hidden="true" />
-                  </div>
-                  <h3 id="tourism-heading" className="font-bold text-base text-gray-800">Turismo</h3>
+                <div className="flex items-center gap-2 mb-2">
+                  <BiMapAlt className="text-base text-purple-600" aria-hidden="true" />
+                  <h3 id="tourism-heading" className="font-semibold text-sm text-gray-700">Turismo</h3>
                 </div>
                 <div
-                  className="text-sm text-gray-700 leading-relaxed prose prose-sm max-w-none bg-white/40 rounded-lg p-3"
+                  className="text-xs text-gray-700 leading-relaxed prose prose-sm max-w-none bg-white/40 rounded p-2"
                   title="Información turística de la zona"
                 >
                   <ReactMarkdown>{perplexityData.tourism}</ReactMarkdown>
@@ -1083,16 +1047,14 @@ export default function ZonesPanel({
               <div
                 role="article"
                 aria-labelledby="places-heading"
-                className="bg-gradient-to-br from-rose-50 to-orange-50 border-2 border-rose-200 rounded-xl p-4 shadow-sm hover:shadow-md transition-all duration-300 animate-[fadeIn_0.8s_ease-out]"
+                className="bg-gradient-to-br from-gray-50 to-slate-50 border border-gray-200 rounded-lg p-3 shadow-sm"
               >
-                <div className="flex items-center gap-3 mb-3">
-                  <div className="p-2 bg-white rounded-lg shadow-sm">
-                    <BiMapPin className="text-2xl text-rose-600" aria-hidden="true" />
-                  </div>
-                  <h3 id="places-heading" className="font-bold text-base text-gray-800">Lugares de Interés</h3>
+                <div className="flex items-center gap-2 mb-2">
+                  <BiMapPin className="text-base text-rose-600" aria-hidden="true" />
+                  <h3 id="places-heading" className="font-semibold text-sm text-gray-700">Lugares de interés</h3>
                 </div>
                 <div
-                  className="text-sm text-gray-700 leading-relaxed prose prose-sm max-w-none bg-white/40 rounded-lg p-3"
+                  className="text-xs text-gray-700 leading-relaxed prose prose-sm max-w-none bg-white/40 rounded p-2"
                   title="Lugares de interés en la zona"
                 >
                   <ReactMarkdown
@@ -1131,16 +1093,14 @@ export default function ZonesPanel({
               <div
                 role="article"
                 aria-labelledby="notes-heading"
-                className="bg-gradient-to-br from-gray-50 to-slate-50 border-2 border-gray-200 rounded-xl p-4 shadow-sm hover:shadow-md transition-all duration-300 animate-[fadeIn_0.9s_ease-out]"
+                className="bg-gradient-to-br from-gray-50 to-slate-50 border border-gray-200 rounded-lg p-3 shadow-sm"
               >
-                <div className="flex items-center gap-3 mb-3">
-                  <div className="p-2 bg-white rounded-lg shadow-sm">
-                    <BiInfoCircle className="text-2xl text-gray-600" aria-hidden="true" />
-                  </div>
-                  <h3 id="notes-heading" className="font-bold text-base text-gray-800">Notas Generales</h3>
+                <div className="flex items-center gap-2 mb-2">
+                  <BiInfoCircle className="text-base text-gray-600" aria-hidden="true" />
+                  <h3 id="notes-heading" className="font-semibold text-sm text-gray-700">Notas generales</h3>
                 </div>
                 <div
-                  className="text-sm text-gray-700 leading-relaxed prose prose-sm max-w-none bg-white/40 rounded-lg p-3"
+                  className="text-xs text-gray-700 leading-relaxed prose prose-sm max-w-none bg-white/40 rounded p-2"
                   title="Notas generales sobre la zona"
                 >
                   <ReactMarkdown>{perplexityData.notes}</ReactMarkdown>
@@ -1150,9 +1110,9 @@ export default function ZonesPanel({
 
             {/* No data message */}
             {!perplexityData?.notes && !perplexityData?.rent && !perplexityData?.tourism && !perplexityData?.secure && !perplexityData?.places && (
-              <div className="text-center py-12 bg-gradient-to-br from-gray-50 to-slate-50 rounded-xl border-2 border-gray-200">
-                <div className="text-4xl mb-3">📭</div>
-                <p className="text-sm text-gray-600 font-medium">No hay información disponible para esta zona</p>
+              <div className="text-center py-8 bg-gradient-to-br from-gray-50 to-slate-50 rounded-lg border border-gray-200">
+                <div className="text-2xl mb-2">📭</div>
+                <p className="text-xs text-gray-600">No hay información disponible para esta zona</p>
               </div>
             )}
             </>
