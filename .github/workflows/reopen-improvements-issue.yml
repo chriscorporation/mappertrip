@@ -17,8 +17,8 @@ jobs:
       - name: Find Improvements issue
         id: find_issue
         run: |
-          # Buscar el issue por título "Improvements"
-          ISSUE_NUMBER=$(gh issue list --repo ${{ github.repository }} --search "Improvements in:title" --json number --jq '.[0].number')
+          # Buscar el issue por título "Improvements" (incluyendo cerrados)
+          ISSUE_NUMBER=$(gh issue list --repo ${{ github.repository }} --state all --search "Improvements in:title" --json number --jq '.[0].number')
 
           if [ -z "$ISSUE_NUMBER" ]; then
             echo "No se encontró issue con título 'Improvements'"
