@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useMemo } from 'react';
+import { CountriesSkeletonLoader } from './SkeletonLoader';
 
 // Función para convertir country_code a emoji de bandera
 const getFlagEmoji = (countryCode) => {
@@ -69,12 +70,7 @@ export default function CountriesPanel({ selectedCountry, onSelectCountry, place
   }, [countries, places]);
 
   if (loading) {
-    return (
-      <div className="w-80 bg-white border-r border-gray-300 p-4">
-        <h2 className="text-xl font-bold mb-4">Countries</h2>
-        <p className="text-gray-500">Cargando...</p>
-      </div>
-    );
+    return <CountriesSkeletonLoader />;
   }
 
   return (
