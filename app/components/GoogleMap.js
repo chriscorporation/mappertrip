@@ -4,7 +4,7 @@ import { useEffect, useRef, useState, useMemo } from 'react';
 import * as turf from '@turf/turf';
 import MapLegend from './MapLegend';
 
-export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocation, onSavePolygon, onPolygonClick, onBoundsChanged, coworkingPlaces, instagramablePlaces, mapClickMode, onMapClick, highlightedPlace, pendingCircle, circleRadius, editingCircleId, editingRadius }) {
+export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocation, onSavePolygon, onPolygonClick, onBoundsChanged, coworkingPlaces, instagramablePlaces, mapClickMode, onMapClick, highlightedPlace, pendingCircle, circleRadius, editingCircleId, editingRadius, visibleLevels, onToggleLevelVisibility }) {
   const mapRef = useRef(null);
   const [map, setMap] = useState(null);
   const [marker, setMarker] = useState(null);
@@ -526,15 +526,22 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
     activePlaces.forEach(place => {
       // Si el lugar tiene un polígono guardado
       if (place.polygon) {
-        // Si ya está renderizado, solo actualizar opciones
+        // Verificar si el nivel de seguridad está visible
+        const isLevelVisible = visibleLevels ? visibleLevels[place.safety_level_id] !== false : true;
+
+        // Si ya está renderizado, solo actualizar opciones y visibilidad
         if (polygonsRef.current[place.id]) {
           const existingPolygon = polygonsRef.current[place.id];
           existingPolygon.setOptions({
             fillColor: place.color || '#FFD700',
             strokeColor: place.color || '#FFD700',
           });
+          existingPolygon.setVisible(isLevelVisible);
           return;
         }
+
+        // Si no debe ser visible, no crearlo
+        if (!isLevelVisible) return;
 
         // Si no está renderizado, crearlo
         let coordinates;
@@ -662,7 +669,7 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
         delete polygonsRef.current[placeId];
       }
     });
-  }, [places, map]);
+  }, [places, map, visibleLevels]);
 
   // Actualizar estilo del polígono resaltado
   useEffect(() => {
@@ -713,12 +720,15 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
 
       // Si el lugar tiene circle_radius Y NO es coworking ni instagramable
       if (place.circle_radius && !isCoworkingPlace && !isInstagramablePlace) {
+        // Verificar si el nivel de seguridad está visible
+        const isLevelVisible = visibleLevels ? visibleLevels[place.safety_level_id] !== false : true;
+
         // Determinar el radio a usar (editingRadius si se está editando, o el radio guardado)
         const radiusToUse = editingCircleId === place.id ? editingRadius : place.circle_radius;
         const isHighlighted = highlightedPlace === place.id;
         const isEditing = editingCircleId === place.id;
 
-        // Si ya está renderizado, solo actualizar opciones
+        // Si ya está renderizado, solo actualizar opciones y visibilidad
         if (circlesRef.current[place.id]) {
           const existingCircle = circlesRef.current[place.id];
           existingCircle.setOptions({
@@ -728,8 +738,12 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
             fillOpacity: isHighlighted || isEditing ? 0.45 : 0.35,
             radius: radiusToUse,
           });
+          existingCircle.setVisible(isLevelVisible);
           return;
         }
+
+        // Si no debe ser visible, no crearlo
+        if (!isLevelVisible) return;
 
         // Si no está renderizado, crearlo
         const circle = new window.google.maps.Circle({
@@ -767,7 +781,7 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
         delete circlesRef.current[placeId];
       }
     });
-  }, [places, map, editingCircleId, editingRadius, highlightedPlace, coworkingPlaces, instagramablePlaces]);
+  }, [places, map, editingCircleId, editingRadius, highlightedPlace, coworkingPlaces, instagramablePlaces, visibleLevels]);
 
   // Renderizar círculo temporal mientras se ajusta el radio
   useEffect(() => {
@@ -1024,7 +1038,10 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
       <div ref={mapRef} className="w-full h-full" />
 
       {/* Map Legend - Safety Levels */}
-      <MapLegend />
+      <MapLegend
+        visibleLevels={visibleLevels}
+        onToggleLevel={onToggleLevelVisibility}
+      />
 
       {/* Modal de confirmación para eliminar punto */}
       {vertexToDelete && deleteModalPosition && (

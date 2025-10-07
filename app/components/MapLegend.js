@@ -1,9 +1,9 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { BiShieldAlt2, BiChevronDown, BiChevronUp } from 'react-icons/bi';
+import { BiShieldAlt2, BiChevronDown, BiChevronUp, BiFilter } from 'react-icons/bi';
 
-export default function MapLegend() {
+export default function MapLegend({ visibleLevels, onToggleLevel }) {
   const [insecurityLevels, setInsecurityLevels] = useState([]);
   const [isExpanded, setIsExpanded] = useState(true);
   const [isVisible, setIsVisible] = useState(false);
@@ -28,6 +28,9 @@ export default function MapLegend() {
 
   if (insecurityLevels.length === 0) return null;
 
+  const hiddenCount = insecurityLevels.filter(level => !visibleLevels[level.id]).length;
+  const hasFilters = hiddenCount > 0;
+
   return (
     <div
       className={`
@@ -35,7 +38,7 @@ export default function MapLegend() {
         bg-white rounded-xl shadow-2xl border border-gray-200
         transition-all duration-500 ease-out
         ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}
-        ${isExpanded ? 'w-64' : 'w-auto'}
+        ${isExpanded ? 'w-72' : 'w-auto'}
       `}
     >
       {/* Header */}
@@ -48,6 +51,12 @@ export default function MapLegend() {
           <span className="font-semibold text-sm text-gray-800">
             {isExpanded ? 'Niveles de Seguridad' : 'Leyenda'}
           </span>
+          {hasFilters && (
+            <span className="flex items-center gap-1 bg-blue-100 text-blue-700 text-xs px-2 py-0.5 rounded-full font-medium">
+              <BiFilter className="text-sm" />
+              {hiddenCount}
+            </span>
+          )}
         </div>
         {isExpanded ? (
           <BiChevronDown className="text-gray-500 text-lg" />
@@ -64,31 +73,89 @@ export default function MapLegend() {
         `}
       >
         <div className="px-4 pb-4 space-y-2">
-          {insecurityLevels.map((level, index) => (
-            <div
-              key={level.id}
-              className="flex items-center gap-3 group"
-              style={{
-                animation: isExpanded ? `slideIn 0.3s ease-out ${index * 0.05}s both` : 'none'
-              }}
-            >
-              {/* Color indicator */}
-              <div
-                className="w-5 h-5 rounded-md shadow-sm border-2 border-white ring-1 ring-gray-200 transition-transform group-hover:scale-110"
-                style={{ backgroundColor: level.color }}
-              />
+          {insecurityLevels.map((level, index) => {
+            const isVisible = visibleLevels[level.id];
 
-              {/* Label */}
-              <span className="text-sm text-gray-700 font-medium">
-                {level.label}
-              </span>
-            </div>
-          ))}
+            return (
+              <button
+                key={level.id}
+                onClick={() => onToggleLevel(level.id)}
+                className={`
+                  w-full flex items-center gap-3 group cursor-pointer
+                  transition-all duration-200 rounded-lg px-2 py-1.5 -mx-2
+                  ${isVisible ? 'hover:bg-gray-50' : 'hover:bg-blue-50'}
+                `}
+                style={{
+                  animation: isExpanded ? `slideIn 0.3s ease-out ${index * 0.05}s both` : 'none'
+                }}
+              >
+                {/* Checkbox */}
+                <div className={`
+                  relative w-5 h-5 rounded border-2 flex items-center justify-center
+                  transition-all duration-200
+                  ${isVisible
+                    ? 'border-gray-300 bg-white'
+                    : 'border-blue-500 bg-blue-500'
+                  }
+                `}>
+                  {isVisible ? (
+                    // Checkmark
+                    <svg
+                      className="w-3 h-3 text-blue-600"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={3}
+                        d="M5 13l4 4L19 7"
+                      />
+                    </svg>
+                  ) : (
+                    // X mark when hidden
+                    <svg
+                      className="w-3 h-3 text-white"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={3}
+                        d="M6 18L18 6M6 6l12 12"
+                      />
+                    </svg>
+                  )}
+                </div>
+
+                {/* Color indicator */}
+                <div
+                  className={`
+                    w-5 h-5 rounded-md shadow-sm border-2 border-white ring-1 ring-gray-200
+                    transition-all duration-200
+                    ${isVisible ? 'opacity-100 scale-100' : 'opacity-40 scale-90'}
+                  `}
+                  style={{ backgroundColor: level.color }}
+                />
+
+                {/* Label */}
+                <span className={`
+                  text-sm font-medium flex-1 text-left transition-all duration-200
+                  ${isVisible ? 'text-gray-700' : 'text-gray-400 line-through'}
+                `}>
+                  {level.label}
+                </span>
+              </button>
+            );
+          })}
 
           {/* Info text */}
           <div className="mt-3 pt-3 border-t border-gray-100">
             <p className="text-xs text-gray-500 leading-relaxed">
-              Estas zonas han sido validadas manualmente por nuestro equipo en terreno.
+              Click en cada nivel para mostrar u ocultar zonas del mapa. Validadas manualmente por nuestro equipo.
             </p>
           </div>
         </div>
