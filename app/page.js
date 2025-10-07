@@ -10,6 +10,7 @@ import AirbnbPanel from './components/AirbnbPanel';
 import CoWorkingPanel from './components/CoWorkingPanel';
 import InstagramablePlacesPanel from './components/InstagramablePlacesPanel';
 import Header from './components/Header';
+import QuickStats from './components/QuickStats';
 import { useAuthStore } from './store/authStore';
 import { useAppStore } from './store/appStore';
 
@@ -572,7 +573,7 @@ function HomeContent() {
       )}
 
       {/* Panel derecho - Mapa de Google */}
-      <div className="flex-1">
+      <div className="flex-1 relative">
         <GoogleMap
           selectedPlace={selectedPlace}
           places={places}
@@ -600,6 +601,9 @@ function HomeContent() {
           visibleLevels={visibleLevels}
           onToggleLevelVisibility={handleToggleLevelVisibility}
         />
+
+        {/* Quick Stats Widget */}
+        <QuickStats places={places} selectedCountry={selectedCountry} />
       </div>
       </div>
 
