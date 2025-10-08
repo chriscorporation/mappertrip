@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { BiMapPin, BiStar, BiDollar, BiLinkExternal, BiErrorCircle } from 'react-icons/bi';
 import { useAuthStore } from '../store/authStore';
+import { PlacesSkeletonLoader } from './SkeletonLoader';
 
 export default function AirbnbPanel({ onGoToLocation, selectedCountry }) {
   const { isAuthenticated } = useAuthStore();
@@ -135,12 +136,7 @@ export default function AirbnbPanel({ onGoToLocation, selectedCountry }) {
   };
 
   if (loading) {
-    return (
-      <div className="w-80 bg-white border-r border-gray-300 p-4">
-        <h2 className="text-xl font-bold mb-4">AirBnB</h2>
-        <p className="text-gray-500">Cargando...</p>
-      </div>
-    );
+    return <PlacesSkeletonLoader title="AirBnB" />;
   }
 
   return (
