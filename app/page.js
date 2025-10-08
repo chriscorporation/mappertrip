@@ -11,6 +11,7 @@ import CoWorkingPanel from './components/CoWorkingPanel';
 import InstagramablePlacesPanel from './components/InstagramablePlacesPanel';
 import Header from './components/Header';
 import QuickStats from './components/QuickStats';
+import MiniMap from './components/MiniMap';
 import { useAuthStore } from './store/authStore';
 import { useAppStore } from './store/appStore';
 
@@ -604,6 +605,14 @@ function HomeContent() {
 
         {/* Quick Stats Widget */}
         <QuickStats places={places} selectedCountry={selectedCountry} />
+
+        {/* Mini Map Navigation */}
+        <MiniMap
+          selectedCountry={selectedCountry}
+          places={places}
+          onNavigateToPlace={handleGoToPlace}
+          currentPlace={selectedPlace}
+        />
       </div>
       </div>
 
