@@ -34,7 +34,7 @@ export default function MapLegend({ visibleLevels, onToggleLevel }) {
   return (
     <div
       className={`
-        fixed bottom-6 right-6 z-[1000]
+        fixed bottom-6 left-6 z-[1000]
         bg-white rounded-xl shadow-2xl border border-gray-200
         transition-all duration-500 ease-out
         ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}
