@@ -76,9 +76,11 @@ export default function CountriesPanel({ selectedCountry, onSelectCountry, place
   return (
     <div className="w-80 bg-white border-r border-gray-300 flex flex-col">
       {/* Header con título */}
-      <div className="p-4 border-b border-gray-200">
-        <h2 className="text-xl font-bold">Countries</h2>
-        <p className="text-xs text-gray-500 mt-1">Selecciona un país para ver zonas</p>
+      <div className="sticky top-0 z-10 bg-gradient-to-r from-green-50 to-emerald-50 border-b border-green-200 shadow-sm">
+        <div className="p-4">
+          <h2 className="text-xl font-bold text-gray-800">Countries</h2>
+          <p className="text-xs text-gray-600 mt-1">Selecciona un país para ver zonas</p>
+        </div>
       </div>
 
       {/* Barra de búsqueda */}

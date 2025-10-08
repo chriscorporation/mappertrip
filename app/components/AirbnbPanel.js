@@ -141,9 +141,11 @@ export default function AirbnbPanel({ onGoToLocation, selectedCountry }) {
 
   return (
     <div className="w-80 bg-white border-r border-gray-300 flex flex-col">
-      <div className="p-4 border-b border-gray-200">
-        <h2 className="text-xl font-bold">AirBnB</h2>
-        <p className="text-xs text-gray-500 mt-1">{airbnbs.length} propiedades</p>
+      <div className="sticky top-0 z-10 bg-gradient-to-r from-pink-50 to-rose-50 border-b border-pink-200 shadow-sm">
+        <div className="p-4">
+          <h2 className="text-xl font-bold text-gray-800">AirBnB</h2>
+          <p className="text-xs text-gray-600 mt-1">{airbnbs.length} propiedades</p>
+        </div>
       </div>
 
       {isAdminMode && (
