@@ -12,6 +12,7 @@ import InstagramablePlacesPanel from './components/InstagramablePlacesPanel';
 import Header from './components/Header';
 import QuickStats from './components/QuickStats';
 import MiniMap from './components/MiniMap';
+import AccommodationSuggestions from './components/AccommodationSuggestions';
 import { useAuthStore } from './store/authStore';
 import { useAppStore } from './store/appStore';
 
@@ -41,6 +42,9 @@ function HomeContent() {
   const [editingRadius, setEditingRadius] = useState(1000);
   const [insecurityLevels, setInsecurityLevels] = useState([]);
   const [visibleLevels, setVisibleLevels] = useState({});
+  const [showAccommodationSuggestions, setShowAccommodationSuggestions] = useState(false);
+  const [currentZoneForSuggestions, setCurrentZoneForSuggestions] = useState(null);
+  const [nearbyZonesForSuggestions, setNearbyZonesForSuggestions] = useState([]);
 
   // Sync selectedTab with URL on mount and when searchParams change
   useEffect(() => {
@@ -238,6 +242,65 @@ function HomeContent() {
       ...prev,
       [levelId]: !prev[levelId]
     }));
+  };
+
+  // Función para calcular distancia entre dos puntos (en km)
+  const calculateDistance = (lat1, lng1, lat2, lng2) => {
+    const R = 6371; // Radio de la Tierra en km
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLng = (lng2 - lng1) * Math.PI / 180;
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+      Math.sin(dLng / 2) * Math.sin(dLng / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c;
+  };
+
+  // Función para manejar clic en polígono y mostrar sugerencias
+  const handlePolygonClickWithSuggestions = (placeId) => {
+    setHighlightedPlace(placeId);
+    router.push('/?tab=zones');
+
+    // Encontrar la zona clickeada
+    const clickedZone = places.find(p => p.id === placeId);
+
+    if (!clickedZone) return;
+
+    // Filtrar zonas del mismo país
+    const countryPlaces = places.filter(p =>
+      p.country_code === clickedZone.country_code &&
+      p.active !== null
+    );
+
+    // Si la zona clickeada NO es segura, buscar zonas seguras cercanas
+    if (clickedZone.safety_level_id > 2) {
+      const safeZones = countryPlaces
+        .filter(p => p.safety_level_id <= 2 && p.id !== clickedZone.id)
+        .map(zone => {
+          const distance = calculateDistance(
+            clickedZone.lat,
+            clickedZone.lng,
+            zone.lat,
+            zone.lng
+          );
+          return { ...zone, distance: distance.toFixed(1) };
+        })
+        .sort((a, b) => parseFloat(a.distance) - parseFloat(b.distance))
+        .slice(0, 5);
+
+      if (safeZones.length > 0) {
+        setCurrentZoneForSuggestions(clickedZone);
+        setNearbyZonesForSuggestions(safeZones);
+        setShowAccommodationSuggestions(true);
+      }
+    }
+    // Si la zona ES segura, solo mostrar info sin sugerencias de otras zonas
+    else {
+      setCurrentZoneForSuggestions(clickedZone);
+      setNearbyZonesForSuggestions([]);
+      setShowAccommodationSuggestions(true);
+    }
   };
 
   // Cargar lugares, airbnbs y coworking places desde Supabase al iniciar
@@ -581,10 +644,7 @@ function HomeContent() {
           airbnbs={airbnbs.filter(a => a.country_code === selectedCountry?.country_code)}
           airbnbLocation={airbnbLocation}
           onSavePolygon={handleSavePolygon}
-          onPolygonClick={(placeId) => {
-            setHighlightedPlace(placeId);
-            router.push('/?tab=zones');
-          }}
+          onPolygonClick={handlePolygonClickWithSuggestions}
           onBoundsChanged={setMapBounds}
           coworkingPlaces={coworkingPlaces}
           instagramablePlaces={instagramablePlaces}
@@ -613,6 +673,37 @@ function HomeContent() {
           onNavigateToPlace={handleGoToPlace}
           currentPlace={selectedPlace}
         />
+
+        {/* Accommodation Suggestions Widget */}
+        {showAccommodationSuggestions && (
+          <AccommodationSuggestions
+            currentZone={currentZoneForSuggestions}
+            nearbyZones={nearbyZonesForSuggestions}
+            nearbyCoworking={coworkingPlaces.filter(c =>
+              c.country_code === currentZoneForSuggestions?.country_code &&
+              calculateDistance(
+                currentZoneForSuggestions.lat,
+                currentZoneForSuggestions.lng,
+                c.lat,
+                c.lng
+              ) < 5 // Dentro de 5km
+            )}
+            nearbyInstagramable={instagramablePlaces.filter(i =>
+              i.country_code === currentZoneForSuggestions?.country_code &&
+              calculateDistance(
+                currentZoneForSuggestions.lat,
+                currentZoneForSuggestions.lng,
+                i.lat,
+                i.lng
+              ) < 5 // Dentro de 5km
+            )}
+            onClose={() => setShowAccommodationSuggestions(false)}
+            onNavigate={(zone) => {
+              handleGoToPlace(zone);
+              setShowAccommodationSuggestions(false);
+            }}
+          />
+        )}
       </div>
       </div>
 
