@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, useMemo } from 'react';
 import * as turf from '@turf/turf';
 import MapLegend from './MapLegend';
+import ZoomIndicator from './ZoomIndicator';
 
 export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocation, onSavePolygon, onPolygonClick, onBoundsChanged, coworkingPlaces, instagramablePlaces, mapClickMode, onMapClick, highlightedPlace, pendingCircle, circleRadius, editingCircleId, editingRadius, visibleLevels, onToggleLevelVisibility }) {
   const mapRef = useRef(null);
@@ -1036,6 +1037,9 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
   return (
     <>
       <div ref={mapRef} className="w-full h-full" />
+
+      {/* Zoom Indicator - Contextual zoom guidance */}
+      <ZoomIndicator map={map} />
 
       {/* Map Legend - Safety Levels */}
       <MapLegend
