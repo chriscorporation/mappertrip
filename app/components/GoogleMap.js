@@ -826,13 +826,48 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
     onSavePolygon(placeId, coordinates);
   };
 
-  // Crear una clave única basada en los IDs de airbnbs para evitar recreaciones innecesarias
+  // Función para determinar la zona de seguridad de un Airbnb
+  const getSafetyZoneForAirbnb = (airbnb) => {
+    if (!airbnb.lat || !airbnb.lng || !places) return null;
+
+    const airbnbPoint = turf.point([parseFloat(airbnb.lng), parseFloat(airbnb.lat)]);
+
+    // Filtrar solo lugares activos con polígonos o círculos
+    const activePlaces = places.filter(p => p.active !== null && (p.polygon || p.circle_radius));
+
+    // Buscar la zona que contiene este Airbnb
+    for (const place of activePlaces) {
+      try {
+        if (place.polygon) {
+          // Verificar si el punto está dentro del polígono
+          const turfPolygon = turf.polygon([place.polygon]);
+          if (turf.booleanPointInPolygon(airbnbPoint, turfPolygon)) {
+            return place;
+          }
+        } else if (place.circle_radius) {
+          // Verificar si el punto está dentro del círculo
+          const circleCenter = turf.point([place.lng, place.lat]);
+          const distance = turf.distance(airbnbPoint, circleCenter, { units: 'meters' });
+          if (distance <= place.circle_radius) {
+            return place;
+          }
+        }
+      } catch (error) {
+        console.warn('Error checking if Airbnb is in zone:', error);
+      }
+    }
+
+    return null; // No está en ninguna zona mapeada
+  };
+
+  // Crear una clave única basada en los IDs de airbnbs y places para evitar recreaciones innecesarias
   const airbnbsKey = useMemo(() => {
     if (!airbnbs) return '';
-    return airbnbs.map(a => a.id).sort().join(',');
-  }, [airbnbs]);
+    // Incluir también places.length para recalcular cuando cambien las zonas
+    return airbnbs.map(a => a.id).sort().join(',') + '_' + places.length;
+  }, [airbnbs, places]);
 
-  // Renderizar marcadores de Airbnb
+  // Renderizar marcadores de Airbnb con indicadores de seguridad
   useEffect(() => {
     if (!map) return;
 
@@ -842,11 +877,18 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
 
     if (!airbnbs || airbnbs.length === 0) return;
 
-    // Crear nuevos marcadores para cada Airbnb con InfoWindow personalizado
+    // Crear nuevos marcadores para cada Airbnb con InfoWindow personalizado y badge de seguridad
     airbnbs.forEach(airbnb => {
       if (!airbnb.lat || !airbnb.lng) return;
 
       const priceLabel = airbnb.price ? airbnb.price.replace(/\s*MXN/, '') : '?';
+
+      // Determinar la zona de seguridad
+      const safetyZone = getSafetyZoneForAirbnb(airbnb);
+      const safetyColor = safetyZone?.color || '#9ca3af'; // gris por defecto si no está en zona
+      const safetyLabel = safetyZone?.safety_level || 'No mapeada';
+      const isSafe = safetyZone?.safety_level_id <= 2;
+      const isModerate = safetyZone?.safety_level_id === 3;
 
       // Crear un contenedor con pestaña (pico)
       const container = document.createElement('div');
@@ -855,7 +897,18 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
         display: flex;
         flex-direction: column;
         align-items: center;
+        transition: transform 0.2s ease;
       `;
+
+      // Hover effect
+      container.addEventListener('mouseenter', () => {
+        container.style.transform = 'scale(1.1) translateY(-2px)';
+        priceDiv.style.boxShadow = '0 4px 12px rgba(0,0,0,0.4)';
+      });
+      container.addEventListener('mouseleave', () => {
+        container.style.transform = 'scale(1) translateY(0)';
+        priceDiv.style.boxShadow = '0 2px 6px rgba(0,0,0,0.3)';
+      });
 
       // Crear el ícono de casa
       const homeIcon = document.createElement('img');
@@ -867,7 +920,7 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
         filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
       `;
 
-      // Crear el div de precio
+      // Crear el div de precio con borde del color de seguridad
       const priceDiv = document.createElement('div');
       priceDiv.style.cssText = `
         background: #374151;
@@ -876,15 +929,99 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
         border-radius: 6px;
         font-size: 12px;
         font-weight: bold;
-        border: 1px solid #1f2937;
+        border: 2px solid ${safetyColor};
         white-space: nowrap;
         box-shadow: 0 2px 6px rgba(0,0,0,0.3);
         z-index: 999999;
         position: relative;
+        transition: box-shadow 0.2s ease;
       `;
       priceDiv.textContent = priceLabel;
 
-      // Crear la pestaña/pico
+      // Badge de seguridad (pequeño escudo en la esquina)
+      const safetyBadge = document.createElement('div');
+      safetyBadge.style.cssText = `
+        position: absolute;
+        top: -6px;
+        right: -6px;
+        width: 18px;
+        height: 18px;
+        background: ${safetyColor};
+        border-radius: 50%;
+        border: 2px solid white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+      `;
+
+      // Ícono de escudo según nivel de seguridad
+      const shieldIcon = document.createElement('div');
+      if (isSafe) {
+        // Checkmark para zonas seguras
+        shieldIcon.innerHTML = `
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3">
+            <path d="M5 13l4 4L19 7"/>
+          </svg>
+        `;
+      } else if (isModerate) {
+        // Exclamación para zonas moderadas
+        shieldIcon.innerHTML = `
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="white" stroke="white" stroke-width="2">
+            <path d="M12 8v4m0 4h.01"/>
+          </svg>
+        `;
+      } else if (safetyZone) {
+        // X para zonas peligrosas
+        shieldIcon.innerHTML = `
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3">
+            <path d="M18 6L6 18M6 6l12 12"/>
+          </svg>
+        `;
+      } else {
+        // Interrogación para no mapeadas
+        shieldIcon.innerHTML = `
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="white" stroke="white" stroke-width="2">
+            <text x="50%" y="65%" text-anchor="middle" font-size="16" font-weight="bold">?</text>
+          </svg>
+        `;
+      }
+
+      safetyBadge.appendChild(shieldIcon);
+      priceDiv.appendChild(safetyBadge);
+
+      // Tooltip con información de seguridad
+      const tooltip = document.createElement('div');
+      tooltip.style.cssText = `
+        position: absolute;
+        bottom: 100%;
+        left: 50%;
+        transform: translateX(-50%) translateY(-8px);
+        background: rgba(0, 0, 0, 0.9);
+        color: white;
+        padding: 6px 10px;
+        border-radius: 6px;
+        font-size: 11px;
+        white-space: nowrap;
+        pointer-events: none;
+        opacity: 0;
+        transition: opacity 0.2s ease;
+        z-index: 9999999;
+        border: 1px solid ${safetyColor};
+      `;
+      tooltip.innerHTML = `
+        <div style="font-weight: bold; margin-bottom: 2px;">Nivel de seguridad</div>
+        <div style="color: ${safetyColor};">${safetyLabel}</div>
+      `;
+
+      container.addEventListener('mouseenter', () => {
+        tooltip.style.opacity = '1';
+      });
+      container.addEventListener('mouseleave', () => {
+        tooltip.style.opacity = '0';
+      });
+
+      // Crear la pestaña/pico con color de seguridad
       const pointer = document.createElement('div');
       pointer.style.cssText = `
         width: 0;
@@ -896,6 +1033,7 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
       `;
 
       container.appendChild(homeIcon);
+      container.appendChild(tooltip);
       container.appendChild(priceDiv);
       container.appendChild(pointer);
 
