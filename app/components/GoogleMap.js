@@ -28,6 +28,8 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
   const [tooltipPosition, setTooltipPosition] = useState(null);
   const [insecurityLevels, setInsecurityLevels] = useState([]);
   const [isCompareModalOpen, setIsCompareModalOpen] = useState(false);
+  const [animatingShapes, setAnimatingShapes] = useState(new Set());
+  const lastCountryRef = useRef(null);
 
   // Cargar niveles de inseguridad para tooltips
   useEffect(() => {
@@ -540,6 +542,20 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
     }
   }, [currentPolygon]);
 
+  // Detectar cambio de país para activar animaciones
+  useEffect(() => {
+    if (selectedCountry && lastCountryRef.current !== selectedCountry?.country_code) {
+      lastCountryRef.current = selectedCountry.country_code;
+      // Activar animación de entrada para todas las formas del nuevo país
+      setAnimatingShapes(new Set());
+      setTimeout(() => {
+        const countryPlaces = places.filter(p => p.country_code === selectedCountry.country_code && p.active !== null);
+        const shapeIds = new Set(countryPlaces.map(p => p.id));
+        setAnimatingShapes(shapeIds);
+      }, 50);
+    }
+  }, [selectedCountry, places]);
+
   // Mostrar polígonos guardados y actualizar colores
   useEffect(() => {
     if (!map || !places) return;
@@ -547,20 +563,60 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
     // Filtrar solo lugares activos (excluir active = null)
     const activePlaces = places.filter(p => p.active !== null);
 
-    activePlaces.forEach(place => {
+    activePlaces.forEach((place, index) => {
       // Si el lugar tiene un polígono guardado
       if (place.polygon) {
         // Verificar si el nivel de seguridad está visible
         const isLevelVisible = visibleLevels ? visibleLevels[place.safety_level_id] !== false : true;
 
+        // Determinar si debe animarse (solo si está en el conjunto de animación y es del país seleccionado)
+        const shouldAnimate = animatingShapes.has(place.id) &&
+                             selectedCountry &&
+                             place.country_code === selectedCountry.country_code;
+
         // Si ya está renderizado, solo actualizar opciones y visibilidad
         if (polygonsRef.current[place.id]) {
           const existingPolygon = polygonsRef.current[place.id];
-          existingPolygon.setOptions({
-            fillColor: place.color || '#FFD700',
-            strokeColor: place.color || '#FFD700',
-          });
-          existingPolygon.setVisible(isLevelVisible);
+
+          // Si debe animarse, aplicar fade-in progresivo
+          if (shouldAnimate) {
+            existingPolygon.setOptions({
+              fillColor: place.color || '#FFD700',
+              strokeColor: place.color || '#FFD700',
+              fillOpacity: 0,
+              strokeOpacity: 0,
+            });
+            existingPolygon.setVisible(isLevelVisible);
+
+            // Animar entrada con delay escalonado
+            setTimeout(() => {
+              let opacity = 0;
+              const targetFillOpacity = 0.15;
+              const targetStrokeOpacity = 1;
+              const duration = 400;
+              const steps = 20;
+              const increment = duration / steps;
+
+              const animateOpacity = () => {
+                opacity += 1 / steps;
+                if (opacity <= 1) {
+                  existingPolygon.setOptions({
+                    fillOpacity: targetFillOpacity * opacity,
+                    strokeOpacity: targetStrokeOpacity * opacity,
+                  });
+                  setTimeout(animateOpacity, increment);
+                }
+              };
+              animateOpacity();
+            }, index * 50); // Delay escalonado de 50ms por polígono
+          } else {
+            // Sin animación, actualizar normalmente
+            existingPolygon.setOptions({
+              fillColor: place.color || '#FFD700',
+              strokeColor: place.color || '#FFD700',
+            });
+            existingPolygon.setVisible(isLevelVisible);
+          }
           return;
         }
 
@@ -598,15 +654,44 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
           }));
         }
 
+        // Determinar opacidad inicial según si debe animarse
+        const initialFillOpacity = shouldAnimate ? 0 : 0.15;
+        const initialStrokeOpacity = shouldAnimate ? 0 : 1;
+
         const polygon = new window.google.maps.Polygon({
           paths: coordinates,
           fillColor: place.color || '#FFD700',
-          fillOpacity: 0.15,
+          fillOpacity: initialFillOpacity,
           strokeWeight: 3,
           strokeColor: place.color || '#FFD700',
+          strokeOpacity: initialStrokeOpacity,
           editable: false,
           map: map,
         });
+
+        // Si debe animarse, aplicar fade-in progresivo después de crearlo
+        if (shouldAnimate) {
+          setTimeout(() => {
+            let opacity = 0;
+            const targetFillOpacity = 0.15;
+            const targetStrokeOpacity = 1;
+            const duration = 400;
+            const steps = 20;
+            const increment = duration / steps;
+
+            const animateOpacity = () => {
+              opacity += 1 / steps;
+              if (opacity <= 1) {
+                polygon.setOptions({
+                  fillOpacity: targetFillOpacity * opacity,
+                  strokeOpacity: targetStrokeOpacity * opacity,
+                });
+                setTimeout(animateOpacity, increment);
+              }
+            };
+            animateOpacity();
+          }, index * 50); // Delay escalonado de 50ms por polígono
+        }
 
         // Variable para rastrear el vértice seleccionado
         let selectedVertex = null;
@@ -707,7 +792,7 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
         delete polygonsRef.current[placeId];
       }
     });
-  }, [places, map, visibleLevels]);
+  }, [places, map, visibleLevels, animatingShapes, selectedCountry]);
 
   // Actualizar estilo del polígono resaltado
   useEffect(() => {
@@ -751,7 +836,7 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
     // Filtrar solo lugares activos (excluir active = null)
     const activePlaces = places.filter(p => p.active !== null);
 
-    activePlaces.forEach(place => {
+    activePlaces.forEach((place, index) => {
       // Verificar que NO sea coworking ni instagramable antes de pintar círculo
       const isCoworkingPlace = coworkingPlaces?.some(p => p.id === place.id);
       const isInstagramablePlace = instagramablePlaces?.some(p => p.id === place.id);
@@ -766,34 +851,104 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
         const isHighlighted = highlightedPlace === place.id;
         const isEditing = editingCircleId === place.id;
 
+        // Determinar si debe animarse
+        const shouldAnimate = animatingShapes.has(place.id) &&
+                             selectedCountry &&
+                             place.country_code === selectedCountry.country_code;
+
         // Si ya está renderizado, solo actualizar opciones y visibilidad
         if (circlesRef.current[place.id]) {
           const existingCircle = circlesRef.current[place.id];
-          existingCircle.setOptions({
-            fillColor: place.color || '#8b5cf6',
-            strokeColor: isEditing ? '#8b5cf6' : (isHighlighted ? '#FFEB3B' : (place.color || '#8b5cf6')),
-            strokeWeight: isHighlighted || isEditing ? 4 : 2,
-            fillOpacity: isHighlighted || isEditing ? 0.45 : 0.35,
-            radius: radiusToUse,
-          });
-          existingCircle.setVisible(isLevelVisible);
+
+          // Si debe animarse, aplicar fade-in progresivo
+          if (shouldAnimate && !isEditing) {
+            existingCircle.setOptions({
+              fillColor: place.color || '#8b5cf6',
+              strokeColor: place.color || '#8b5cf6',
+              strokeWeight: 2,
+              fillOpacity: 0,
+              strokeOpacity: 0,
+              radius: radiusToUse,
+            });
+            existingCircle.setVisible(isLevelVisible);
+
+            // Animar entrada con delay escalonado
+            setTimeout(() => {
+              let opacity = 0;
+              const targetFillOpacity = 0.35;
+              const targetStrokeOpacity = 0.8;
+              const duration = 400;
+              const steps = 20;
+              const increment = duration / steps;
+
+              const animateOpacity = () => {
+                opacity += 1 / steps;
+                if (opacity <= 1) {
+                  existingCircle.setOptions({
+                    fillOpacity: targetFillOpacity * opacity,
+                    strokeOpacity: targetStrokeOpacity * opacity,
+                  });
+                  setTimeout(animateOpacity, increment);
+                }
+              };
+              animateOpacity();
+            }, index * 50); // Delay escalonado de 50ms por círculo
+          } else {
+            // Sin animación, actualizar normalmente
+            existingCircle.setOptions({
+              fillColor: place.color || '#8b5cf6',
+              strokeColor: isEditing ? '#8b5cf6' : (isHighlighted ? '#FFEB3B' : (place.color || '#8b5cf6')),
+              strokeWeight: isHighlighted || isEditing ? 4 : 2,
+              fillOpacity: isHighlighted || isEditing ? 0.45 : 0.35,
+              radius: radiusToUse,
+            });
+            existingCircle.setVisible(isLevelVisible);
+          }
           return;
         }
 
         // Si no debe ser visible, no crearlo
         if (!isLevelVisible) return;
 
+        // Determinar opacidad inicial según si debe animarse
+        const initialFillOpacity = (shouldAnimate && !isEditing) ? 0 : (isHighlighted || isEditing ? 0.45 : 0.35);
+        const initialStrokeOpacity = (shouldAnimate && !isEditing) ? 0 : 0.8;
+
         // Si no está renderizado, crearlo
         const circle = new window.google.maps.Circle({
           strokeColor: isEditing ? '#8b5cf6' : (isHighlighted ? '#FFEB3B' : (place.color || '#8b5cf6')),
-          strokeOpacity: 0.8,
+          strokeOpacity: initialStrokeOpacity,
           strokeWeight: isHighlighted || isEditing ? 4 : 2,
           fillColor: place.color || '#8b5cf6',
-          fillOpacity: isHighlighted || isEditing ? 0.45 : 0.35,
+          fillOpacity: initialFillOpacity,
           map: map,
           center: { lat: place.lat, lng: place.lng },
           radius: radiusToUse,
         });
+
+        // Si debe animarse, aplicar fade-in progresivo después de crearlo
+        if (shouldAnimate && !isEditing) {
+          setTimeout(() => {
+            let opacity = 0;
+            const targetFillOpacity = 0.35;
+            const targetStrokeOpacity = 0.8;
+            const duration = 400;
+            const steps = 20;
+            const increment = duration / steps;
+
+            const animateOpacity = () => {
+              opacity += 1 / steps;
+              if (opacity <= 1) {
+                circle.setOptions({
+                  fillOpacity: targetFillOpacity * opacity,
+                  strokeOpacity: targetStrokeOpacity * opacity,
+                });
+                setTimeout(animateOpacity, increment);
+              }
+            };
+            animateOpacity();
+          }, index * 50); // Delay escalonado de 50ms por círculo
+        }
 
         // Agregar listener de clic para seleccionar el círculo
         circle.addListener('click', function() {
@@ -833,7 +988,7 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
         delete circlesRef.current[placeId];
       }
     });
-  }, [places, map, editingCircleId, editingRadius, highlightedPlace, coworkingPlaces, instagramablePlaces, visibleLevels]);
+  }, [places, map, editingCircleId, editingRadius, highlightedPlace, coworkingPlaces, instagramablePlaces, visibleLevels, animatingShapes, selectedCountry]);
 
   // Renderizar círculo temporal mientras se ajusta el radio
   useEffect(() => {
