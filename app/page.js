@@ -41,6 +41,7 @@ function HomeContent() {
   const [editingRadius, setEditingRadius] = useState(1000);
   const [insecurityLevels, setInsecurityLevels] = useState([]);
   const [visibleLevels, setVisibleLevels] = useState({});
+  const [countries, setCountries] = useState([]);
 
   // Sync selectedTab with URL on mount and when searchParams change
   useEffect(() => {
@@ -327,11 +328,24 @@ function HomeContent() {
       }
     };
 
+    const loadCountries = async () => {
+      try {
+        const response = await fetch('/api/countries');
+        const data = await response.json();
+        if (isMounted && data) {
+          setCountries(data);
+        }
+      } catch (error) {
+        console.error('Error loading countries:', error);
+      }
+    };
+
     loadPlaces();
     loadAirbnbs();
     loadCoworkingPlaces();
     loadInstagramablePlaces();
     loadInsecurityLevels();
+    loadCountries();
 
     return () => {
       isMounted = false;
@@ -434,7 +448,15 @@ function HomeContent() {
   return (
     <div className="flex flex-col h-screen">
       {/* Header */}
-      <Header isAdminMode={isAdminMode} />
+      <Header
+        isAdminMode={isAdminMode}
+        places={places}
+        countries={countries}
+        insecurityLevels={insecurityLevels}
+        selectedCountry={selectedCountry}
+        onSelectCountry={handleSelectCountry}
+        onGoToPlace={handleGoToPlace}
+      />
 
       {/* Contenido principal */}
       <div className="flex flex-1 overflow-hidden">
