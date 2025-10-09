@@ -2,8 +2,12 @@
 
 import { useEffect, useRef, useState, useMemo } from 'react';
 import * as turf from '@turf/turf';
+import MapLegend from './MapLegend';
+import ZoomIndicator from './ZoomIndicator';
+import ZoneTooltip from './ZoneTooltip';
+import CompareZones from './CompareZones';
 
-export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocation, onSavePolygon, onPolygonClick, onBoundsChanged, coworkingPlaces, instagramablePlaces, mapClickMode, onMapClick, highlightedPlace, pendingCircle, circleRadius, editingCircleId, editingRadius }) {
+export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocation, onSavePolygon, onPolygonClick, onBoundsChanged, coworkingPlaces, instagramablePlaces, mapClickMode, onMapClick, highlightedPlace, pendingCircle, circleRadius, editingCircleId, editingRadius, visibleLevels, onToggleLevelVisibility, selectedCountry }) {
   const mapRef = useRef(null);
   const [map, setMap] = useState(null);
   const [marker, setMarker] = useState(null);
@@ -20,6 +24,29 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
   const boundsChangeTimeoutRef = useRef(null);
   const mapClickListenerRef = useRef(null);
   const tempMarkerRef = useRef(null);
+  const [hoveredZone, setHoveredZone] = useState(null);
+  const [tooltipPosition, setTooltipPosition] = useState(null);
+  const [insecurityLevels, setInsecurityLevels] = useState([]);
+  const [isCompareModalOpen, setIsCompareModalOpen] = useState(false);
+  const [animatingShapes, setAnimatingShapes] = useState(new Set());
+  const lastCountryRef = useRef(null);
+
+  // Cargar niveles de inseguridad para tooltips
+  useEffect(() => {
+    const loadInsecurityLevels = async () => {
+      try {
+        const response = await fetch('/api/insecurity-levels');
+        const levels = await response.json();
+        if (levels) {
+          setInsecurityLevels(levels);
+        }
+      } catch (error) {
+        console.error('Error loading insecurity levels:', error);
+      }
+    };
+
+    loadInsecurityLevels();
+  }, []);
 
   useEffect(() => {
     const loadGoogleMaps = () => {
@@ -47,10 +74,83 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
         lng: -70,
       };
 
-      // Crear el mapa usando la API global de Google Maps
+      // Estilos personalizados para el mapa - enfocado en seguridad y claridad
+      const mapStyles = [
+        {
+          featureType: 'all',
+          elementType: 'labels.text.fill',
+          stylers: [{ color: '#525252' }]
+        },
+        {
+          featureType: 'all',
+          elementType: 'labels.text.stroke',
+          stylers: [{ visibility: 'on' }, { color: '#ffffff' }, { weight: 2 }]
+        },
+        {
+          featureType: 'administrative',
+          elementType: 'geometry.stroke',
+          stylers: [{ color: '#c9c9c9' }, { weight: 1.2 }]
+        },
+        {
+          featureType: 'landscape',
+          elementType: 'geometry',
+          stylers: [{ color: '#f5f5f5' }]
+        },
+        {
+          featureType: 'poi',
+          elementType: 'all',
+          stylers: [{ visibility: 'off' }]
+        },
+        {
+          featureType: 'poi.park',
+          elementType: 'geometry',
+          stylers: [{ visibility: 'on' }, { color: '#e8f5e9' }]
+        },
+        {
+          featureType: 'road',
+          elementType: 'geometry',
+          stylers: [{ color: '#ffffff' }]
+        },
+        {
+          featureType: 'road',
+          elementType: 'labels.icon',
+          stylers: [{ visibility: 'off' }]
+        },
+        {
+          featureType: 'road.highway',
+          elementType: 'geometry',
+          stylers: [{ color: '#fef7e6' }]
+        },
+        {
+          featureType: 'road.highway',
+          elementType: 'geometry.stroke',
+          stylers: [{ color: '#fbc02d' }, { weight: 0.8 }]
+        },
+        {
+          featureType: 'road.arterial',
+          elementType: 'geometry',
+          stylers: [{ color: '#ffffff' }]
+        },
+        {
+          featureType: 'transit',
+          elementType: 'all',
+          stylers: [{ visibility: 'off' }]
+        },
+        {
+          featureType: 'water',
+          elementType: 'geometry',
+          stylers: [{ color: '#e3f2fd' }]
+        }
+      ];
+
+      // Crear el mapa usando la API global de Google Maps con estilos personalizados
       const newMap = new window.google.maps.Map(mapRef.current, {
         center: position,
         zoom: 3.5,
+        styles: mapStyles,
+        mapTypeControl: false,
+        streetViewControl: false,
+        fullscreenControl: true,
       });
 
       setMap(newMap);
@@ -442,6 +542,20 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
     }
   }, [currentPolygon]);
 
+  // Detectar cambio de país para activar animaciones
+  useEffect(() => {
+    if (selectedCountry && lastCountryRef.current !== selectedCountry?.country_code) {
+      lastCountryRef.current = selectedCountry.country_code;
+      // Activar animación de entrada para todas las formas del nuevo país
+      setAnimatingShapes(new Set());
+      setTimeout(() => {
+        const countryPlaces = places.filter(p => p.country_code === selectedCountry.country_code && p.active !== null);
+        const shapeIds = new Set(countryPlaces.map(p => p.id));
+        setAnimatingShapes(shapeIds);
+      }, 50);
+    }
+  }, [selectedCountry, places]);
+
   // Mostrar polígonos guardados y actualizar colores
   useEffect(() => {
     if (!map || !places) return;
@@ -449,18 +563,65 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
     // Filtrar solo lugares activos (excluir active = null)
     const activePlaces = places.filter(p => p.active !== null);
 
-    activePlaces.forEach(place => {
+    activePlaces.forEach((place, index) => {
       // Si el lugar tiene un polígono guardado
       if (place.polygon) {
-        // Si ya está renderizado, solo actualizar opciones
+        // Verificar si el nivel de seguridad está visible
+        const isLevelVisible = visibleLevels ? visibleLevels[place.safety_level_id] !== false : true;
+
+        // Determinar si debe animarse (solo si está en el conjunto de animación y es del país seleccionado)
+        const shouldAnimate = animatingShapes.has(place.id) &&
+                             selectedCountry &&
+                             place.country_code === selectedCountry.country_code;
+
+        // Si ya está renderizado, solo actualizar opciones y visibilidad
         if (polygonsRef.current[place.id]) {
           const existingPolygon = polygonsRef.current[place.id];
-          existingPolygon.setOptions({
-            fillColor: place.color || '#FFD700',
-            strokeColor: place.color || '#FFD700',
-          });
+
+          // Si debe animarse, aplicar fade-in progresivo
+          if (shouldAnimate) {
+            existingPolygon.setOptions({
+              fillColor: place.color || '#FFD700',
+              strokeColor: place.color || '#FFD700',
+              fillOpacity: 0,
+              strokeOpacity: 0,
+            });
+            existingPolygon.setVisible(isLevelVisible);
+
+            // Animar entrada con delay escalonado
+            setTimeout(() => {
+              let opacity = 0;
+              const targetFillOpacity = 0.15;
+              const targetStrokeOpacity = 1;
+              const duration = 400;
+              const steps = 20;
+              const increment = duration / steps;
+
+              const animateOpacity = () => {
+                opacity += 1 / steps;
+                if (opacity <= 1) {
+                  existingPolygon.setOptions({
+                    fillOpacity: targetFillOpacity * opacity,
+                    strokeOpacity: targetStrokeOpacity * opacity,
+                  });
+                  setTimeout(animateOpacity, increment);
+                }
+              };
+              animateOpacity();
+            }, index * 50); // Delay escalonado de 50ms por polígono
+          } else {
+            // Sin animación, actualizar normalmente
+            existingPolygon.setOptions({
+              fillColor: place.color || '#FFD700',
+              strokeColor: place.color || '#FFD700',
+            });
+            existingPolygon.setVisible(isLevelVisible);
+          }
           return;
         }
+
+        // Si no debe ser visible, no crearlo
+        if (!isLevelVisible) return;
 
         // Si no está renderizado, crearlo
         let coordinates;
@@ -493,15 +654,44 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
           }));
         }
 
+        // Determinar opacidad inicial según si debe animarse
+        const initialFillOpacity = shouldAnimate ? 0 : 0.15;
+        const initialStrokeOpacity = shouldAnimate ? 0 : 1;
+
         const polygon = new window.google.maps.Polygon({
           paths: coordinates,
           fillColor: place.color || '#FFD700',
-          fillOpacity: 0.15,
+          fillOpacity: initialFillOpacity,
           strokeWeight: 3,
           strokeColor: place.color || '#FFD700',
+          strokeOpacity: initialStrokeOpacity,
           editable: false,
           map: map,
         });
+
+        // Si debe animarse, aplicar fade-in progresivo después de crearlo
+        if (shouldAnimate) {
+          setTimeout(() => {
+            let opacity = 0;
+            const targetFillOpacity = 0.15;
+            const targetStrokeOpacity = 1;
+            const duration = 400;
+            const steps = 20;
+            const increment = duration / steps;
+
+            const animateOpacity = () => {
+              opacity += 1 / steps;
+              if (opacity <= 1) {
+                polygon.setOptions({
+                  fillOpacity: targetFillOpacity * opacity,
+                  strokeOpacity: targetStrokeOpacity * opacity,
+                });
+                setTimeout(animateOpacity, increment);
+              }
+            };
+            animateOpacity();
+          }, index * 50); // Delay escalonado de 50ms por polígono
+        }
 
         // Variable para rastrear el vértice seleccionado
         let selectedVertex = null;
@@ -514,6 +704,20 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
             // Click en el polígono (no en vértice) cuando no está en modo edición
             onPolygonClick(place.id);
           }
+        });
+
+        // Listener para mostrar tooltip al pasar el mouse
+        window.google.maps.event.addListener(polygon, 'mousemove', (event) => {
+          if (!polygon.getEditable()) {
+            setHoveredZone(place);
+            setTooltipPosition({ x: event.domEvent.clientX, y: event.domEvent.clientY });
+          }
+        });
+
+        // Listener para ocultar tooltip al salir del polígono
+        window.google.maps.event.addListener(polygon, 'mouseout', () => {
+          setHoveredZone(null);
+          setTooltipPosition(null);
         });
 
         // Listener para detectar doble clic en vértices
@@ -588,7 +792,7 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
         delete polygonsRef.current[placeId];
       }
     });
-  }, [places, map]);
+  }, [places, map, visibleLevels, animatingShapes, selectedCountry]);
 
   // Actualizar estilo del polígono resaltado
   useEffect(() => {
@@ -632,48 +836,139 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
     // Filtrar solo lugares activos (excluir active = null)
     const activePlaces = places.filter(p => p.active !== null);
 
-    activePlaces.forEach(place => {
+    activePlaces.forEach((place, index) => {
       // Verificar que NO sea coworking ni instagramable antes de pintar círculo
       const isCoworkingPlace = coworkingPlaces?.some(p => p.id === place.id);
       const isInstagramablePlace = instagramablePlaces?.some(p => p.id === place.id);
 
       // Si el lugar tiene circle_radius Y NO es coworking ni instagramable
       if (place.circle_radius && !isCoworkingPlace && !isInstagramablePlace) {
+        // Verificar si el nivel de seguridad está visible
+        const isLevelVisible = visibleLevels ? visibleLevels[place.safety_level_id] !== false : true;
+
         // Determinar el radio a usar (editingRadius si se está editando, o el radio guardado)
         const radiusToUse = editingCircleId === place.id ? editingRadius : place.circle_radius;
         const isHighlighted = highlightedPlace === place.id;
         const isEditing = editingCircleId === place.id;
 
-        // Si ya está renderizado, solo actualizar opciones
+        // Determinar si debe animarse
+        const shouldAnimate = animatingShapes.has(place.id) &&
+                             selectedCountry &&
+                             place.country_code === selectedCountry.country_code;
+
+        // Si ya está renderizado, solo actualizar opciones y visibilidad
         if (circlesRef.current[place.id]) {
           const existingCircle = circlesRef.current[place.id];
-          existingCircle.setOptions({
-            fillColor: place.color || '#8b5cf6',
-            strokeColor: isEditing ? '#8b5cf6' : (isHighlighted ? '#FFEB3B' : (place.color || '#8b5cf6')),
-            strokeWeight: isHighlighted || isEditing ? 4 : 2,
-            fillOpacity: isHighlighted || isEditing ? 0.45 : 0.35,
-            radius: radiusToUse,
-          });
+
+          // Si debe animarse, aplicar fade-in progresivo
+          if (shouldAnimate && !isEditing) {
+            existingCircle.setOptions({
+              fillColor: place.color || '#8b5cf6',
+              strokeColor: place.color || '#8b5cf6',
+              strokeWeight: 2,
+              fillOpacity: 0,
+              strokeOpacity: 0,
+              radius: radiusToUse,
+            });
+            existingCircle.setVisible(isLevelVisible);
+
+            // Animar entrada con delay escalonado
+            setTimeout(() => {
+              let opacity = 0;
+              const targetFillOpacity = 0.35;
+              const targetStrokeOpacity = 0.8;
+              const duration = 400;
+              const steps = 20;
+              const increment = duration / steps;
+
+              const animateOpacity = () => {
+                opacity += 1 / steps;
+                if (opacity <= 1) {
+                  existingCircle.setOptions({
+                    fillOpacity: targetFillOpacity * opacity,
+                    strokeOpacity: targetStrokeOpacity * opacity,
+                  });
+                  setTimeout(animateOpacity, increment);
+                }
+              };
+              animateOpacity();
+            }, index * 50); // Delay escalonado de 50ms por círculo
+          } else {
+            // Sin animación, actualizar normalmente
+            existingCircle.setOptions({
+              fillColor: place.color || '#8b5cf6',
+              strokeColor: isEditing ? '#8b5cf6' : (isHighlighted ? '#FFEB3B' : (place.color || '#8b5cf6')),
+              strokeWeight: isHighlighted || isEditing ? 4 : 2,
+              fillOpacity: isHighlighted || isEditing ? 0.45 : 0.35,
+              radius: radiusToUse,
+            });
+            existingCircle.setVisible(isLevelVisible);
+          }
           return;
         }
+
+        // Si no debe ser visible, no crearlo
+        if (!isLevelVisible) return;
+
+        // Determinar opacidad inicial según si debe animarse
+        const initialFillOpacity = (shouldAnimate && !isEditing) ? 0 : (isHighlighted || isEditing ? 0.45 : 0.35);
+        const initialStrokeOpacity = (shouldAnimate && !isEditing) ? 0 : 0.8;
 
         // Si no está renderizado, crearlo
         const circle = new window.google.maps.Circle({
           strokeColor: isEditing ? '#8b5cf6' : (isHighlighted ? '#FFEB3B' : (place.color || '#8b5cf6')),
-          strokeOpacity: 0.8,
+          strokeOpacity: initialStrokeOpacity,
           strokeWeight: isHighlighted || isEditing ? 4 : 2,
           fillColor: place.color || '#8b5cf6',
-          fillOpacity: isHighlighted || isEditing ? 0.45 : 0.35,
+          fillOpacity: initialFillOpacity,
           map: map,
           center: { lat: place.lat, lng: place.lng },
           radius: radiusToUse,
         });
+
+        // Si debe animarse, aplicar fade-in progresivo después de crearlo
+        if (shouldAnimate && !isEditing) {
+          setTimeout(() => {
+            let opacity = 0;
+            const targetFillOpacity = 0.35;
+            const targetStrokeOpacity = 0.8;
+            const duration = 400;
+            const steps = 20;
+            const increment = duration / steps;
+
+            const animateOpacity = () => {
+              opacity += 1 / steps;
+              if (opacity <= 1) {
+                circle.setOptions({
+                  fillOpacity: targetFillOpacity * opacity,
+                  strokeOpacity: targetStrokeOpacity * opacity,
+                });
+                setTimeout(animateOpacity, increment);
+              }
+            };
+            animateOpacity();
+          }, index * 50); // Delay escalonado de 50ms por círculo
+        }
 
         // Agregar listener de clic para seleccionar el círculo
         circle.addListener('click', function() {
           if (onPolygonClick) {
             onPolygonClick(place.id);
           }
+        });
+
+        // Listener para mostrar tooltip al pasar el mouse
+        circle.addListener('mousemove', function(event) {
+          if (!editingCircleId || editingCircleId !== place.id) {
+            setHoveredZone(place);
+            setTooltipPosition({ x: event.domEvent.clientX, y: event.domEvent.clientY });
+          }
+        });
+
+        // Listener para ocultar tooltip al salir del círculo
+        circle.addListener('mouseout', function() {
+          setHoveredZone(null);
+          setTooltipPosition(null);
         });
 
         circlesRef.current[place.id] = circle;
@@ -693,7 +988,7 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
         delete circlesRef.current[placeId];
       }
     });
-  }, [places, map, editingCircleId, editingRadius, highlightedPlace, coworkingPlaces, instagramablePlaces]);
+  }, [places, map, editingCircleId, editingRadius, highlightedPlace, coworkingPlaces, instagramablePlaces, visibleLevels, animatingShapes, selectedCountry]);
 
   // Renderizar círculo temporal mientras se ajusta el radio
   useEffect(() => {
@@ -948,6 +1243,58 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
   return (
     <>
       <div ref={mapRef} className="w-full h-full" />
+
+      {/* Zone Tooltip - Contextual information on hover */}
+      {hoveredZone && tooltipPosition && (
+        <ZoneTooltip
+          zone={hoveredZone}
+          position={tooltipPosition}
+          insecurityLevels={insecurityLevels}
+        />
+      )}
+
+      {/* Zoom Indicator - Contextual zoom guidance */}
+      <ZoomIndicator map={map} />
+
+      {/* Map Legend - Safety Levels */}
+      <MapLegend
+        visibleLevels={visibleLevels}
+        onToggleLevel={onToggleLevelVisibility}
+      />
+
+      {/* Compare Zones Button - Only show when country is selected and has zones */}
+      {selectedCountry && places.filter(p => p.country_code === selectedCountry.country_code && p.active !== null).length >= 2 && (
+        <button
+          onClick={() => setIsCompareModalOpen(true)}
+          className="absolute top-4 right-4 bg-white rounded-full shadow-xl px-4 py-3 flex items-center gap-2 hover:shadow-2xl transition-all duration-300 hover:scale-105 border border-gray-200 group z-[999]"
+          aria-label="Comparar zonas"
+        >
+          <svg
+            className="w-5 h-5 text-purple-600 group-hover:rotate-12 transition-transform duration-300"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
+            />
+          </svg>
+          <span className="text-sm font-semibold text-gray-700 group-hover:text-purple-600 transition-colors">
+            Comparar
+          </span>
+        </button>
+      )}
+
+      {/* Compare Zones Modal */}
+      <CompareZones
+        isOpen={isCompareModalOpen}
+        onClose={() => setIsCompareModalOpen(false)}
+        zones={places}
+        selectedCountry={selectedCountry}
+      />
 
       {/* Modal de confirmación para eliminar punto */}
       {vertexToDelete && deleteModalPosition && (
