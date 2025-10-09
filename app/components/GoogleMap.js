@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, useMemo } from 'react';
 import * as turf from '@turf/turf';
 import MapLegend from './MapLegend';
 import ZoomIndicator from './ZoomIndicator';
+import ZoneTooltip from './ZoneTooltip';
 
 export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocation, onSavePolygon, onPolygonClick, onBoundsChanged, coworkingPlaces, instagramablePlaces, mapClickMode, onMapClick, highlightedPlace, pendingCircle, circleRadius, editingCircleId, editingRadius, visibleLevels, onToggleLevelVisibility }) {
   const mapRef = useRef(null);
@@ -22,6 +23,26 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
   const boundsChangeTimeoutRef = useRef(null);
   const mapClickListenerRef = useRef(null);
   const tempMarkerRef = useRef(null);
+  const [hoveredZone, setHoveredZone] = useState(null);
+  const [tooltipPosition, setTooltipPosition] = useState(null);
+  const [insecurityLevels, setInsecurityLevels] = useState([]);
+
+  // Cargar niveles de inseguridad para tooltips
+  useEffect(() => {
+    const loadInsecurityLevels = async () => {
+      try {
+        const response = await fetch('/api/insecurity-levels');
+        const levels = await response.json();
+        if (levels) {
+          setInsecurityLevels(levels);
+        }
+      } catch (error) {
+        console.error('Error loading insecurity levels:', error);
+      }
+    };
+
+    loadInsecurityLevels();
+  }, []);
 
   useEffect(() => {
     const loadGoogleMaps = () => {
@@ -598,6 +619,20 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
           }
         });
 
+        // Listener para mostrar tooltip al pasar el mouse
+        window.google.maps.event.addListener(polygon, 'mousemove', (event) => {
+          if (!polygon.getEditable()) {
+            setHoveredZone(place);
+            setTooltipPosition({ x: event.domEvent.clientX, y: event.domEvent.clientY });
+          }
+        });
+
+        // Listener para ocultar tooltip al salir del polígono
+        window.google.maps.event.addListener(polygon, 'mouseout', () => {
+          setHoveredZone(null);
+          setTooltipPosition(null);
+        });
+
         // Listener para detectar doble clic en vértices
         window.google.maps.event.addListener(polygon, 'dblclick', (event) => {
           if (event.vertex !== undefined && polygon.getEditable()) {
@@ -763,6 +798,20 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
           if (onPolygonClick) {
             onPolygonClick(place.id);
           }
+        });
+
+        // Listener para mostrar tooltip al pasar el mouse
+        circle.addListener('mousemove', function(event) {
+          if (!editingCircleId || editingCircleId !== place.id) {
+            setHoveredZone(place);
+            setTooltipPosition({ x: event.domEvent.clientX, y: event.domEvent.clientY });
+          }
+        });
+
+        // Listener para ocultar tooltip al salir del círculo
+        circle.addListener('mouseout', function() {
+          setHoveredZone(null);
+          setTooltipPosition(null);
         });
 
         circlesRef.current[place.id] = circle;
@@ -1037,6 +1086,15 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
   return (
     <>
       <div ref={mapRef} className="w-full h-full" />
+
+      {/* Zone Tooltip - Contextual information on hover */}
+      {hoveredZone && tooltipPosition && (
+        <ZoneTooltip
+          zone={hoveredZone}
+          position={tooltipPosition}
+          insecurityLevels={insecurityLevels}
+        />
+      )}
 
       {/* Zoom Indicator - Contextual zoom guidance */}
       <ZoomIndicator map={map} />
