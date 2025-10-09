@@ -601,6 +601,7 @@ function HomeContent() {
           editingRadius={editingRadius}
           visibleLevels={visibleLevels}
           onToggleLevelVisibility={handleToggleLevelVisibility}
+          selectedCountry={selectedCountry}
         />
 
         {/* Quick Stats Widget */}
