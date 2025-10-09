@@ -5,8 +5,9 @@ import * as turf from '@turf/turf';
 import MapLegend from './MapLegend';
 import ZoomIndicator from './ZoomIndicator';
 import ZoneTooltip from './ZoneTooltip';
+import CompareZones from './CompareZones';
 
-export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocation, onSavePolygon, onPolygonClick, onBoundsChanged, coworkingPlaces, instagramablePlaces, mapClickMode, onMapClick, highlightedPlace, pendingCircle, circleRadius, editingCircleId, editingRadius, visibleLevels, onToggleLevelVisibility }) {
+export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocation, onSavePolygon, onPolygonClick, onBoundsChanged, coworkingPlaces, instagramablePlaces, mapClickMode, onMapClick, highlightedPlace, pendingCircle, circleRadius, editingCircleId, editingRadius, visibleLevels, onToggleLevelVisibility, selectedCountry }) {
   const mapRef = useRef(null);
   const [map, setMap] = useState(null);
   const [marker, setMarker] = useState(null);
@@ -26,6 +27,7 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
   const [hoveredZone, setHoveredZone] = useState(null);
   const [tooltipPosition, setTooltipPosition] = useState(null);
   const [insecurityLevels, setInsecurityLevels] = useState([]);
+  const [isCompareModalOpen, setIsCompareModalOpen] = useState(false);
 
   // Cargar niveles de inseguridad para tooltips
   useEffect(() => {
@@ -1103,6 +1105,40 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
       <MapLegend
         visibleLevels={visibleLevels}
         onToggleLevel={onToggleLevelVisibility}
+      />
+
+      {/* Compare Zones Button - Only show when country is selected and has zones */}
+      {selectedCountry && places.filter(p => p.country_code === selectedCountry.country_code && p.active !== null).length >= 2 && (
+        <button
+          onClick={() => setIsCompareModalOpen(true)}
+          className="absolute top-4 right-4 bg-white rounded-full shadow-xl px-4 py-3 flex items-center gap-2 hover:shadow-2xl transition-all duration-300 hover:scale-105 border border-gray-200 group z-[999]"
+          aria-label="Comparar zonas"
+        >
+          <svg
+            className="w-5 h-5 text-purple-600 group-hover:rotate-12 transition-transform duration-300"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
+            />
+          </svg>
+          <span className="text-sm font-semibold text-gray-700 group-hover:text-purple-600 transition-colors">
+            Comparar
+          </span>
+        </button>
+      )}
+
+      {/* Compare Zones Modal */}
+      <CompareZones
+        isOpen={isCompareModalOpen}
+        onClose={() => setIsCompareModalOpen(false)}
+        zones={places}
+        selectedCountry={selectedCountry}
       />
 
       {/* Modal de confirmación para eliminar punto */}
