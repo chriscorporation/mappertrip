@@ -6,6 +6,7 @@ import MapLegend from './MapLegend';
 import ZoomIndicator from './ZoomIndicator';
 import ZoneTooltip from './ZoneTooltip';
 import CompareZones from './CompareZones';
+import MapThemeSelector, { MAP_THEMES } from './MapThemeSelector';
 
 export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocation, onSavePolygon, onPolygonClick, onBoundsChanged, coworkingPlaces, instagramablePlaces, mapClickMode, onMapClick, highlightedPlace, pendingCircle, circleRadius, editingCircleId, editingRadius, visibleLevels, onToggleLevelVisibility, selectedCountry }) {
   const mapRef = useRef(null);
@@ -28,6 +29,15 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
   const [tooltipPosition, setTooltipPosition] = useState(null);
   const [insecurityLevels, setInsecurityLevels] = useState([]);
   const [isCompareModalOpen, setIsCompareModalOpen] = useState(false);
+  const [mapTheme, setMapTheme] = useState('light');
+
+  // Cargar tema del mapa desde localStorage
+  useEffect(() => {
+    const savedTheme = localStorage.getItem('mapTheme');
+    if (savedTheme && MAP_THEMES[savedTheme]) {
+      setMapTheme(savedTheme);
+    }
+  }, []);
 
   // Cargar niveles de inseguridad para tooltips
   useEffect(() => {
@@ -72,80 +82,16 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
         lng: -70,
       };
 
-      // Estilos personalizados para el mapa - enfocado en seguridad y claridad
-      const mapStyles = [
-        {
-          featureType: 'all',
-          elementType: 'labels.text.fill',
-          stylers: [{ color: '#525252' }]
-        },
-        {
-          featureType: 'all',
-          elementType: 'labels.text.stroke',
-          stylers: [{ visibility: 'on' }, { color: '#ffffff' }, { weight: 2 }]
-        },
-        {
-          featureType: 'administrative',
-          elementType: 'geometry.stroke',
-          stylers: [{ color: '#c9c9c9' }, { weight: 1.2 }]
-        },
-        {
-          featureType: 'landscape',
-          elementType: 'geometry',
-          stylers: [{ color: '#f5f5f5' }]
-        },
-        {
-          featureType: 'poi',
-          elementType: 'all',
-          stylers: [{ visibility: 'off' }]
-        },
-        {
-          featureType: 'poi.park',
-          elementType: 'geometry',
-          stylers: [{ visibility: 'on' }, { color: '#e8f5e9' }]
-        },
-        {
-          featureType: 'road',
-          elementType: 'geometry',
-          stylers: [{ color: '#ffffff' }]
-        },
-        {
-          featureType: 'road',
-          elementType: 'labels.icon',
-          stylers: [{ visibility: 'off' }]
-        },
-        {
-          featureType: 'road.highway',
-          elementType: 'geometry',
-          stylers: [{ color: '#fef7e6' }]
-        },
-        {
-          featureType: 'road.highway',
-          elementType: 'geometry.stroke',
-          stylers: [{ color: '#fbc02d' }, { weight: 0.8 }]
-        },
-        {
-          featureType: 'road.arterial',
-          elementType: 'geometry',
-          stylers: [{ color: '#ffffff' }]
-        },
-        {
-          featureType: 'transit',
-          elementType: 'all',
-          stylers: [{ visibility: 'off' }]
-        },
-        {
-          featureType: 'water',
-          elementType: 'geometry',
-          stylers: [{ color: '#e3f2fd' }]
-        }
-      ];
+      // Obtener tema guardado o usar tema light por defecto
+      const savedTheme = localStorage.getItem('mapTheme') || 'light';
+      const themeData = MAP_THEMES[savedTheme] || MAP_THEMES.light;
 
       // Crear el mapa usando la API global de Google Maps con estilos personalizados
       const newMap = new window.google.maps.Map(mapRef.current, {
         center: position,
         zoom: 3.5,
-        styles: mapStyles,
+        styles: themeData.styles,
+        mapTypeId: themeData.id === 'satellite' ? 'hybrid' : 'roadmap',
         mapTypeControl: false,
         streetViewControl: false,
         fullscreenControl: true,
@@ -230,6 +176,22 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
 
     loadGoogleMaps();
   }, []);
+
+  // Cambiar tema del mapa dinámicamente
+  useEffect(() => {
+    if (!map) return;
+
+    const themeData = MAP_THEMES[mapTheme] || MAP_THEMES.light;
+
+    // Cambiar estilos
+    map.setOptions({
+      styles: themeData.styles,
+      mapTypeId: themeData.id === 'satellite' ? 'hybrid' : 'roadmap'
+    });
+
+    // Guardar en localStorage
+    localStorage.setItem('mapTheme', mapTheme);
+  }, [mapTheme, map]);
 
   // Actualizar el mapa cuando se selecciona un lugar
   useEffect(() => {
@@ -1139,6 +1101,12 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
         onClose={() => setIsCompareModalOpen(false)}
         zones={places}
         selectedCountry={selectedCountry}
+      />
+
+      {/* Map Theme Selector - Visual theme switcher */}
+      <MapThemeSelector
+        currentTheme={mapTheme}
+        onThemeChange={setMapTheme}
       />
 
       {/* Modal de confirmación para eliminar punto */}
