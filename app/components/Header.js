@@ -3,8 +3,9 @@
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '../store/authStore';
+import GlobalSearch from './GlobalSearch';
 
-export default function Header({ isAdminMode }) {
+export default function Header({ isAdminMode, places, countries, insecurityLevels, selectedCountry, onSelectCountry, onGoToPlace }) {
   const router = useRouter();
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [username, setUsername] = useState('');
@@ -64,6 +65,18 @@ export default function Header({ isAdminMode }) {
           className="cursor-pointer hover:opacity-80 transition-opacity"
           style={{ height: '50px' }}
         />
+
+        {/* Global Search - visible en desktop */}
+        {!isMobile && places && countries && (
+          <GlobalSearch
+            places={places}
+            countries={countries}
+            insecurityLevels={insecurityLevels}
+            selectedCountry={selectedCountry}
+            onSelectCountry={onSelectCountry}
+            onGoToPlace={onGoToPlace}
+          />
+        )}
 
         {/* Desktop Menu - solo visible en pantallas grandes */}
         {!isMobile && (

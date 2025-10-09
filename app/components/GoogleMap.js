@@ -2,8 +2,13 @@
 
 import { useEffect, useRef, useState, useMemo } from 'react';
 import * as turf from '@turf/turf';
+import MapLegend from './MapLegend';
+import ZoomIndicator from './ZoomIndicator';
+import ZoneTooltip from './ZoneTooltip';
+import CompareZones from './CompareZones';
+import MapThemeSelector, { MAP_THEMES } from './MapThemeSelector';
 
-export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocation, onSavePolygon, onPolygonClick, onBoundsChanged, coworkingPlaces, instagramablePlaces, mapClickMode, onMapClick, highlightedPlace, pendingCircle, circleRadius, editingCircleId, editingRadius }) {
+export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocation, onSavePolygon, onPolygonClick, onBoundsChanged, coworkingPlaces, instagramablePlaces, mapClickMode, onMapClick, highlightedPlace, pendingCircle, circleRadius, editingCircleId, editingRadius, visibleLevels, onToggleLevelVisibility, selectedCountry }) {
   const mapRef = useRef(null);
   const [map, setMap] = useState(null);
   const [marker, setMarker] = useState(null);
@@ -20,6 +25,36 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
   const boundsChangeTimeoutRef = useRef(null);
   const mapClickListenerRef = useRef(null);
   const tempMarkerRef = useRef(null);
+  const [hoveredZone, setHoveredZone] = useState(null);
+  const [tooltipPosition, setTooltipPosition] = useState(null);
+  const [insecurityLevels, setInsecurityLevels] = useState([]);
+  const [isCompareModalOpen, setIsCompareModalOpen] = useState(false);
+  const [mapTheme, setMapTheme] = useState('light');
+
+  // Cargar tema del mapa desde localStorage
+  useEffect(() => {
+    const savedTheme = localStorage.getItem('mapTheme');
+    if (savedTheme && MAP_THEMES[savedTheme]) {
+      setMapTheme(savedTheme);
+    }
+  }, []);
+
+  // Cargar niveles de inseguridad para tooltips
+  useEffect(() => {
+    const loadInsecurityLevels = async () => {
+      try {
+        const response = await fetch('/api/insecurity-levels');
+        const levels = await response.json();
+        if (levels) {
+          setInsecurityLevels(levels);
+        }
+      } catch (error) {
+        console.error('Error loading insecurity levels:', error);
+      }
+    };
+
+    loadInsecurityLevels();
+  }, []);
 
   useEffect(() => {
     const loadGoogleMaps = () => {
@@ -47,10 +82,19 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
         lng: -70,
       };
 
-      // Crear el mapa usando la API global de Google Maps
+      // Obtener tema guardado o usar tema light por defecto
+      const savedTheme = localStorage.getItem('mapTheme') || 'light';
+      const themeData = MAP_THEMES[savedTheme] || MAP_THEMES.light;
+
+      // Crear el mapa usando la API global de Google Maps con estilos personalizados
       const newMap = new window.google.maps.Map(mapRef.current, {
         center: position,
         zoom: 3.5,
+        styles: themeData.styles,
+        mapTypeId: themeData.id === 'satellite' ? 'hybrid' : 'roadmap',
+        mapTypeControl: false,
+        streetViewControl: false,
+        fullscreenControl: true,
       });
 
       setMap(newMap);
@@ -132,6 +176,22 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
 
     loadGoogleMaps();
   }, []);
+
+  // Cambiar tema del mapa dinámicamente
+  useEffect(() => {
+    if (!map) return;
+
+    const themeData = MAP_THEMES[mapTheme] || MAP_THEMES.light;
+
+    // Cambiar estilos
+    map.setOptions({
+      styles: themeData.styles,
+      mapTypeId: themeData.id === 'satellite' ? 'hybrid' : 'roadmap'
+    });
+
+    // Guardar en localStorage
+    localStorage.setItem('mapTheme', mapTheme);
+  }, [mapTheme, map]);
 
   // Actualizar el mapa cuando se selecciona un lugar
   useEffect(() => {
@@ -452,15 +512,22 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
     activePlaces.forEach(place => {
       // Si el lugar tiene un polígono guardado
       if (place.polygon) {
-        // Si ya está renderizado, solo actualizar opciones
+        // Verificar si el nivel de seguridad está visible
+        const isLevelVisible = visibleLevels ? visibleLevels[place.safety_level_id] !== false : true;
+
+        // Si ya está renderizado, solo actualizar opciones y visibilidad
         if (polygonsRef.current[place.id]) {
           const existingPolygon = polygonsRef.current[place.id];
           existingPolygon.setOptions({
             fillColor: place.color || '#FFD700',
             strokeColor: place.color || '#FFD700',
           });
+          existingPolygon.setVisible(isLevelVisible);
           return;
         }
+
+        // Si no debe ser visible, no crearlo
+        if (!isLevelVisible) return;
 
         // Si no está renderizado, crearlo
         let coordinates;
@@ -514,6 +581,20 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
             // Click en el polígono (no en vértice) cuando no está en modo edición
             onPolygonClick(place.id);
           }
+        });
+
+        // Listener para mostrar tooltip al pasar el mouse
+        window.google.maps.event.addListener(polygon, 'mousemove', (event) => {
+          if (!polygon.getEditable()) {
+            setHoveredZone(place);
+            setTooltipPosition({ x: event.domEvent.clientX, y: event.domEvent.clientY });
+          }
+        });
+
+        // Listener para ocultar tooltip al salir del polígono
+        window.google.maps.event.addListener(polygon, 'mouseout', () => {
+          setHoveredZone(null);
+          setTooltipPosition(null);
         });
 
         // Listener para detectar doble clic en vértices
@@ -588,7 +669,7 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
         delete polygonsRef.current[placeId];
       }
     });
-  }, [places, map]);
+  }, [places, map, visibleLevels]);
 
   // Actualizar estilo del polígono resaltado
   useEffect(() => {
@@ -639,12 +720,15 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
 
       // Si el lugar tiene circle_radius Y NO es coworking ni instagramable
       if (place.circle_radius && !isCoworkingPlace && !isInstagramablePlace) {
+        // Verificar si el nivel de seguridad está visible
+        const isLevelVisible = visibleLevels ? visibleLevels[place.safety_level_id] !== false : true;
+
         // Determinar el radio a usar (editingRadius si se está editando, o el radio guardado)
         const radiusToUse = editingCircleId === place.id ? editingRadius : place.circle_radius;
         const isHighlighted = highlightedPlace === place.id;
         const isEditing = editingCircleId === place.id;
 
-        // Si ya está renderizado, solo actualizar opciones
+        // Si ya está renderizado, solo actualizar opciones y visibilidad
         if (circlesRef.current[place.id]) {
           const existingCircle = circlesRef.current[place.id];
           existingCircle.setOptions({
@@ -654,8 +738,12 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
             fillOpacity: isHighlighted || isEditing ? 0.45 : 0.35,
             radius: radiusToUse,
           });
+          existingCircle.setVisible(isLevelVisible);
           return;
         }
+
+        // Si no debe ser visible, no crearlo
+        if (!isLevelVisible) return;
 
         // Si no está renderizado, crearlo
         const circle = new window.google.maps.Circle({
@@ -676,6 +764,20 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
           }
         });
 
+        // Listener para mostrar tooltip al pasar el mouse
+        circle.addListener('mousemove', function(event) {
+          if (!editingCircleId || editingCircleId !== place.id) {
+            setHoveredZone(place);
+            setTooltipPosition({ x: event.domEvent.clientX, y: event.domEvent.clientY });
+          }
+        });
+
+        // Listener para ocultar tooltip al salir del círculo
+        circle.addListener('mouseout', function() {
+          setHoveredZone(null);
+          setTooltipPosition(null);
+        });
+
         circlesRef.current[place.id] = circle;
       }
     });
@@ -693,7 +795,7 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
         delete circlesRef.current[placeId];
       }
     });
-  }, [places, map, editingCircleId, editingRadius, highlightedPlace, coworkingPlaces, instagramablePlaces]);
+  }, [places, map, editingCircleId, editingRadius, highlightedPlace, coworkingPlaces, instagramablePlaces, visibleLevels]);
 
   // Renderizar círculo temporal mientras se ajusta el radio
   useEffect(() => {
@@ -948,6 +1050,64 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
   return (
     <>
       <div ref={mapRef} className="w-full h-full" />
+
+      {/* Zone Tooltip - Contextual information on hover */}
+      {hoveredZone && tooltipPosition && (
+        <ZoneTooltip
+          zone={hoveredZone}
+          position={tooltipPosition}
+          insecurityLevels={insecurityLevels}
+        />
+      )}
+
+      {/* Zoom Indicator - Contextual zoom guidance */}
+      <ZoomIndicator map={map} />
+
+      {/* Map Legend - Safety Levels */}
+      <MapLegend
+        visibleLevels={visibleLevels}
+        onToggleLevel={onToggleLevelVisibility}
+      />
+
+      {/* Compare Zones Button - Only show when country is selected and has zones */}
+      {selectedCountry && places.filter(p => p.country_code === selectedCountry.country_code && p.active !== null).length >= 2 && (
+        <button
+          onClick={() => setIsCompareModalOpen(true)}
+          className="absolute top-4 right-4 bg-white rounded-full shadow-xl px-4 py-3 flex items-center gap-2 hover:shadow-2xl transition-all duration-300 hover:scale-105 border border-gray-200 group z-[999]"
+          aria-label="Comparar zonas"
+        >
+          <svg
+            className="w-5 h-5 text-purple-600 group-hover:rotate-12 transition-transform duration-300"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
+            />
+          </svg>
+          <span className="text-sm font-semibold text-gray-700 group-hover:text-purple-600 transition-colors">
+            Comparar
+          </span>
+        </button>
+      )}
+
+      {/* Compare Zones Modal */}
+      <CompareZones
+        isOpen={isCompareModalOpen}
+        onClose={() => setIsCompareModalOpen(false)}
+        zones={places}
+        selectedCountry={selectedCountry}
+      />
+
+      {/* Map Theme Selector - Visual theme switcher */}
+      <MapThemeSelector
+        currentTheme={mapTheme}
+        onThemeChange={setMapTheme}
+      />
 
       {/* Modal de confirmación para eliminar punto */}
       {vertexToDelete && deleteModalPosition && (
