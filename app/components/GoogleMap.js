@@ -28,6 +28,8 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
   const [tooltipPosition, setTooltipPosition] = useState(null);
   const [insecurityLevels, setInsecurityLevels] = useState([]);
   const [isCompareModalOpen, setIsCompareModalOpen] = useState(false);
+  const pulseIntervalRef = useRef(null);
+  const [pulsePhase, setPulsePhase] = useState(0);
 
   // Cargar niveles de inseguridad para tooltips
   useEffect(() => {
@@ -45,6 +47,60 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
 
     loadInsecurityLevels();
   }, []);
+
+  // Efecto de pulsación suave para zonas de alto riesgo
+  useEffect(() => {
+    if (!map) return;
+
+    // Iniciar intervalo para el efecto de pulsación
+    pulseIntervalRef.current = setInterval(() => {
+      setPulsePhase(prev => (prev + 1) % 60); // 60 fases = 6 segundos de ciclo
+    }, 100); // Actualizar cada 100ms
+
+    return () => {
+      if (pulseIntervalRef.current) {
+        clearInterval(pulseIntervalRef.current);
+      }
+    };
+  }, [map]);
+
+  // Aplicar efecto de pulsación a polígonos y círculos de alto riesgo
+  useEffect(() => {
+    if (!map || !places) return;
+
+    const activePlaces = places.filter(p => p.active !== null);
+
+    activePlaces.forEach(place => {
+      const isHighRisk = place.safety_level_id >= 3;
+
+      if (!isHighRisk) return;
+
+      // Calcular opacidad oscilante usando una onda sinusoidal suave
+      const pulseValue = Math.sin((pulsePhase / 60) * Math.PI * 2) * 0.05; // Oscila entre -0.05 y +0.05
+      const baseOpacity = 0.2;
+      const targetOpacity = baseOpacity + pulseValue;
+
+      // Aplicar a polígonos
+      if (place.polygon && polygonsRef.current[place.id]) {
+        const polygon = polygonsRef.current[place.id];
+        if (!polygon.getEditable() && !hoveredZone) {
+          polygon.setOptions({
+            fillOpacity: Math.max(0.15, Math.min(0.3, targetOpacity)),
+          });
+        }
+      }
+
+      // Aplicar a círculos
+      if (place.circle_radius && circlesRef.current[place.id]) {
+        const circle = circlesRef.current[place.id];
+        if (editingCircleId !== place.id && !hoveredZone) {
+          circle.setOptions({
+            fillOpacity: Math.max(0.35, Math.min(0.5, 0.4 + pulseValue)),
+          });
+        }
+      }
+    });
+  }, [pulsePhase, map, places, hoveredZone, editingCircleId]);
 
   useEffect(() => {
     const loadGoogleMaps = () => {
@@ -547,7 +603,7 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
     // Filtrar solo lugares activos (excluir active = null)
     const activePlaces = places.filter(p => p.active !== null);
 
-    activePlaces.forEach(place => {
+    activePlaces.forEach((place, index) => {
       // Si el lugar tiene un polígono guardado
       if (place.polygon) {
         // Verificar si el nivel de seguridad está visible
@@ -556,9 +612,15 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
         // Si ya está renderizado, solo actualizar opciones y visibilidad
         if (polygonsRef.current[place.id]) {
           const existingPolygon = polygonsRef.current[place.id];
+
+          // Determinar si es zona de alto riesgo (nivel 3 o 4)
+          const isHighRisk = place.safety_level_id >= 3;
+
           existingPolygon.setOptions({
             fillColor: place.color || '#FFD700',
             strokeColor: place.color || '#FFD700',
+            // Efecto pulsante sutil para zonas de alto riesgo
+            fillOpacity: isHighRisk ? 0.2 : 0.15,
           });
           existingPolygon.setVisible(isLevelVisible);
           return;
@@ -598,15 +660,27 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
           }));
         }
 
+        // Determinar si es zona de alto riesgo (nivel 3 o 4)
+        const isHighRisk = place.safety_level_id >= 3;
+
         const polygon = new window.google.maps.Polygon({
           paths: coordinates,
           fillColor: place.color || '#FFD700',
-          fillOpacity: 0.15,
+          fillOpacity: 0, // Comenzar invisible para animación de entrada
           strokeWeight: 3,
           strokeColor: place.color || '#FFD700',
+          strokeOpacity: 0, // Comenzar invisible para animación de entrada
           editable: false,
           map: map,
         });
+
+        // Animación de entrada progresiva (fade-in con delay escalonado)
+        setTimeout(() => {
+          polygon.setOptions({
+            fillOpacity: isHighRisk ? 0.2 : 0.15,
+            strokeOpacity: 0.8,
+          });
+        }, 50 + (index * 30)); // Delay escalonado basado en el índice
 
         // Variable para rastrear el vértice seleccionado
         let selectedVertex = null;
@@ -621,7 +695,18 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
           }
         });
 
-        // Listener para mostrar tooltip al pasar el mouse
+        // Listener para mostrar tooltip y efecto de hover al pasar el mouse
+        window.google.maps.event.addListener(polygon, 'mouseover', (event) => {
+          if (!polygon.getEditable()) {
+            // Efecto de hover: aumentar opacidad y grosor
+            polygon.setOptions({
+              fillOpacity: isHighRisk ? 0.35 : 0.28,
+              strokeWeight: 4,
+              strokeOpacity: 1,
+            });
+          }
+        });
+
         window.google.maps.event.addListener(polygon, 'mousemove', (event) => {
           if (!polygon.getEditable()) {
             setHoveredZone(place);
@@ -629,8 +714,16 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
           }
         });
 
-        // Listener para ocultar tooltip al salir del polígono
+        // Listener para ocultar tooltip y restaurar estilo al salir del polígono
         window.google.maps.event.addListener(polygon, 'mouseout', () => {
+          if (!polygon.getEditable()) {
+            // Restaurar estilo original con transición suave
+            polygon.setOptions({
+              fillOpacity: isHighRisk ? 0.2 : 0.15,
+              strokeWeight: 3,
+              strokeOpacity: 0.8,
+            });
+          }
           setHoveredZone(null);
           setTooltipPosition(null);
         });
@@ -769,11 +862,13 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
         // Si ya está renderizado, solo actualizar opciones y visibilidad
         if (circlesRef.current[place.id]) {
           const existingCircle = circlesRef.current[place.id];
+          const isHighRiskCircle = place.safety_level_id >= 3;
+
           existingCircle.setOptions({
             fillColor: place.color || '#8b5cf6',
             strokeColor: isEditing ? '#8b5cf6' : (isHighlighted ? '#FFEB3B' : (place.color || '#8b5cf6')),
             strokeWeight: isHighlighted || isEditing ? 4 : 2,
-            fillOpacity: isHighlighted || isEditing ? 0.45 : 0.35,
+            fillOpacity: isHighlighted || isEditing ? 0.45 : (isHighRiskCircle ? 0.4 : 0.35),
             radius: radiusToUse,
           });
           existingCircle.setVisible(isLevelVisible);
@@ -784,21 +879,43 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
         if (!isLevelVisible) return;
 
         // Si no está renderizado, crearlo
+        const isHighRiskCircle = place.safety_level_id >= 3;
+
         const circle = new window.google.maps.Circle({
           strokeColor: isEditing ? '#8b5cf6' : (isHighlighted ? '#FFEB3B' : (place.color || '#8b5cf6')),
-          strokeOpacity: 0.8,
+          strokeOpacity: 0, // Comenzar invisible para animación
           strokeWeight: isHighlighted || isEditing ? 4 : 2,
           fillColor: place.color || '#8b5cf6',
-          fillOpacity: isHighlighted || isEditing ? 0.45 : 0.35,
+          fillOpacity: 0, // Comenzar invisible para animación
           map: map,
           center: { lat: place.lat, lng: place.lng },
           radius: radiusToUse,
         });
 
+        // Animación de entrada para círculos
+        setTimeout(() => {
+          circle.setOptions({
+            fillOpacity: isHighlighted || isEditing ? 0.45 : (isHighRiskCircle ? 0.4 : 0.35),
+            strokeOpacity: 0.8,
+          });
+        }, 50 + (activePlaces.indexOf(place) * 30));
+
         // Agregar listener de clic para seleccionar el círculo
         circle.addListener('click', function() {
           if (onPolygonClick) {
             onPolygonClick(place.id);
+          }
+        });
+
+        // Listener para efecto de hover al entrar
+        circle.addListener('mouseover', function(event) {
+          if (!editingCircleId || editingCircleId !== place.id) {
+            // Efecto de hover: aumentar opacidad y grosor
+            circle.setOptions({
+              fillOpacity: isHighRiskCircle ? 0.55 : 0.5,
+              strokeWeight: 3,
+              strokeOpacity: 1,
+            });
           }
         });
 
@@ -810,8 +927,16 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
           }
         });
 
-        // Listener para ocultar tooltip al salir del círculo
+        // Listener para ocultar tooltip y restaurar estilo al salir del círculo
         circle.addListener('mouseout', function() {
+          if (!editingCircleId || editingCircleId !== place.id) {
+            // Restaurar estilo original
+            circle.setOptions({
+              fillOpacity: isHighRiskCircle ? 0.4 : 0.35,
+              strokeWeight: 2,
+              strokeOpacity: 0.8,
+            });
+          }
           setHoveredZone(null);
           setTooltipPosition(null);
         });
