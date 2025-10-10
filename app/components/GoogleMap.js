@@ -6,6 +6,7 @@ import MapLegend from './MapLegend';
 import ZoomIndicator from './ZoomIndicator';
 import ZoneTooltip from './ZoneTooltip';
 import CompareZones from './CompareZones';
+import UserLocationIndicator from './UserLocationIndicator';
 
 export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocation, onSavePolygon, onPolygonClick, onBoundsChanged, coworkingPlaces, instagramablePlaces, mapClickMode, onMapClick, highlightedPlace, pendingCircle, circleRadius, editingCircleId, editingRadius, visibleLevels, onToggleLevelVisibility, selectedCountry }) {
   const mapRef = useRef(null);
@@ -1138,6 +1139,14 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
         isOpen={isCompareModalOpen}
         onClose={() => setIsCompareModalOpen(false)}
         zones={places}
+        selectedCountry={selectedCountry}
+      />
+
+      {/* User Location Indicator - Shows user's current position and nearby safety zones */}
+      <UserLocationIndicator
+        map={map}
+        places={places}
+        insecurityLevels={insecurityLevels}
         selectedCountry={selectedCountry}
       />
 
