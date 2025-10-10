@@ -31,6 +31,7 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
   const [isCompareModalOpen, setIsCompareModalOpen] = useState(false);
   const [heatmapLayer, setHeatmapLayer] = useState(null);
   const [showHeatmap, setShowHeatmap] = useState(false);
+  const [colorPalette, setColorPalette] = useState(null);
 
   // Cargar niveles de inseguridad para tooltips
   useEffect(() => {
@@ -47,6 +48,19 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
     };
 
     loadInsecurityLevels();
+  }, []);
+
+  // Escuchar cambios de paleta de colores
+  useEffect(() => {
+    const handlePaletteChange = (event) => {
+      setColorPalette(event.detail);
+    };
+
+    window.addEventListener('paletteChange', handlePaletteChange);
+
+    return () => {
+      window.removeEventListener('paletteChange', handlePaletteChange);
+    };
   }, []);
 
   useEffect(() => {
@@ -574,12 +588,15 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
         // Verificar si el nivel de seguridad está visible
         const isLevelVisible = visibleLevels ? visibleLevels[place.safety_level_id] !== false : true;
 
+        // Determinar el color a usar (paleta personalizada o color por defecto)
+        const displayColor = colorPalette?.colors?.[place.safety_level_id] || place.color || '#FFD700';
+
         // Si ya está renderizado, solo actualizar opciones y visibilidad
         if (polygonsRef.current[place.id]) {
           const existingPolygon = polygonsRef.current[place.id];
           existingPolygon.setOptions({
-            fillColor: place.color || '#FFD700',
-            strokeColor: place.color || '#FFD700',
+            fillColor: displayColor,
+            strokeColor: displayColor,
           });
           existingPolygon.setVisible(isLevelVisible);
           return;
@@ -621,10 +638,10 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
 
         const polygon = new window.google.maps.Polygon({
           paths: coordinates,
-          fillColor: place.color || '#FFD700',
+          fillColor: displayColor,
           fillOpacity: 0.15,
           strokeWeight: 3,
-          strokeColor: place.color || '#FFD700',
+          strokeColor: displayColor,
           editable: false,
           map: map,
         });
@@ -728,7 +745,7 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
         delete polygonsRef.current[placeId];
       }
     });
-  }, [places, map, visibleLevels]);
+  }, [places, map, visibleLevels, colorPalette]);
 
   // Actualizar estilo del polígono resaltado
   useEffect(() => {
@@ -782,6 +799,9 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
         // Verificar si el nivel de seguridad está visible
         const isLevelVisible = visibleLevels ? visibleLevels[place.safety_level_id] !== false : true;
 
+        // Determinar el color a usar (paleta personalizada o color por defecto)
+        const displayColor = colorPalette?.colors?.[place.safety_level_id] || place.color || '#8b5cf6';
+
         // Determinar el radio a usar (editingRadius si se está editando, o el radio guardado)
         const radiusToUse = editingCircleId === place.id ? editingRadius : place.circle_radius;
         const isHighlighted = highlightedPlace === place.id;
@@ -791,8 +811,8 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
         if (circlesRef.current[place.id]) {
           const existingCircle = circlesRef.current[place.id];
           existingCircle.setOptions({
-            fillColor: place.color || '#8b5cf6',
-            strokeColor: isEditing ? '#8b5cf6' : (isHighlighted ? '#FFEB3B' : (place.color || '#8b5cf6')),
+            fillColor: displayColor,
+            strokeColor: isEditing ? '#8b5cf6' : (isHighlighted ? '#FFEB3B' : displayColor),
             strokeWeight: isHighlighted || isEditing ? 4 : 2,
             fillOpacity: isHighlighted || isEditing ? 0.45 : 0.35,
             radius: radiusToUse,
@@ -806,10 +826,10 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
 
         // Si no está renderizado, crearlo
         const circle = new window.google.maps.Circle({
-          strokeColor: isEditing ? '#8b5cf6' : (isHighlighted ? '#FFEB3B' : (place.color || '#8b5cf6')),
+          strokeColor: isEditing ? '#8b5cf6' : (isHighlighted ? '#FFEB3B' : displayColor),
           strokeOpacity: 0.8,
           strokeWeight: isHighlighted || isEditing ? 4 : 2,
-          fillColor: place.color || '#8b5cf6',
+          fillColor: displayColor,
           fillOpacity: isHighlighted || isEditing ? 0.45 : 0.35,
           map: map,
           center: { lat: place.lat, lng: place.lng },
@@ -854,7 +874,7 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
         delete circlesRef.current[placeId];
       }
     });
-  }, [places, map, editingCircleId, editingRadius, highlightedPlace, coworkingPlaces, instagramablePlaces, visibleLevels]);
+  }, [places, map, editingCircleId, editingRadius, highlightedPlace, coworkingPlaces, instagramablePlaces, visibleLevels, colorPalette]);
 
   // Renderizar círculo temporal mientras se ajusta el radio
   useEffect(() => {
