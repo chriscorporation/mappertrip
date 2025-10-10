@@ -29,6 +29,8 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
   const [tooltipPosition, setTooltipPosition] = useState(null);
   const [insecurityLevels, setInsecurityLevels] = useState([]);
   const [isCompareModalOpen, setIsCompareModalOpen] = useState(false);
+  const [heatmapLayer, setHeatmapLayer] = useState(null);
+  const [showHeatmap, setShowHeatmap] = useState(false);
 
   // Cargar niveles de inseguridad para tooltips
   useEffect(() => {
@@ -55,9 +57,9 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
         return;
       }
 
-      // Crear y cargar el script de Google Maps
+      // Crear y cargar el script de Google Maps con la librería de visualización
       const script = document.createElement('script');
-      script.src = `https://maps.googleapis.com/maps/api/js?key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}&libraries=places,drawing`;
+      script.src = `https://maps.googleapis.com/maps/api/js?key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}&libraries=places,drawing,visualization`;
       script.async = true;
       script.defer = true;
       script.onload = () => initMap();
@@ -153,6 +155,24 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
       });
 
       setMap(newMap);
+
+      // Esperar a que la librería visualization esté disponible para el heatmap
+      const waitForVisualization = () => {
+        return new Promise((resolve) => {
+          const checkVisualization = () => {
+            if (window.google?.maps?.visualization?.HeatmapLayer) {
+              resolve();
+            } else {
+              setTimeout(checkVisualization, 100);
+            }
+          };
+          checkVisualization();
+        });
+      };
+
+      waitForVisualization().catch(() => {
+        console.warn('Visualization library not available for heatmap');
+      });
 
       // Listener para cambios en los bounds del mapa con debounce
       newMap.addListener('bounds_changed', () => {
@@ -1086,6 +1106,139 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
     };
   }, [map, mapClickMode, onMapClick]);
 
+  // Crear y actualizar heatmap de densidad de seguridad
+  useEffect(() => {
+    if (!map || !window.google?.maps?.visualization?.HeatmapLayer) return;
+
+    // Limpiar heatmap anterior si existe
+    if (heatmapLayer) {
+      heatmapLayer.setMap(null);
+    }
+
+    // Si no se debe mostrar el heatmap, salir
+    if (!showHeatmap) {
+      setHeatmapLayer(null);
+      return;
+    }
+
+    // Filtrar solo lugares activos del país seleccionado
+    const activePlaces = places.filter(p =>
+      p.active !== null &&
+      (!selectedCountry || p.country_code === selectedCountry.country_code)
+    );
+
+    if (activePlaces.length === 0) {
+      setHeatmapLayer(null);
+      return;
+    }
+
+    // Crear puntos ponderados para el heatmap
+    const heatmapData = [];
+
+    activePlaces.forEach(place => {
+      // Determinar el peso basado en el nivel de seguridad
+      // Niveles más seguros (id bajo) = peso positivo (verde)
+      // Niveles menos seguros (id alto) = peso negativo simulado con menos intensidad
+      let weight = 1;
+
+      // Mapeo de safety_level_id a peso
+      // 1 (Seguro) = máximo peso positivo
+      // 2 (Medio) = peso medio-alto
+      // 3 (Regular) = peso medio
+      // 4 (Precaución) = peso bajo
+      // 5 (Inseguro) = peso mínimo
+      switch(place.safety_level_id) {
+        case 1: weight = 5; break;  // Seguro - máxima intensidad verde
+        case 2: weight = 3; break;  // Medio - intensidad media-alta
+        case 3: weight = 2; break;  // Regular - intensidad media
+        case 4: weight = 1; break;  // Precaución - baja intensidad
+        case 5: weight = 0.5; break; // Inseguro - mínima intensidad
+        default: weight = 1;
+      }
+
+      // Agregar puntos del polígono si existe
+      if (place.polygon && Array.isArray(place.polygon)) {
+        place.polygon.forEach(coord => {
+          heatmapData.push({
+            location: new window.google.maps.LatLng(coord[1], coord[0]),
+            weight: weight
+          });
+        });
+      }
+
+      // Agregar punto central del círculo si existe
+      if (place.circle_radius) {
+        heatmapData.push({
+          location: new window.google.maps.LatLng(place.lat, place.lng),
+          weight: weight * 3 // Mayor peso al centro
+        });
+
+        // Agregar puntos alrededor del círculo para mejor cobertura
+        const steps = 12;
+        for (let i = 0; i < steps; i++) {
+          const angle = (i / steps) * 2 * Math.PI;
+          const radius = place.circle_radius;
+          const lat = place.lat + (radius / 111320) * Math.cos(angle);
+          const lng = place.lng + (radius / (111320 * Math.cos(place.lat * Math.PI / 180))) * Math.sin(angle);
+
+          heatmapData.push({
+            location: new window.google.maps.LatLng(lat, lng),
+            weight: weight
+          });
+        }
+      }
+
+      // Si no tiene ni polígono ni círculo, usar punto central
+      if (!place.polygon && !place.circle_radius) {
+        heatmapData.push({
+          location: new window.google.maps.LatLng(place.lat, place.lng),
+          weight: weight
+        });
+      }
+    });
+
+    if (heatmapData.length === 0) {
+      setHeatmapLayer(null);
+      return;
+    }
+
+    // Crear gradiente personalizado (verde = seguro, amarillo = medio, rojo = inseguro)
+    const gradient = [
+      'rgba(0, 255, 255, 0)',
+      'rgba(0, 255, 255, 1)',
+      'rgba(0, 191, 255, 1)',
+      'rgba(0, 127, 255, 1)',
+      'rgba(0, 63, 255, 1)',
+      'rgba(0, 0, 255, 1)',
+      'rgba(0, 0, 223, 1)',
+      'rgba(0, 0, 191, 1)',
+      'rgba(0, 255, 0, 1)',
+      'rgba(63, 255, 0, 1)',
+      'rgba(127, 255, 0, 1)',
+      'rgba(191, 255, 0, 1)',
+      'rgba(255, 255, 0, 1)'
+    ];
+
+    // Crear nueva capa de heatmap
+    const newHeatmapLayer = new window.google.maps.visualization.HeatmapLayer({
+      data: heatmapData,
+      map: map,
+      radius: 40, // Radio de influencia de cada punto
+      opacity: 0.6, // Opacidad general del heatmap
+      gradient: gradient,
+      dissipating: true, // Puntos se disipan gradualmente
+      maxIntensity: 5 // Intensidad máxima (coincide con el peso de zonas seguras)
+    });
+
+    setHeatmapLayer(newHeatmapLayer);
+
+    return () => {
+      if (newHeatmapLayer) {
+        newHeatmapLayer.setMap(null);
+      }
+    };
+  }, [map, places, showHeatmap, selectedCountry]);
+
   return (
     <>
       <div ref={mapRef} className="w-full h-full" />
@@ -1106,6 +1259,8 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
       <MapLegend
         visibleLevels={visibleLevels}
         onToggleLevel={onToggleLevelVisibility}
+        showHeatmap={showHeatmap}
+        onToggleHeatmap={() => setShowHeatmap(!showHeatmap)}
       />
 
       {/* Compare Zones Button - Only show when country is selected and has zones */}
