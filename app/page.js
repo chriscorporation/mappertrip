@@ -636,7 +636,13 @@ function HomeContent() {
         />
 
         {/* Quick Stats Widget */}
-        <QuickStats places={places} selectedCountry={selectedCountry} />
+        <QuickStats
+          places={places}
+          selectedCountry={selectedCountry}
+          airbnbs={airbnbs}
+          coworkingPlaces={coworkingPlaces}
+          instagramablePlaces={instagramablePlaces}
+        />
 
         {/* Mini Map Navigation */}
         <MiniMap

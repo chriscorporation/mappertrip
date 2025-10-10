@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 
-export default function QuickStats({ places, selectedCountry }) {
+export default function QuickStats({ places, selectedCountry, airbnbs = [], coworkingPlaces = [], instagramablePlaces = [] }) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [stats, setStats] = useState({
     totalCountries: 0,
@@ -39,10 +39,28 @@ export default function QuickStats({ places, selectedCountry }) {
     const safe = countryPlaces.filter(p => p.safety_level_id <= 2).length;
     const risk = countryPlaces.filter(p => p.safety_level_id >= 3).length;
 
+    // Calcular safety score promedio (1-5, donde 1 es más seguro)
+    const avgSafetyLevel = countryPlaces.length > 0
+      ? countryPlaces.reduce((sum, p) => sum + (p.safety_level_id || 3), 0) / countryPlaces.length
+      : 3;
+
+    // Convertir a porcentaje (invertido, 100% = muy seguro)
+    const safetyScore = Math.round((1 - (avgSafetyLevel - 1) / 4) * 100);
+
+    // Contar amenities del país
+    const countryAirbnbs = airbnbs.filter(a => a.country_code === selectedCountry.country_code).length;
+    const countryCoworking = coworkingPlaces.filter(c => c.country_code === selectedCountry.country_code).length;
+    const countryInstagramable = instagramablePlaces.filter(i => i.country_code === selectedCountry.country_code).length;
+
     return {
       totalZones: countryPlaces.length,
       safeZones: safe,
       riskZones: risk,
+      safetyScore,
+      avgSafetyLevel,
+      airbnbs: countryAirbnbs,
+      coworking: countryCoworking,
+      instagramable: countryInstagramable,
     };
   })() : null;
 
@@ -110,6 +128,39 @@ export default function QuickStats({ places, selectedCountry }) {
 
           {/* Stats Content */}
           <div className="p-5 space-y-4">
+            {/* Safety Score visual (only for country) */}
+            {countryStats && (
+              <div className="mb-4 pb-4 border-b border-gray-200">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-xs font-semibold text-gray-600 uppercase tracking-wide">
+                    Safety Score
+                  </span>
+                  <span className={`text-2xl font-bold ${
+                    countryStats.safetyScore >= 70 ? 'text-green-600' :
+                    countryStats.safetyScore >= 50 ? 'text-yellow-600' :
+                    'text-red-600'
+                  }`}>
+                    {countryStats.safetyScore}%
+                  </span>
+                </div>
+                <div className="relative h-3 bg-gray-200 rounded-full overflow-hidden">
+                  <div
+                    className={`absolute h-full rounded-full transition-all duration-700 ${
+                      countryStats.safetyScore >= 70 ? 'bg-gradient-to-r from-green-400 to-green-600' :
+                      countryStats.safetyScore >= 50 ? 'bg-gradient-to-r from-yellow-400 to-yellow-600' :
+                      'bg-gradient-to-r from-red-400 to-red-600'
+                    }`}
+                    style={{ width: `${countryStats.safetyScore}%` }}
+                  />
+                </div>
+                <p className="text-xs text-gray-500 mt-2 text-center">
+                  {countryStats.safetyScore >= 70 ? '✓ Destino generalmente seguro' :
+                   countryStats.safetyScore >= 50 ? '⚠ Precaución recomendada en algunas áreas' :
+                   '⚠ Extrema precaución requerida'}
+                </p>
+              </div>
+            )}
+
             {/* Global stats (always show) */}
             {!countryStats && (
               <>
@@ -185,6 +236,57 @@ export default function QuickStats({ places, selectedCountry }) {
                 color="purple"
               />
             )}
+
+            {/* Amenities Section - only for country stats */}
+            {countryStats && (countryStats.airbnbs > 0 || countryStats.coworking > 0 || countryStats.instagramable > 0) && (
+              <>
+                <div className="pt-4 border-t border-gray-200">
+                  <p className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-3">
+                    Servicios & Lugares
+                  </p>
+                </div>
+
+                {countryStats.airbnbs > 0 && (
+                  <StatItem
+                    icon={
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+                      </svg>
+                    }
+                    label="Propiedades Airbnb"
+                    value={countryStats.airbnbs}
+                    color="orange"
+                  />
+                )}
+
+                {countryStats.coworking > 0 && (
+                  <StatItem
+                    icon={
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                      </svg>
+                    }
+                    label="Espacios Co-working"
+                    value={countryStats.coworking}
+                    color="teal"
+                  />
+                )}
+
+                {countryStats.instagramable > 0 && (
+                  <StatItem
+                    icon={
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                      </svg>
+                    }
+                    label="Lugares Instagrameables"
+                    value={countryStats.instagramable}
+                    color="pink"
+                  />
+                )}
+              </>
+            )}
           </div>
 
           {/* Footer */}
@@ -221,6 +323,21 @@ function StatItem({ icon, label, value, color, showBar, percentage }) {
       bg: 'bg-red-100',
       text: 'text-red-700',
       bar: 'bg-red-500',
+    },
+    orange: {
+      bg: 'bg-orange-100',
+      text: 'text-orange-700',
+      bar: 'bg-orange-500',
+    },
+    teal: {
+      bg: 'bg-teal-100',
+      text: 'text-teal-700',
+      bar: 'bg-teal-500',
+    },
+    pink: {
+      bg: 'bg-pink-100',
+      text: 'text-pink-700',
+      bar: 'bg-pink-500',
     },
   };
 
