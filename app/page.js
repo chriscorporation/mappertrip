@@ -12,6 +12,7 @@ import InstagramablePlacesPanel from './components/InstagramablePlacesPanel';
 import Header from './components/Header';
 import QuickStats from './components/QuickStats';
 import MiniMap from './components/MiniMap';
+import StickyBreadcrumb from './components/StickyBreadcrumb';
 import { useAuthStore } from './store/authStore';
 import { useAppStore } from './store/appStore';
 
@@ -456,6 +457,14 @@ function HomeContent() {
         selectedCountry={selectedCountry}
         onSelectCountry={handleSelectCountry}
         onGoToPlace={handleGoToPlace}
+      />
+
+      {/* Sticky Breadcrumb Navigation */}
+      <StickyBreadcrumb
+        selectedCountry={selectedCountry}
+        selectedTab={selectedTab}
+        places={places}
+        highlightedPlace={highlightedPlace}
       />
 
       {/* Contenido principal */}
