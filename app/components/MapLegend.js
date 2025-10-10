@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { BiShieldAlt2, BiChevronDown, BiChevronUp, BiFilter } from 'react-icons/bi';
 
-export default function MapLegend({ visibleLevels, onToggleLevel }) {
+export default function MapLegend({ visibleLevels, onToggleLevel, showHeatmap, onToggleHeatmap }) {
   const [insecurityLevels, setInsecurityLevels] = useState([]);
   const [isExpanded, setIsExpanded] = useState(true);
   const [isVisible, setIsVisible] = useState(false);
@@ -158,6 +158,60 @@ export default function MapLegend({ visibleLevels, onToggleLevel }) {
               Click en cada nivel para mostrar u ocultar zonas del mapa. Validadas manualmente por nuestro equipo.
             </p>
           </div>
+
+          {/* Heatmap Toggle */}
+          <div className="mt-3 pt-3 border-t border-gray-100">
+            <button
+              onClick={onToggleHeatmap}
+              className="w-full flex items-center justify-between p-2 rounded-lg hover:bg-gray-50 transition-all duration-200 group"
+            >
+              <div className="flex items-center gap-2">
+                <div className={`
+                  w-5 h-5 rounded border-2 flex items-center justify-center transition-all duration-200
+                  ${showHeatmap ? 'bg-purple-600 border-purple-600' : 'border-gray-300 bg-white'}
+                `}>
+                  {showHeatmap && (
+                    <svg
+                      className="w-3 h-3 text-white"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={3}
+                        d="M5 13l4 4L19 7"
+                      />
+                    </svg>
+                  )}
+                </div>
+                <span className="text-sm font-medium text-gray-700">
+                  Mapa de Calor
+                </span>
+              </div>
+              <svg
+                className={`w-4 h-4 transition-colors duration-200 ${
+                  showHeatmap ? 'text-purple-600' : 'text-gray-400 group-hover:text-gray-600'
+                }`}
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M13 10V3L4 14h7v7l9-11h-7z"
+                />
+              </svg>
+            </button>
+            {showHeatmap && (
+              <p className="text-xs text-purple-600 mt-2 leading-relaxed animate-fadeIn">
+                Visualiza la densidad de seguridad: verde = zonas seguras concentradas, azul = zonas de precaución.
+              </p>
+            )}
+          </div>
         </div>
       </div>
 
@@ -171,6 +225,17 @@ export default function MapLegend({ visibleLevels, onToggleLevel }) {
             opacity: 1;
             transform: translateX(0);
           }
+        }
+        @keyframes fadeIn {
+          from {
+            opacity: 0;
+          }
+          to {
+            opacity: 1;
+          }
+        }
+        .animate-fadeIn {
+          animation: fadeIn 0.3s ease-out;
         }
       `}</style>
     </div>
