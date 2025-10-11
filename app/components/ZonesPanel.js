@@ -1,11 +1,13 @@
 'use client';
 
 import { useRef, useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import ReactMarkdown from 'react-markdown';
 import { BiDollar, BiShield, BiMapAlt, BiInfoCircle, BiMapPin, BiCircle, BiError, BiErrorCircle, BiXCircle, BiShieldAlt2 } from 'react-icons/bi';
 import { HiOutlineSparkles } from 'react-icons/hi';
 import { useAuthStore } from '../store/authStore';
 import { cleanPostalCode } from '../utils/postalCodeRegex';
+import ContextBar from './ContextBar';
 
 export default function ZonesPanel({
   selectedCountry,
@@ -30,6 +32,7 @@ export default function ZonesPanel({
   setEditingRadius,
   onUpdatePlace
 }) {
+  const router = useRouter();
   const { isAuthenticated } = useAuthStore();
   const isAdminMode = isAuthenticated;
   const [address, setAddress] = useState('');
@@ -313,10 +316,12 @@ export default function ZonesPanel({
   return (
     <div className="flex">
     <div className="w-80 bg-white border-r border-gray-300 flex flex-col">
-      <div className="p-4 border-b border-gray-200">
-        <h2 className="text-xl font-bold">Zones</h2>
-        <p className="text-xs text-gray-500 mt-1">{selectedCountry.name}</p>
-      </div>
+      {/* Context Bar with Breadcrumb Navigation */}
+      <ContextBar
+        selectedCountry={selectedCountry}
+        zoneCount={countryPlaces.length}
+        onBackToCountries={() => router.push('/?tab=countries')}
+      />
 
       {isAdminMode && (
         <div className="p-4 border-b border-gray-200">

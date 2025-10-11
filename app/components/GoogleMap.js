@@ -2,8 +2,13 @@
 
 import { useEffect, useRef, useState, useMemo } from 'react';
 import * as turf from '@turf/turf';
+import MapLegend from './MapLegend';
+import ZoomIndicator from './ZoomIndicator';
+import ZoneTooltip from './ZoneTooltip';
+import CompareZones from './CompareZones';
+import UserLocationIndicator from './UserLocationIndicator';
 
-export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocation, onSavePolygon, onPolygonClick, onBoundsChanged, coworkingPlaces, instagramablePlaces, mapClickMode, onMapClick, highlightedPlace, pendingCircle, circleRadius, editingCircleId, editingRadius }) {
+export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocation, onSavePolygon, onPolygonClick, onBoundsChanged, coworkingPlaces, instagramablePlaces, mapClickMode, onMapClick, highlightedPlace, pendingCircle, circleRadius, editingCircleId, editingRadius, visibleLevels, onToggleLevelVisibility, selectedCountry }) {
   const mapRef = useRef(null);
   const [map, setMap] = useState(null);
   const [marker, setMarker] = useState(null);
@@ -20,6 +25,46 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
   const boundsChangeTimeoutRef = useRef(null);
   const mapClickListenerRef = useRef(null);
   const tempMarkerRef = useRef(null);
+  const [hoveredZone, setHoveredZone] = useState(null);
+  const [tooltipPosition, setTooltipPosition] = useState(null);
+  const [insecurityLevels, setInsecurityLevels] = useState([]);
+  const [isCompareModalOpen, setIsCompareModalOpen] = useState(false);
+  const [heatmapLayer, setHeatmapLayer] = useState(null);
+  const [showHeatmap, setShowHeatmap] = useState(false);
+  const [colorPalette, setColorPalette] = useState(null);
+  const [isNavigating, setIsNavigating] = useState(false);
+  const [showSafeRoutes, setShowSafeRoutes] = useState(false);
+  const routeLinesRef = useRef([]);
+
+  // Cargar niveles de inseguridad para tooltips
+  useEffect(() => {
+    const loadInsecurityLevels = async () => {
+      try {
+        const response = await fetch('/api/insecurity-levels');
+        const levels = await response.json();
+        if (levels) {
+          setInsecurityLevels(levels);
+        }
+      } catch (error) {
+        console.error('Error loading insecurity levels:', error);
+      }
+    };
+
+    loadInsecurityLevels();
+  }, []);
+
+  // Escuchar cambios de paleta de colores
+  useEffect(() => {
+    const handlePaletteChange = (event) => {
+      setColorPalette(event.detail);
+    };
+
+    window.addEventListener('paletteChange', handlePaletteChange);
+
+    return () => {
+      window.removeEventListener('paletteChange', handlePaletteChange);
+    };
+  }, []);
 
   useEffect(() => {
     const loadGoogleMaps = () => {
@@ -29,9 +74,9 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
         return;
       }
 
-      // Crear y cargar el script de Google Maps
+      // Crear y cargar el script de Google Maps con la librería de visualización
       const script = document.createElement('script');
-      script.src = `https://maps.googleapis.com/maps/api/js?key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}&libraries=places,drawing`;
+      script.src = `https://maps.googleapis.com/maps/api/js?key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}&libraries=places,drawing,visualization`;
       script.async = true;
       script.defer = true;
       script.onload = () => initMap();
@@ -47,13 +92,104 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
         lng: -70,
       };
 
-      // Crear el mapa usando la API global de Google Maps
+      // Estilos personalizados para el mapa - enfocado en seguridad y claridad
+      const mapStyles = [
+        {
+          featureType: 'all',
+          elementType: 'labels.text.fill',
+          stylers: [{ color: '#525252' }]
+        },
+        {
+          featureType: 'all',
+          elementType: 'labels.text.stroke',
+          stylers: [{ visibility: 'on' }, { color: '#ffffff' }, { weight: 2 }]
+        },
+        {
+          featureType: 'administrative',
+          elementType: 'geometry.stroke',
+          stylers: [{ color: '#c9c9c9' }, { weight: 1.2 }]
+        },
+        {
+          featureType: 'landscape',
+          elementType: 'geometry',
+          stylers: [{ color: '#f5f5f5' }]
+        },
+        {
+          featureType: 'poi',
+          elementType: 'all',
+          stylers: [{ visibility: 'off' }]
+        },
+        {
+          featureType: 'poi.park',
+          elementType: 'geometry',
+          stylers: [{ visibility: 'on' }, { color: '#e8f5e9' }]
+        },
+        {
+          featureType: 'road',
+          elementType: 'geometry',
+          stylers: [{ color: '#ffffff' }]
+        },
+        {
+          featureType: 'road',
+          elementType: 'labels.icon',
+          stylers: [{ visibility: 'off' }]
+        },
+        {
+          featureType: 'road.highway',
+          elementType: 'geometry',
+          stylers: [{ color: '#fef7e6' }]
+        },
+        {
+          featureType: 'road.highway',
+          elementType: 'geometry.stroke',
+          stylers: [{ color: '#fbc02d' }, { weight: 0.8 }]
+        },
+        {
+          featureType: 'road.arterial',
+          elementType: 'geometry',
+          stylers: [{ color: '#ffffff' }]
+        },
+        {
+          featureType: 'transit',
+          elementType: 'all',
+          stylers: [{ visibility: 'off' }]
+        },
+        {
+          featureType: 'water',
+          elementType: 'geometry',
+          stylers: [{ color: '#e3f2fd' }]
+        }
+      ];
+
+      // Crear el mapa usando la API global de Google Maps con estilos personalizados
       const newMap = new window.google.maps.Map(mapRef.current, {
         center: position,
         zoom: 3.5,
+        styles: mapStyles,
+        mapTypeControl: false,
+        streetViewControl: false,
+        fullscreenControl: true,
       });
 
       setMap(newMap);
+
+      // Esperar a que la librería visualization esté disponible para el heatmap
+      const waitForVisualization = () => {
+        return new Promise((resolve) => {
+          const checkVisualization = () => {
+            if (window.google?.maps?.visualization?.HeatmapLayer) {
+              resolve();
+            } else {
+              setTimeout(checkVisualization, 100);
+            }
+          };
+          checkVisualization();
+        });
+      };
+
+      waitForVisualization().catch(() => {
+        console.warn('Visualization library not available for heatmap');
+      });
 
       // Listener para cambios en los bounds del mapa con debounce
       newMap.addListener('bounds_changed', () => {
@@ -144,6 +280,8 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
 
       // Función para intentar fitBounds
       const attemptFitBounds = () => {
+        setIsNavigating(true);
+
         const bounds = new window.google.maps.LatLngBounds();
         let hasValidBounds = false;
 
@@ -182,7 +320,10 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
           // Forzar redibujado de overlays después de fitBounds
           setTimeout(() => {
             window.google.maps.event.trigger(map, 'resize');
-          }, 100);
+            setIsNavigating(false);
+          }, 800);
+        } else {
+          setIsNavigating(false);
         }
       };
 
@@ -243,28 +384,33 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
       lng: selectedPlace.lng,
     };
 
+    // Indicar que estamos navegando
+    setIsNavigating(true);
+
     // Cancelar animación previa si existe
     if (animationFrameRef.current) {
       cancelAnimationFrame(animationFrameRef.current);
     }
 
-    // Animación personalizada con aceleración
+    // Animación personalizada con aceleración mejorada
     const start = map.getCenter();
     const startLat = start.lat();
     const startLng = start.lng();
     const targetLat = position.lat;
     const targetLng = position.lng;
-    const duration = 600; // 600ms de duración
+    const startZoom = map.getZoom();
+    const duration = 800; // 800ms de duración para suavidad
     const startTime = performance.now();
 
-    const easeInOutCubic = (t) => {
-      return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+    // Función de easing mejorada (ease-in-out-quart)
+    const easeInOutQuart = (t) => {
+      return t < 0.5 ? 8 * t * t * t * t : 1 - Math.pow(-2 * t + 2, 4) / 2;
     };
 
     const animate = (currentTime) => {
       const elapsed = currentTime - startTime;
       const progress = Math.min(elapsed / duration, 1);
-      const eased = easeInOutCubic(progress);
+      const eased = easeInOutQuart(progress);
 
       const currentLat = startLat + (targetLat - startLat) * eased;
       const currentLng = startLng + (targetLng - startLng) * eased;
@@ -275,6 +421,7 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
         animationFrameRef.current = requestAnimationFrame(animate);
       } else {
         animationFrameRef.current = null;
+        setIsNavigating(false);
       }
     };
 
@@ -332,14 +479,21 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
       };
     }
 
-    // Crear el marcador en el centro
+    // Crear el marcador en el centro con animación mejorada
     const newMarker = new window.google.maps.Marker({
       position: position,
       map: map,
       title: selectedPlace.address || selectedPlace.title || selectedPlace.description,
-      animation: window.google.maps.Animation.DROP,
+      animation: window.google.maps.Animation.BOUNCE,
       icon: iconConfig
     });
+
+    // Detener animación de rebote después de 2 segundos para un efecto más sutil
+    setTimeout(() => {
+      if (newMarker) {
+        newMarker.setAnimation(null);
+      }
+    }, 1400);
 
     setMarker(newMarker);
   }, [selectedPlace, map]);
@@ -452,15 +606,25 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
     activePlaces.forEach(place => {
       // Si el lugar tiene un polígono guardado
       if (place.polygon) {
-        // Si ya está renderizado, solo actualizar opciones
+        // Verificar si el nivel de seguridad está visible
+        const isLevelVisible = visibleLevels ? visibleLevels[place.safety_level_id] !== false : true;
+
+        // Determinar el color a usar (paleta personalizada o color por defecto)
+        const displayColor = colorPalette?.colors?.[place.safety_level_id] || place.color || '#FFD700';
+
+        // Si ya está renderizado, solo actualizar opciones y visibilidad
         if (polygonsRef.current[place.id]) {
           const existingPolygon = polygonsRef.current[place.id];
           existingPolygon.setOptions({
-            fillColor: place.color || '#FFD700',
-            strokeColor: place.color || '#FFD700',
+            fillColor: displayColor,
+            strokeColor: displayColor,
           });
+          existingPolygon.setVisible(isLevelVisible);
           return;
         }
+
+        // Si no debe ser visible, no crearlo
+        if (!isLevelVisible) return;
 
         // Si no está renderizado, crearlo
         let coordinates;
@@ -495,10 +659,10 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
 
         const polygon = new window.google.maps.Polygon({
           paths: coordinates,
-          fillColor: place.color || '#FFD700',
+          fillColor: displayColor,
           fillOpacity: 0.15,
           strokeWeight: 3,
-          strokeColor: place.color || '#FFD700',
+          strokeColor: displayColor,
           editable: false,
           map: map,
         });
@@ -514,6 +678,20 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
             // Click en el polígono (no en vértice) cuando no está en modo edición
             onPolygonClick(place.id);
           }
+        });
+
+        // Listener para mostrar tooltip al pasar el mouse
+        window.google.maps.event.addListener(polygon, 'mousemove', (event) => {
+          if (!polygon.getEditable()) {
+            setHoveredZone(place);
+            setTooltipPosition({ x: event.domEvent.clientX, y: event.domEvent.clientY });
+          }
+        });
+
+        // Listener para ocultar tooltip al salir del polígono
+        window.google.maps.event.addListener(polygon, 'mouseout', () => {
+          setHoveredZone(null);
+          setTooltipPosition(null);
         });
 
         // Listener para detectar doble clic en vértices
@@ -588,7 +766,7 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
         delete polygonsRef.current[placeId];
       }
     });
-  }, [places, map]);
+  }, [places, map, visibleLevels, colorPalette]);
 
   // Actualizar estilo del polígono resaltado
   useEffect(() => {
@@ -639,30 +817,40 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
 
       // Si el lugar tiene circle_radius Y NO es coworking ni instagramable
       if (place.circle_radius && !isCoworkingPlace && !isInstagramablePlace) {
+        // Verificar si el nivel de seguridad está visible
+        const isLevelVisible = visibleLevels ? visibleLevels[place.safety_level_id] !== false : true;
+
+        // Determinar el color a usar (paleta personalizada o color por defecto)
+        const displayColor = colorPalette?.colors?.[place.safety_level_id] || place.color || '#8b5cf6';
+
         // Determinar el radio a usar (editingRadius si se está editando, o el radio guardado)
         const radiusToUse = editingCircleId === place.id ? editingRadius : place.circle_radius;
         const isHighlighted = highlightedPlace === place.id;
         const isEditing = editingCircleId === place.id;
 
-        // Si ya está renderizado, solo actualizar opciones
+        // Si ya está renderizado, solo actualizar opciones y visibilidad
         if (circlesRef.current[place.id]) {
           const existingCircle = circlesRef.current[place.id];
           existingCircle.setOptions({
-            fillColor: place.color || '#8b5cf6',
-            strokeColor: isEditing ? '#8b5cf6' : (isHighlighted ? '#FFEB3B' : (place.color || '#8b5cf6')),
+            fillColor: displayColor,
+            strokeColor: isEditing ? '#8b5cf6' : (isHighlighted ? '#FFEB3B' : displayColor),
             strokeWeight: isHighlighted || isEditing ? 4 : 2,
             fillOpacity: isHighlighted || isEditing ? 0.45 : 0.35,
             radius: radiusToUse,
           });
+          existingCircle.setVisible(isLevelVisible);
           return;
         }
 
+        // Si no debe ser visible, no crearlo
+        if (!isLevelVisible) return;
+
         // Si no está renderizado, crearlo
         const circle = new window.google.maps.Circle({
-          strokeColor: isEditing ? '#8b5cf6' : (isHighlighted ? '#FFEB3B' : (place.color || '#8b5cf6')),
+          strokeColor: isEditing ? '#8b5cf6' : (isHighlighted ? '#FFEB3B' : displayColor),
           strokeOpacity: 0.8,
           strokeWeight: isHighlighted || isEditing ? 4 : 2,
-          fillColor: place.color || '#8b5cf6',
+          fillColor: displayColor,
           fillOpacity: isHighlighted || isEditing ? 0.45 : 0.35,
           map: map,
           center: { lat: place.lat, lng: place.lng },
@@ -674,6 +862,20 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
           if (onPolygonClick) {
             onPolygonClick(place.id);
           }
+        });
+
+        // Listener para mostrar tooltip al pasar el mouse
+        circle.addListener('mousemove', function(event) {
+          if (!editingCircleId || editingCircleId !== place.id) {
+            setHoveredZone(place);
+            setTooltipPosition({ x: event.domEvent.clientX, y: event.domEvent.clientY });
+          }
+        });
+
+        // Listener para ocultar tooltip al salir del círculo
+        circle.addListener('mouseout', function() {
+          setHoveredZone(null);
+          setTooltipPosition(null);
         });
 
         circlesRef.current[place.id] = circle;
@@ -693,7 +895,7 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
         delete circlesRef.current[placeId];
       }
     });
-  }, [places, map, editingCircleId, editingRadius, highlightedPlace, coworkingPlaces, instagramablePlaces]);
+  }, [places, map, editingCircleId, editingRadius, highlightedPlace, coworkingPlaces, instagramablePlaces, visibleLevels, colorPalette]);
 
   // Renderizar círculo temporal mientras se ajusta el radio
   useEffect(() => {
@@ -945,9 +1147,417 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
     };
   }, [map, mapClickMode, onMapClick]);
 
+  // Renderizar líneas de conexión entre zonas seguras
+  useEffect(() => {
+    if (!map) return;
+
+    // Limpiar líneas anteriores
+    routeLinesRef.current.forEach(line => line.setMap(null));
+    routeLinesRef.current = [];
+
+    // Si no se deben mostrar las rutas, salir
+    if (!showSafeRoutes) return;
+
+    // Filtrar solo lugares activos del país seleccionado
+    const activePlaces = places.filter(p =>
+      p.active !== null &&
+      (!selectedCountry || p.country_code === selectedCountry.country_code)
+    );
+
+    if (activePlaces.length < 2) return;
+
+    // Agrupar zonas por nivel de seguridad
+    const zonesByLevel = {};
+    activePlaces.forEach(place => {
+      const levelId = place.safety_level_id ?? 0;
+      if (!zonesByLevel[levelId]) {
+        zonesByLevel[levelId] = [];
+      }
+      zonesByLevel[levelId].push(place);
+    });
+
+    // Para cada nivel de seguridad, conectar zonas cercanas
+    Object.entries(zonesByLevel).forEach(([levelId, zones]) => {
+      if (zones.length < 2) return;
+
+      // Obtener el nivel de seguridad para determinar el color
+      const level = insecurityLevels.find(l => l.id === parseInt(levelId));
+      const lineColor = colorPalette?.colors?.[levelId] || level?.color || '#60a5fa';
+
+      // Conectar cada zona con sus vecinas más cercanas (máximo 2 conexiones por zona)
+      zones.forEach((zone, index) => {
+        // Calcular distancias a todas las demás zonas
+        const distances = zones
+          .map((otherZone, otherIndex) => {
+            if (index === otherIndex) return null;
+
+            // Calcular distancia euclidiana simple
+            const latDiff = zone.lat - otherZone.lat;
+            const lngDiff = zone.lng - otherZone.lng;
+            const distance = Math.sqrt(latDiff * latDiff + lngDiff * lngDiff);
+
+            return { zone: otherZone, distance, index: otherIndex };
+          })
+          .filter(d => d !== null)
+          .sort((a, b) => a.distance - b.distance);
+
+        // Conectar solo con las 2 zonas más cercanas para evitar saturar el mapa
+        const connectionsToMake = distances.slice(0, 2);
+
+        connectionsToMake.forEach(({ zone: targetZone, distance }) => {
+          // Evitar líneas duplicadas (solo dibujar si el índice actual es menor)
+          const targetIndex = zones.findIndex(z => z.id === targetZone.id);
+          if (index >= targetIndex) return;
+
+          // Calcular distancia real en km (aproximación)
+          const R = 6371; // Radio de la Tierra en km
+          const dLat = (targetZone.lat - zone.lat) * Math.PI / 180;
+          const dLon = (targetZone.lng - zone.lng) * Math.PI / 180;
+          const a =
+            Math.sin(dLat/2) * Math.sin(dLat/2) +
+            Math.cos(zone.lat * Math.PI / 180) * Math.cos(targetZone.lat * Math.PI / 180) *
+            Math.sin(dLon/2) * Math.sin(dLon/2);
+          const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+          const distanceKm = R * c;
+
+          // Solo mostrar líneas si la distancia es razonable (< 50km)
+          if (distanceKm > 50) return;
+
+          // Crear polyline entre las dos zonas
+          const line = new window.google.maps.Polyline({
+            path: [
+              { lat: zone.lat, lng: zone.lng },
+              { lat: targetZone.lat, lng: targetZone.lng }
+            ],
+            geodesic: true,
+            strokeColor: lineColor,
+            strokeOpacity: 0.4,
+            strokeWeight: 2,
+            map: map,
+            icons: [{
+              icon: {
+                path: window.google.maps.SymbolPath.FORWARD_OPEN_ARROW,
+                scale: 2,
+                strokeColor: lineColor,
+                strokeOpacity: 0.6
+              },
+              offset: '50%'
+            }]
+          });
+
+          // Crear etiqueta de distancia en el punto medio
+          const midLat = (zone.lat + targetZone.lat) / 2;
+          const midLng = (zone.lng + targetZone.lng) / 2;
+
+          // Crear overlay personalizado para la etiqueta
+          class DistanceLabel extends window.google.maps.OverlayView {
+            constructor(position, distance) {
+              super();
+              this.position = position;
+              this.distance = distance;
+              this.div = null;
+            }
+
+            onAdd() {
+              const div = document.createElement('div');
+              div.style.cssText = `
+                position: absolute;
+                background: white;
+                color: ${lineColor};
+                padding: 2px 6px;
+                border-radius: 4px;
+                font-size: 10px;
+                font-weight: 600;
+                border: 1px solid ${lineColor};
+                white-space: nowrap;
+                box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+                pointer-events: none;
+              `;
+              div.textContent = `${distanceKm.toFixed(1)} km`;
+              this.div = div;
+
+              const panes = this.getPanes();
+              panes.overlayLayer.appendChild(div);
+            }
+
+            draw() {
+              const projection = this.getProjection();
+              const point = projection.fromLatLngToDivPixel(this.position);
+              if (point && this.div) {
+                this.div.style.left = point.x - (this.div.offsetWidth / 2) + 'px';
+                this.div.style.top = point.y - (this.div.offsetHeight / 2) + 'px';
+              }
+            }
+
+            onRemove() {
+              if (this.div && this.div.parentNode) {
+                this.div.parentNode.removeChild(this.div);
+                this.div = null;
+              }
+            }
+          }
+
+          const label = new DistanceLabel(
+            new window.google.maps.LatLng(midLat, midLng),
+            distanceKm
+          );
+          label.setMap(map);
+
+          routeLinesRef.current.push(line);
+          routeLinesRef.current.push(label);
+        });
+      });
+    });
+
+    return () => {
+      routeLinesRef.current.forEach(line => line.setMap(null));
+      routeLinesRef.current = [];
+    };
+  }, [map, places, showSafeRoutes, selectedCountry, insecurityLevels, colorPalette]);
+
+  // Crear y actualizar heatmap de densidad de seguridad
+  useEffect(() => {
+    if (!map || !window.google?.maps?.visualization?.HeatmapLayer) return;
+
+    // Limpiar heatmap anterior si existe
+    if (heatmapLayer) {
+      heatmapLayer.setMap(null);
+    }
+
+    // Si no se debe mostrar el heatmap, salir
+    if (!showHeatmap) {
+      setHeatmapLayer(null);
+      return;
+    }
+
+    // Filtrar solo lugares activos del país seleccionado
+    const activePlaces = places.filter(p =>
+      p.active !== null &&
+      (!selectedCountry || p.country_code === selectedCountry.country_code)
+    );
+
+    if (activePlaces.length === 0) {
+      setHeatmapLayer(null);
+      return;
+    }
+
+    // Crear puntos ponderados para el heatmap
+    const heatmapData = [];
+
+    activePlaces.forEach(place => {
+      // Determinar el peso basado en el nivel de seguridad
+      // Niveles más seguros (id bajo) = peso positivo (verde)
+      // Niveles menos seguros (id alto) = peso negativo simulado con menos intensidad
+      let weight = 1;
+
+      // Mapeo de safety_level_id a peso
+      // 1 (Seguro) = máximo peso positivo
+      // 2 (Medio) = peso medio-alto
+      // 3 (Regular) = peso medio
+      // 4 (Precaución) = peso bajo
+      // 5 (Inseguro) = peso mínimo
+      switch(place.safety_level_id) {
+        case 1: weight = 5; break;  // Seguro - máxima intensidad verde
+        case 2: weight = 3; break;  // Medio - intensidad media-alta
+        case 3: weight = 2; break;  // Regular - intensidad media
+        case 4: weight = 1; break;  // Precaución - baja intensidad
+        case 5: weight = 0.5; break; // Inseguro - mínima intensidad
+        default: weight = 1;
+      }
+
+      // Agregar puntos del polígono si existe
+      if (place.polygon && Array.isArray(place.polygon)) {
+        place.polygon.forEach(coord => {
+          heatmapData.push({
+            location: new window.google.maps.LatLng(coord[1], coord[0]),
+            weight: weight
+          });
+        });
+      }
+
+      // Agregar punto central del círculo si existe
+      if (place.circle_radius) {
+        heatmapData.push({
+          location: new window.google.maps.LatLng(place.lat, place.lng),
+          weight: weight * 3 // Mayor peso al centro
+        });
+
+        // Agregar puntos alrededor del círculo para mejor cobertura
+        const steps = 12;
+        for (let i = 0; i < steps; i++) {
+          const angle = (i / steps) * 2 * Math.PI;
+          const radius = place.circle_radius;
+          const lat = place.lat + (radius / 111320) * Math.cos(angle);
+          const lng = place.lng + (radius / (111320 * Math.cos(place.lat * Math.PI / 180))) * Math.sin(angle);
+
+          heatmapData.push({
+            location: new window.google.maps.LatLng(lat, lng),
+            weight: weight
+          });
+        }
+      }
+
+      // Si no tiene ni polígono ni círculo, usar punto central
+      if (!place.polygon && !place.circle_radius) {
+        heatmapData.push({
+          location: new window.google.maps.LatLng(place.lat, place.lng),
+          weight: weight
+        });
+      }
+    });
+
+    if (heatmapData.length === 0) {
+      setHeatmapLayer(null);
+      return;
+    }
+
+    // Crear gradiente personalizado (verde = seguro, amarillo = medio, rojo = inseguro)
+    const gradient = [
+      'rgba(0, 255, 255, 0)',
+      'rgba(0, 255, 255, 1)',
+      'rgba(0, 191, 255, 1)',
+      'rgba(0, 127, 255, 1)',
+      'rgba(0, 63, 255, 1)',
+      'rgba(0, 0, 255, 1)',
+      'rgba(0, 0, 223, 1)',
+      'rgba(0, 0, 191, 1)',
+      'rgba(0, 255, 0, 1)',
+      'rgba(63, 255, 0, 1)',
+      'rgba(127, 255, 0, 1)',
+      'rgba(191, 255, 0, 1)',
+      'rgba(255, 255, 0, 1)'
+    ];
+
+    // Crear nueva capa de heatmap
+    const newHeatmapLayer = new window.google.maps.visualization.HeatmapLayer({
+      data: heatmapData,
+      map: map,
+      radius: 40, // Radio de influencia de cada punto
+      opacity: 0.6, // Opacidad general del heatmap
+      gradient: gradient,
+      dissipating: true, // Puntos se disipan gradualmente
+      maxIntensity: 5 // Intensidad máxima (coincide con el peso de zonas seguras)
+    });
+
+    setHeatmapLayer(newHeatmapLayer);
+
+    return () => {
+      if (newHeatmapLayer) {
+        newHeatmapLayer.setMap(null);
+      }
+    };
+  }, [map, places, showHeatmap, selectedCountry]);
+
   return (
     <>
       <div ref={mapRef} className="w-full h-full" />
+
+      {/* Navigation Loading Indicator - Subtle feedback during viewport transitions */}
+      {isNavigating && (
+        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-50 pointer-events-none">
+          <div className="bg-white/95 backdrop-blur-sm rounded-full shadow-2xl px-6 py-4 flex items-center gap-3 border border-gray-200 animate-fadeIn">
+            <div className="relative flex items-center justify-center">
+              <div className="w-8 h-8 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin"></div>
+            </div>
+            <span className="text-sm font-semibold text-gray-700">Navegando...</span>
+          </div>
+        </div>
+      )}
+
+      {/* Zone Tooltip - Contextual information on hover */}
+      {hoveredZone && tooltipPosition && (
+        <ZoneTooltip
+          zone={hoveredZone}
+          position={tooltipPosition}
+          insecurityLevels={insecurityLevels}
+        />
+      )}
+
+      {/* Zoom Indicator - Contextual zoom guidance */}
+      <ZoomIndicator map={map} />
+
+      {/* Map Legend - Safety Levels */}
+      <MapLegend
+        visibleLevels={visibleLevels}
+        onToggleLevel={onToggleLevelVisibility}
+        showHeatmap={showHeatmap}
+        onToggleHeatmap={() => setShowHeatmap(!showHeatmap)}
+      />
+
+      {/* Safe Routes Button - Only show when country is selected and has zones */}
+      {selectedCountry && places.filter(p => p.country_code === selectedCountry.country_code && p.active !== null).length >= 2 && (
+        <button
+          onClick={() => setShowSafeRoutes(!showSafeRoutes)}
+          className={`absolute top-4 right-4 bg-white rounded-full shadow-xl px-4 py-3 flex items-center gap-2 hover:shadow-2xl transition-all duration-300 hover:scale-105 border-2 group z-[999] ${
+            showSafeRoutes ? 'border-blue-500 bg-blue-50' : 'border-gray-200'
+          }`}
+          aria-label="Ver rutas entre zonas"
+          title="Muestra conexiones entre zonas del mismo nivel de seguridad"
+        >
+          <svg
+            className={`w-5 h-5 transition-all duration-300 ${
+              showSafeRoutes ? 'text-blue-600 rotate-90' : 'text-gray-600 group-hover:text-blue-600'
+            }`}
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"
+            />
+          </svg>
+          <span className={`text-sm font-semibold transition-colors ${
+            showSafeRoutes ? 'text-blue-600' : 'text-gray-700 group-hover:text-blue-600'
+          }`}>
+            {showSafeRoutes ? 'Ocultar rutas' : 'Ver rutas'}
+          </span>
+        </button>
+      )}
+
+      {/* Compare Zones Button - Only show when country is selected and has zones */}
+      {selectedCountry && places.filter(p => p.country_code === selectedCountry.country_code && p.active !== null).length >= 2 && (
+        <button
+          onClick={() => setIsCompareModalOpen(true)}
+          className="absolute top-20 right-4 bg-white rounded-full shadow-xl px-4 py-3 flex items-center gap-2 hover:shadow-2xl transition-all duration-300 hover:scale-105 border border-gray-200 group z-[999]"
+          aria-label="Comparar zonas"
+        >
+          <svg
+            className="w-5 h-5 text-purple-600 group-hover:rotate-12 transition-transform duration-300"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
+            />
+          </svg>
+          <span className="text-sm font-semibold text-gray-700 group-hover:text-purple-600 transition-colors">
+            Comparar
+          </span>
+        </button>
+      )}
+
+      {/* Compare Zones Modal */}
+      <CompareZones
+        isOpen={isCompareModalOpen}
+        onClose={() => setIsCompareModalOpen(false)}
+        zones={places}
+        selectedCountry={selectedCountry}
+      />
+
+      {/* User Location Indicator - Shows user's current position and nearby safety zones */}
+      <UserLocationIndicator
+        map={map}
+        places={places}
+        insecurityLevels={insecurityLevels}
+        selectedCountry={selectedCountry}
+      />
 
       {/* Modal de confirmación para eliminar punto */}
       {vertexToDelete && deleteModalPosition && (
