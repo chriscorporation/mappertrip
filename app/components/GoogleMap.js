@@ -979,32 +979,47 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
         filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
       `;
 
-      // Crear el div de precio
+      // Crear el div de precio con diseño moderno tipo Airbnb
       const priceDiv = document.createElement('div');
       priceDiv.style.cssText = `
-        background: #374151;
+        background: linear-gradient(135deg, #FF385C 0%, #E61E4D 100%);
         color: white;
-        padding: 4px 8px;
-        border-radius: 6px;
-        font-size: 12px;
-        font-weight: bold;
-        border: 1px solid #1f2937;
+        padding: 6px 12px;
+        border-radius: 20px;
+        font-size: 13px;
+        font-weight: 600;
+        border: 2px solid white;
         white-space: nowrap;
-        box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+        box-shadow: 0 4px 12px rgba(230, 30, 77, 0.3), 0 2px 4px rgba(0,0,0,0.1);
         z-index: 999999;
         position: relative;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        letter-spacing: 0.3px;
       `;
       priceDiv.textContent = priceLabel;
 
-      // Crear la pestaña/pico
+      // Agregar efecto hover
+      priceDiv.onmouseenter = () => {
+        priceDiv.style.transform = 'scale(1.08)';
+        priceDiv.style.boxShadow = '0 6px 16px rgba(230, 30, 77, 0.4), 0 3px 6px rgba(0,0,0,0.15)';
+      };
+      priceDiv.onmouseleave = () => {
+        priceDiv.style.transform = 'scale(1)';
+        priceDiv.style.boxShadow = '0 4px 12px rgba(230, 30, 77, 0.3), 0 2px 4px rgba(0,0,0,0.1)';
+      };
+
+      // Crear la pestaña/pico con nuevo color
       const pointer = document.createElement('div');
       pointer.style.cssText = `
         width: 0;
         height: 0;
-        border-left: 6px solid transparent;
-        border-right: 6px solid transparent;
-        border-top: 8px solid #374151;
+        border-left: 7px solid transparent;
+        border-right: 7px solid transparent;
+        border-top: 9px solid #E61E4D;
         margin-top: -1px;
+        filter: drop-shadow(0 2px 3px rgba(0,0,0,0.1));
       `;
 
       container.appendChild(homeIcon);
