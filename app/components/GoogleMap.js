@@ -32,6 +32,7 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
   const [heatmapLayer, setHeatmapLayer] = useState(null);
   const [showHeatmap, setShowHeatmap] = useState(false);
   const [colorPalette, setColorPalette] = useState(null);
+  const [isNavigating, setIsNavigating] = useState(false);
 
   // Cargar niveles de inseguridad para tooltips
   useEffect(() => {
@@ -277,6 +278,8 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
 
       // Función para intentar fitBounds
       const attemptFitBounds = () => {
+        setIsNavigating(true);
+
         const bounds = new window.google.maps.LatLngBounds();
         let hasValidBounds = false;
 
@@ -315,7 +318,10 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
           // Forzar redibujado de overlays después de fitBounds
           setTimeout(() => {
             window.google.maps.event.trigger(map, 'resize');
-          }, 100);
+            setIsNavigating(false);
+          }, 800);
+        } else {
+          setIsNavigating(false);
         }
       };
 
@@ -376,28 +382,33 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
       lng: selectedPlace.lng,
     };
 
+    // Indicar que estamos navegando
+    setIsNavigating(true);
+
     // Cancelar animación previa si existe
     if (animationFrameRef.current) {
       cancelAnimationFrame(animationFrameRef.current);
     }
 
-    // Animación personalizada con aceleración
+    // Animación personalizada con aceleración mejorada
     const start = map.getCenter();
     const startLat = start.lat();
     const startLng = start.lng();
     const targetLat = position.lat;
     const targetLng = position.lng;
-    const duration = 600; // 600ms de duración
+    const startZoom = map.getZoom();
+    const duration = 800; // 800ms de duración para suavidad
     const startTime = performance.now();
 
-    const easeInOutCubic = (t) => {
-      return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+    // Función de easing mejorada (ease-in-out-quart)
+    const easeInOutQuart = (t) => {
+      return t < 0.5 ? 8 * t * t * t * t : 1 - Math.pow(-2 * t + 2, 4) / 2;
     };
 
     const animate = (currentTime) => {
       const elapsed = currentTime - startTime;
       const progress = Math.min(elapsed / duration, 1);
-      const eased = easeInOutCubic(progress);
+      const eased = easeInOutQuart(progress);
 
       const currentLat = startLat + (targetLat - startLat) * eased;
       const currentLng = startLng + (targetLng - startLng) * eased;
@@ -408,6 +419,7 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
         animationFrameRef.current = requestAnimationFrame(animate);
       } else {
         animationFrameRef.current = null;
+        setIsNavigating(false);
       }
     };
 
@@ -465,14 +477,21 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
       };
     }
 
-    // Crear el marcador en el centro
+    // Crear el marcador en el centro con animación mejorada
     const newMarker = new window.google.maps.Marker({
       position: position,
       map: map,
       title: selectedPlace.address || selectedPlace.title || selectedPlace.description,
-      animation: window.google.maps.Animation.DROP,
+      animation: window.google.maps.Animation.BOUNCE,
       icon: iconConfig
     });
+
+    // Detener animación de rebote después de 2 segundos para un efecto más sutil
+    setTimeout(() => {
+      if (newMarker) {
+        newMarker.setAnimation(null);
+      }
+    }, 1400);
 
     setMarker(newMarker);
   }, [selectedPlace, map]);
@@ -1262,6 +1281,18 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
   return (
     <>
       <div ref={mapRef} className="w-full h-full" />
+
+      {/* Navigation Loading Indicator - Subtle feedback during viewport transitions */}
+      {isNavigating && (
+        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-50 pointer-events-none">
+          <div className="bg-white/95 backdrop-blur-sm rounded-full shadow-2xl px-6 py-4 flex items-center gap-3 border border-gray-200 animate-fadeIn">
+            <div className="relative flex items-center justify-center">
+              <div className="w-8 h-8 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin"></div>
+            </div>
+            <span className="text-sm font-semibold text-gray-700">Navegando...</span>
+          </div>
+        </div>
+      )}
 
       {/* Zone Tooltip - Contextual information on hover */}
       {hoveredZone && tooltipPosition && (
