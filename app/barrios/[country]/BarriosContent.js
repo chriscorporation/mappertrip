@@ -5,6 +5,7 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import PerplexityNotesDisplay from '../../components/PerplexityNotesDisplay';
 import Paginator from '../../components/Paginator';
 import BackButton from './BackButton';
+import StreetViewPreview from '../../components/StreetViewPreview';
 
 export default function BarriosContent({ countrySlug, initialData }) {
   const searchParams = useSearchParams();
@@ -81,27 +82,44 @@ export default function BarriosContent({ countrySlug, initialData }) {
               return (
                 <div key={zone.id} className="w-full">
                   <div className="w-full block p-10 bg-white border-2 border-gray-200 rounded-3xl shadow-lg">
-                    <div className="mb-6">
-                      <h2 className="font-heading mb-2 text-3xl font-black">
-                        <span className="text-transparent bg-clip-text bg-gradient-to-r from-gray-500 to-gray-900">
-                          {zone.address} {zone.orientation ? `(${zone.orientation})` : ''}
-                        </span>
-                      </h2>
-                      <a
-                        href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(zone.address + ' @' + zone.lat + ',' + zone.lng)}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1 text-sm text-blue-600 hover:text-blue-800 hover:underline font-medium cursor-pointer"
-                      >
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                        </svg>
-                        Ver en Google Maps
-                      </a>
-                    </div>
+                    {/* Layout: 2 columnas en desktop, 1 en mobile */}
+                    <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                      {/* Columna izquierda: Info y datos (8/12 en desktop) */}
+                      <div className="lg:col-span-8">
+                        <div className="mb-6">
+                          <h2 className="font-heading mb-2 text-3xl font-black">
+                            <span className="text-transparent bg-clip-text bg-gradient-to-r from-gray-500 to-gray-900">
+                              {zone.address} {zone.orientation ? `(${zone.orientation})` : ''}
+                            </span>
+                          </h2>
+                          <a
+                            href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(zone.address + ' @' + zone.lat + ',' + zone.lng)}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1 text-sm text-blue-600 hover:text-blue-800 hover:underline font-medium cursor-pointer"
+                          >
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                            </svg>
+                            Ver en Google Maps
+                          </a>
+                        </div>
 
-                    <PerplexityNotesDisplay perplexityData={notes} />
+                        <PerplexityNotesDisplay perplexityData={notes} />
+                      </div>
+
+                      {/* Columna derecha: Street View Preview (4/12 en desktop) */}
+                      <div className="lg:col-span-4">
+                        <div className="sticky top-6">
+                          <StreetViewPreview
+                            lat={zone.lat}
+                            lng={zone.lng}
+                            address={zone.address}
+                          />
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 </div>
               );

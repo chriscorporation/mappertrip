@@ -2,8 +2,13 @@
 
 import { useEffect, useRef, useState, useMemo } from 'react';
 import * as turf from '@turf/turf';
+import MapLegend from './MapLegend';
+import ZoomIndicator from './ZoomIndicator';
+import ZoneTooltip from './ZoneTooltip';
+import CompareZones from './CompareZones';
+import UserLocationIndicator from './UserLocationIndicator';
 
-export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocation, onSavePolygon, onPolygonClick, onBoundsChanged, coworkingPlaces, instagramablePlaces, mapClickMode, onMapClick, highlightedPlace, pendingCircle, circleRadius, editingCircleId, editingRadius }) {
+export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocation, onSavePolygon, onPolygonClick, onBoundsChanged, coworkingPlaces, instagramablePlaces, mapClickMode, onMapClick, highlightedPlace, pendingCircle, circleRadius, editingCircleId, editingRadius, visibleLevels, onToggleLevelVisibility, selectedCountry }) {
   const mapRef = useRef(null);
   const [map, setMap] = useState(null);
   const [marker, setMarker] = useState(null);
@@ -20,6 +25,44 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
   const boundsChangeTimeoutRef = useRef(null);
   const mapClickListenerRef = useRef(null);
   const tempMarkerRef = useRef(null);
+  const [hoveredZone, setHoveredZone] = useState(null);
+  const [tooltipPosition, setTooltipPosition] = useState(null);
+  const [insecurityLevels, setInsecurityLevels] = useState([]);
+  const [isCompareModalOpen, setIsCompareModalOpen] = useState(false);
+  const [heatmapLayer, setHeatmapLayer] = useState(null);
+  const [showHeatmap, setShowHeatmap] = useState(false);
+  const [colorPalette, setColorPalette] = useState(null);
+  const [isNavigating, setIsNavigating] = useState(false);
+
+  // Cargar niveles de inseguridad para tooltips
+  useEffect(() => {
+    const loadInsecurityLevels = async () => {
+      try {
+        const response = await fetch('/api/insecurity-levels');
+        const levels = await response.json();
+        if (levels) {
+          setInsecurityLevels(levels);
+        }
+      } catch (error) {
+        console.error('Error loading insecurity levels:', error);
+      }
+    };
+
+    loadInsecurityLevels();
+  }, []);
+
+  // Escuchar cambios de paleta de colores
+  useEffect(() => {
+    const handlePaletteChange = (event) => {
+      setColorPalette(event.detail);
+    };
+
+    window.addEventListener('paletteChange', handlePaletteChange);
+
+    return () => {
+      window.removeEventListener('paletteChange', handlePaletteChange);
+    };
+  }, []);
 
   useEffect(() => {
     const loadGoogleMaps = () => {
@@ -29,9 +72,9 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
         return;
       }
 
-      // Crear y cargar el script de Google Maps
+      // Crear y cargar el script de Google Maps con la librería de visualización
       const script = document.createElement('script');
-      script.src = `https://maps.googleapis.com/maps/api/js?key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}&libraries=places,drawing`;
+      script.src = `https://maps.googleapis.com/maps/api/js?key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}&libraries=places,drawing,visualization`;
       script.async = true;
       script.defer = true;
       script.onload = () => initMap();
@@ -47,13 +90,104 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
         lng: -70,
       };
 
-      // Crear el mapa usando la API global de Google Maps
+      // Estilos personalizados para el mapa - enfocado en seguridad y claridad
+      const mapStyles = [
+        {
+          featureType: 'all',
+          elementType: 'labels.text.fill',
+          stylers: [{ color: '#525252' }]
+        },
+        {
+          featureType: 'all',
+          elementType: 'labels.text.stroke',
+          stylers: [{ visibility: 'on' }, { color: '#ffffff' }, { weight: 2 }]
+        },
+        {
+          featureType: 'administrative',
+          elementType: 'geometry.stroke',
+          stylers: [{ color: '#c9c9c9' }, { weight: 1.2 }]
+        },
+        {
+          featureType: 'landscape',
+          elementType: 'geometry',
+          stylers: [{ color: '#f5f5f5' }]
+        },
+        {
+          featureType: 'poi',
+          elementType: 'all',
+          stylers: [{ visibility: 'off' }]
+        },
+        {
+          featureType: 'poi.park',
+          elementType: 'geometry',
+          stylers: [{ visibility: 'on' }, { color: '#e8f5e9' }]
+        },
+        {
+          featureType: 'road',
+          elementType: 'geometry',
+          stylers: [{ color: '#ffffff' }]
+        },
+        {
+          featureType: 'road',
+          elementType: 'labels.icon',
+          stylers: [{ visibility: 'off' }]
+        },
+        {
+          featureType: 'road.highway',
+          elementType: 'geometry',
+          stylers: [{ color: '#fef7e6' }]
+        },
+        {
+          featureType: 'road.highway',
+          elementType: 'geometry.stroke',
+          stylers: [{ color: '#fbc02d' }, { weight: 0.8 }]
+        },
+        {
+          featureType: 'road.arterial',
+          elementType: 'geometry',
+          stylers: [{ color: '#ffffff' }]
+        },
+        {
+          featureType: 'transit',
+          elementType: 'all',
+          stylers: [{ visibility: 'off' }]
+        },
+        {
+          featureType: 'water',
+          elementType: 'geometry',
+          stylers: [{ color: '#e3f2fd' }]
+        }
+      ];
+
+      // Crear el mapa usando la API global de Google Maps con estilos personalizados
       const newMap = new window.google.maps.Map(mapRef.current, {
         center: position,
         zoom: 3.5,
+        styles: mapStyles,
+        mapTypeControl: false,
+        streetViewControl: false,
+        fullscreenControl: true,
       });
 
       setMap(newMap);
+
+      // Esperar a que la librería visualization esté disponible para el heatmap
+      const waitForVisualization = () => {
+        return new Promise((resolve) => {
+          const checkVisualization = () => {
+            if (window.google?.maps?.visualization?.HeatmapLayer) {
+              resolve();
+            } else {
+              setTimeout(checkVisualization, 100);
+            }
+          };
+          checkVisualization();
+        });
+      };
+
+      waitForVisualization().catch(() => {
+        console.warn('Visualization library not available for heatmap');
+      });
 
       // Listener para cambios en los bounds del mapa con debounce
       newMap.addListener('bounds_changed', () => {
@@ -144,6 +278,8 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
 
       // Función para intentar fitBounds
       const attemptFitBounds = () => {
+        setIsNavigating(true);
+
         const bounds = new window.google.maps.LatLngBounds();
         let hasValidBounds = false;
 
@@ -182,7 +318,10 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
           // Forzar redibujado de overlays después de fitBounds
           setTimeout(() => {
             window.google.maps.event.trigger(map, 'resize');
-          }, 100);
+            setIsNavigating(false);
+          }, 800);
+        } else {
+          setIsNavigating(false);
         }
       };
 
@@ -243,28 +382,33 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
       lng: selectedPlace.lng,
     };
 
+    // Indicar que estamos navegando
+    setIsNavigating(true);
+
     // Cancelar animación previa si existe
     if (animationFrameRef.current) {
       cancelAnimationFrame(animationFrameRef.current);
     }
 
-    // Animación personalizada con aceleración
+    // Animación personalizada con aceleración mejorada
     const start = map.getCenter();
     const startLat = start.lat();
     const startLng = start.lng();
     const targetLat = position.lat;
     const targetLng = position.lng;
-    const duration = 600; // 600ms de duración
+    const startZoom = map.getZoom();
+    const duration = 800; // 800ms de duración para suavidad
     const startTime = performance.now();
 
-    const easeInOutCubic = (t) => {
-      return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+    // Función de easing mejorada (ease-in-out-quart)
+    const easeInOutQuart = (t) => {
+      return t < 0.5 ? 8 * t * t * t * t : 1 - Math.pow(-2 * t + 2, 4) / 2;
     };
 
     const animate = (currentTime) => {
       const elapsed = currentTime - startTime;
       const progress = Math.min(elapsed / duration, 1);
-      const eased = easeInOutCubic(progress);
+      const eased = easeInOutQuart(progress);
 
       const currentLat = startLat + (targetLat - startLat) * eased;
       const currentLng = startLng + (targetLng - startLng) * eased;
@@ -275,6 +419,7 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
         animationFrameRef.current = requestAnimationFrame(animate);
       } else {
         animationFrameRef.current = null;
+        setIsNavigating(false);
       }
     };
 
@@ -332,14 +477,21 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
       };
     }
 
-    // Crear el marcador en el centro
+    // Crear el marcador en el centro con animación mejorada
     const newMarker = new window.google.maps.Marker({
       position: position,
       map: map,
       title: selectedPlace.address || selectedPlace.title || selectedPlace.description,
-      animation: window.google.maps.Animation.DROP,
+      animation: window.google.maps.Animation.BOUNCE,
       icon: iconConfig
     });
+
+    // Detener animación de rebote después de 2 segundos para un efecto más sutil
+    setTimeout(() => {
+      if (newMarker) {
+        newMarker.setAnimation(null);
+      }
+    }, 1400);
 
     setMarker(newMarker);
   }, [selectedPlace, map]);
@@ -452,15 +604,25 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
     activePlaces.forEach(place => {
       // Si el lugar tiene un polígono guardado
       if (place.polygon) {
-        // Si ya está renderizado, solo actualizar opciones
+        // Verificar si el nivel de seguridad está visible
+        const isLevelVisible = visibleLevels ? visibleLevels[place.safety_level_id] !== false : true;
+
+        // Determinar el color a usar (paleta personalizada o color por defecto)
+        const displayColor = colorPalette?.colors?.[place.safety_level_id] || place.color || '#FFD700';
+
+        // Si ya está renderizado, solo actualizar opciones y visibilidad
         if (polygonsRef.current[place.id]) {
           const existingPolygon = polygonsRef.current[place.id];
           existingPolygon.setOptions({
-            fillColor: place.color || '#FFD700',
-            strokeColor: place.color || '#FFD700',
+            fillColor: displayColor,
+            strokeColor: displayColor,
           });
+          existingPolygon.setVisible(isLevelVisible);
           return;
         }
+
+        // Si no debe ser visible, no crearlo
+        if (!isLevelVisible) return;
 
         // Si no está renderizado, crearlo
         let coordinates;
@@ -495,10 +657,10 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
 
         const polygon = new window.google.maps.Polygon({
           paths: coordinates,
-          fillColor: place.color || '#FFD700',
+          fillColor: displayColor,
           fillOpacity: 0.15,
           strokeWeight: 3,
-          strokeColor: place.color || '#FFD700',
+          strokeColor: displayColor,
           editable: false,
           map: map,
         });
@@ -514,6 +676,20 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
             // Click en el polígono (no en vértice) cuando no está en modo edición
             onPolygonClick(place.id);
           }
+        });
+
+        // Listener para mostrar tooltip al pasar el mouse
+        window.google.maps.event.addListener(polygon, 'mousemove', (event) => {
+          if (!polygon.getEditable()) {
+            setHoveredZone(place);
+            setTooltipPosition({ x: event.domEvent.clientX, y: event.domEvent.clientY });
+          }
+        });
+
+        // Listener para ocultar tooltip al salir del polígono
+        window.google.maps.event.addListener(polygon, 'mouseout', () => {
+          setHoveredZone(null);
+          setTooltipPosition(null);
         });
 
         // Listener para detectar doble clic en vértices
@@ -588,7 +764,7 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
         delete polygonsRef.current[placeId];
       }
     });
-  }, [places, map]);
+  }, [places, map, visibleLevels, colorPalette]);
 
   // Actualizar estilo del polígono resaltado
   useEffect(() => {
@@ -639,30 +815,40 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
 
       // Si el lugar tiene circle_radius Y NO es coworking ni instagramable
       if (place.circle_radius && !isCoworkingPlace && !isInstagramablePlace) {
+        // Verificar si el nivel de seguridad está visible
+        const isLevelVisible = visibleLevels ? visibleLevels[place.safety_level_id] !== false : true;
+
+        // Determinar el color a usar (paleta personalizada o color por defecto)
+        const displayColor = colorPalette?.colors?.[place.safety_level_id] || place.color || '#8b5cf6';
+
         // Determinar el radio a usar (editingRadius si se está editando, o el radio guardado)
         const radiusToUse = editingCircleId === place.id ? editingRadius : place.circle_radius;
         const isHighlighted = highlightedPlace === place.id;
         const isEditing = editingCircleId === place.id;
 
-        // Si ya está renderizado, solo actualizar opciones
+        // Si ya está renderizado, solo actualizar opciones y visibilidad
         if (circlesRef.current[place.id]) {
           const existingCircle = circlesRef.current[place.id];
           existingCircle.setOptions({
-            fillColor: place.color || '#8b5cf6',
-            strokeColor: isEditing ? '#8b5cf6' : (isHighlighted ? '#FFEB3B' : (place.color || '#8b5cf6')),
+            fillColor: displayColor,
+            strokeColor: isEditing ? '#8b5cf6' : (isHighlighted ? '#FFEB3B' : displayColor),
             strokeWeight: isHighlighted || isEditing ? 4 : 2,
             fillOpacity: isHighlighted || isEditing ? 0.45 : 0.35,
             radius: radiusToUse,
           });
+          existingCircle.setVisible(isLevelVisible);
           return;
         }
 
+        // Si no debe ser visible, no crearlo
+        if (!isLevelVisible) return;
+
         // Si no está renderizado, crearlo
         const circle = new window.google.maps.Circle({
-          strokeColor: isEditing ? '#8b5cf6' : (isHighlighted ? '#FFEB3B' : (place.color || '#8b5cf6')),
+          strokeColor: isEditing ? '#8b5cf6' : (isHighlighted ? '#FFEB3B' : displayColor),
           strokeOpacity: 0.8,
           strokeWeight: isHighlighted || isEditing ? 4 : 2,
-          fillColor: place.color || '#8b5cf6',
+          fillColor: displayColor,
           fillOpacity: isHighlighted || isEditing ? 0.45 : 0.35,
           map: map,
           center: { lat: place.lat, lng: place.lng },
@@ -674,6 +860,20 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
           if (onPolygonClick) {
             onPolygonClick(place.id);
           }
+        });
+
+        // Listener para mostrar tooltip al pasar el mouse
+        circle.addListener('mousemove', function(event) {
+          if (!editingCircleId || editingCircleId !== place.id) {
+            setHoveredZone(place);
+            setTooltipPosition({ x: event.domEvent.clientX, y: event.domEvent.clientY });
+          }
+        });
+
+        // Listener para ocultar tooltip al salir del círculo
+        circle.addListener('mouseout', function() {
+          setHoveredZone(null);
+          setTooltipPosition(null);
         });
 
         circlesRef.current[place.id] = circle;
@@ -693,7 +893,7 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
         delete circlesRef.current[placeId];
       }
     });
-  }, [places, map, editingCircleId, editingRadius, highlightedPlace, coworkingPlaces, instagramablePlaces]);
+  }, [places, map, editingCircleId, editingRadius, highlightedPlace, coworkingPlaces, instagramablePlaces, visibleLevels, colorPalette]);
 
   // Renderizar círculo temporal mientras se ajusta el radio
   useEffect(() => {
@@ -779,32 +979,47 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
         filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
       `;
 
-      // Crear el div de precio
+      // Crear el div de precio con diseño moderno tipo Airbnb
       const priceDiv = document.createElement('div');
       priceDiv.style.cssText = `
-        background: #374151;
+        background: linear-gradient(135deg, #FF385C 0%, #E61E4D 100%);
         color: white;
-        padding: 4px 8px;
-        border-radius: 6px;
-        font-size: 12px;
-        font-weight: bold;
-        border: 1px solid #1f2937;
+        padding: 6px 12px;
+        border-radius: 20px;
+        font-size: 13px;
+        font-weight: 600;
+        border: 2px solid white;
         white-space: nowrap;
-        box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+        box-shadow: 0 4px 12px rgba(230, 30, 77, 0.3), 0 2px 4px rgba(0,0,0,0.1);
         z-index: 999999;
         position: relative;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        letter-spacing: 0.3px;
       `;
       priceDiv.textContent = priceLabel;
 
-      // Crear la pestaña/pico
+      // Agregar efecto hover
+      priceDiv.onmouseenter = () => {
+        priceDiv.style.transform = 'scale(1.08)';
+        priceDiv.style.boxShadow = '0 6px 16px rgba(230, 30, 77, 0.4), 0 3px 6px rgba(0,0,0,0.15)';
+      };
+      priceDiv.onmouseleave = () => {
+        priceDiv.style.transform = 'scale(1)';
+        priceDiv.style.boxShadow = '0 4px 12px rgba(230, 30, 77, 0.3), 0 2px 4px rgba(0,0,0,0.1)';
+      };
+
+      // Crear la pestaña/pico con nuevo color
       const pointer = document.createElement('div');
       pointer.style.cssText = `
         width: 0;
         height: 0;
-        border-left: 6px solid transparent;
-        border-right: 6px solid transparent;
-        border-top: 8px solid #374151;
+        border-left: 7px solid transparent;
+        border-right: 7px solid transparent;
+        border-top: 9px solid #E61E4D;
         margin-top: -1px;
+        filter: drop-shadow(0 2px 3px rgba(0,0,0,0.1));
       `;
 
       container.appendChild(homeIcon);
@@ -945,9 +1160,216 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
     };
   }, [map, mapClickMode, onMapClick]);
 
+  // Crear y actualizar heatmap de densidad de seguridad
+  useEffect(() => {
+    if (!map || !window.google?.maps?.visualization?.HeatmapLayer) return;
+
+    // Limpiar heatmap anterior si existe
+    if (heatmapLayer) {
+      heatmapLayer.setMap(null);
+    }
+
+    // Si no se debe mostrar el heatmap, salir
+    if (!showHeatmap) {
+      setHeatmapLayer(null);
+      return;
+    }
+
+    // Filtrar solo lugares activos del país seleccionado
+    const activePlaces = places.filter(p =>
+      p.active !== null &&
+      (!selectedCountry || p.country_code === selectedCountry.country_code)
+    );
+
+    if (activePlaces.length === 0) {
+      setHeatmapLayer(null);
+      return;
+    }
+
+    // Crear puntos ponderados para el heatmap
+    const heatmapData = [];
+
+    activePlaces.forEach(place => {
+      // Determinar el peso basado en el nivel de seguridad
+      // Niveles más seguros (id bajo) = peso positivo (verde)
+      // Niveles menos seguros (id alto) = peso negativo simulado con menos intensidad
+      let weight = 1;
+
+      // Mapeo de safety_level_id a peso
+      // 1 (Seguro) = máximo peso positivo
+      // 2 (Medio) = peso medio-alto
+      // 3 (Regular) = peso medio
+      // 4 (Precaución) = peso bajo
+      // 5 (Inseguro) = peso mínimo
+      switch(place.safety_level_id) {
+        case 1: weight = 5; break;  // Seguro - máxima intensidad verde
+        case 2: weight = 3; break;  // Medio - intensidad media-alta
+        case 3: weight = 2; break;  // Regular - intensidad media
+        case 4: weight = 1; break;  // Precaución - baja intensidad
+        case 5: weight = 0.5; break; // Inseguro - mínima intensidad
+        default: weight = 1;
+      }
+
+      // Agregar puntos del polígono si existe
+      if (place.polygon && Array.isArray(place.polygon)) {
+        place.polygon.forEach(coord => {
+          heatmapData.push({
+            location: new window.google.maps.LatLng(coord[1], coord[0]),
+            weight: weight
+          });
+        });
+      }
+
+      // Agregar punto central del círculo si existe
+      if (place.circle_radius) {
+        heatmapData.push({
+          location: new window.google.maps.LatLng(place.lat, place.lng),
+          weight: weight * 3 // Mayor peso al centro
+        });
+
+        // Agregar puntos alrededor del círculo para mejor cobertura
+        const steps = 12;
+        for (let i = 0; i < steps; i++) {
+          const angle = (i / steps) * 2 * Math.PI;
+          const radius = place.circle_radius;
+          const lat = place.lat + (radius / 111320) * Math.cos(angle);
+          const lng = place.lng + (radius / (111320 * Math.cos(place.lat * Math.PI / 180))) * Math.sin(angle);
+
+          heatmapData.push({
+            location: new window.google.maps.LatLng(lat, lng),
+            weight: weight
+          });
+        }
+      }
+
+      // Si no tiene ni polígono ni círculo, usar punto central
+      if (!place.polygon && !place.circle_radius) {
+        heatmapData.push({
+          location: new window.google.maps.LatLng(place.lat, place.lng),
+          weight: weight
+        });
+      }
+    });
+
+    if (heatmapData.length === 0) {
+      setHeatmapLayer(null);
+      return;
+    }
+
+    // Crear gradiente personalizado (verde = seguro, amarillo = medio, rojo = inseguro)
+    const gradient = [
+      'rgba(0, 255, 255, 0)',
+      'rgba(0, 255, 255, 1)',
+      'rgba(0, 191, 255, 1)',
+      'rgba(0, 127, 255, 1)',
+      'rgba(0, 63, 255, 1)',
+      'rgba(0, 0, 255, 1)',
+      'rgba(0, 0, 223, 1)',
+      'rgba(0, 0, 191, 1)',
+      'rgba(0, 255, 0, 1)',
+      'rgba(63, 255, 0, 1)',
+      'rgba(127, 255, 0, 1)',
+      'rgba(191, 255, 0, 1)',
+      'rgba(255, 255, 0, 1)'
+    ];
+
+    // Crear nueva capa de heatmap
+    const newHeatmapLayer = new window.google.maps.visualization.HeatmapLayer({
+      data: heatmapData,
+      map: map,
+      radius: 40, // Radio de influencia de cada punto
+      opacity: 0.6, // Opacidad general del heatmap
+      gradient: gradient,
+      dissipating: true, // Puntos se disipan gradualmente
+      maxIntensity: 5 // Intensidad máxima (coincide con el peso de zonas seguras)
+    });
+
+    setHeatmapLayer(newHeatmapLayer);
+
+    return () => {
+      if (newHeatmapLayer) {
+        newHeatmapLayer.setMap(null);
+      }
+    };
+  }, [map, places, showHeatmap, selectedCountry]);
+
   return (
     <>
       <div ref={mapRef} className="w-full h-full" />
+
+      {/* Navigation Loading Indicator - Subtle feedback during viewport transitions */}
+      {isNavigating && (
+        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-50 pointer-events-none">
+          <div className="bg-white/95 backdrop-blur-sm rounded-full shadow-2xl px-6 py-4 flex items-center gap-3 border border-gray-200 animate-fadeIn">
+            <div className="relative flex items-center justify-center">
+              <div className="w-8 h-8 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin"></div>
+            </div>
+            <span className="text-sm font-semibold text-gray-700">Navegando...</span>
+          </div>
+        </div>
+      )}
+
+      {/* Zone Tooltip - Contextual information on hover */}
+      {hoveredZone && tooltipPosition && (
+        <ZoneTooltip
+          zone={hoveredZone}
+          position={tooltipPosition}
+          insecurityLevels={insecurityLevels}
+        />
+      )}
+
+      {/* Zoom Indicator - Contextual zoom guidance */}
+      <ZoomIndicator map={map} />
+
+      {/* Map Legend - Safety Levels */}
+      <MapLegend
+        visibleLevels={visibleLevels}
+        onToggleLevel={onToggleLevelVisibility}
+        showHeatmap={showHeatmap}
+        onToggleHeatmap={() => setShowHeatmap(!showHeatmap)}
+      />
+
+      {/* Compare Zones Button - Only show when country is selected and has zones */}
+      {selectedCountry && places.filter(p => p.country_code === selectedCountry.country_code && p.active !== null).length >= 2 && (
+        <button
+          onClick={() => setIsCompareModalOpen(true)}
+          className="absolute top-4 right-4 bg-white rounded-full shadow-xl px-4 py-3 flex items-center gap-2 hover:shadow-2xl transition-all duration-300 hover:scale-105 border border-gray-200 group z-[999]"
+          aria-label="Comparar zonas"
+        >
+          <svg
+            className="w-5 h-5 text-purple-600 group-hover:rotate-12 transition-transform duration-300"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
+            />
+          </svg>
+          <span className="text-sm font-semibold text-gray-700 group-hover:text-purple-600 transition-colors">
+            Comparar
+          </span>
+        </button>
+      )}
+
+      {/* Compare Zones Modal */}
+      <CompareZones
+        isOpen={isCompareModalOpen}
+        onClose={() => setIsCompareModalOpen(false)}
+        zones={places}
+        selectedCountry={selectedCountry}
+      />
+
+      {/* User Location Indicator - Shows user's current position and nearby safety zones */}
+      <UserLocationIndicator
+        map={map}
+        places={places}
+        insecurityLevels={insecurityLevels}
+        selectedCountry={selectedCountry}
+      />
 
       {/* Modal de confirmación para eliminar punto */}
       {vertexToDelete && deleteModalPosition && (
