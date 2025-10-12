@@ -45,6 +45,7 @@ function HomeContent() {
   const [insecurityLevels, setInsecurityLevels] = useState([]);
   const [visibleLevels, setVisibleLevels] = useState({});
   const [countries, setCountries] = useState([]);
+  const [googleMap, setGoogleMap] = useState(null);
 
   // Sync selectedTab with URL on mount and when searchParams change
   useEffect(() => {
@@ -525,6 +526,7 @@ function HomeContent() {
           onGoToPlace={handleGoToPlace}
           placeToDelete={placeToDelete}
           highlightedPlace={highlightedPlace}
+          map={googleMap}
           onAddPlace={async (placeData) => {
             try {
               // Crear registro en Supabase inmediatamente
@@ -666,6 +668,7 @@ function HomeContent() {
           visibleLevels={visibleLevels}
           onToggleLevelVisibility={handleToggleLevelVisibility}
           selectedCountry={selectedCountry}
+          onMapReady={setGoogleMap}
         />
 
         {/* Quick Stats Widget */}

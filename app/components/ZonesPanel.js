@@ -3,11 +3,12 @@
 import { useRef, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import ReactMarkdown from 'react-markdown';
-import { BiDollar, BiShield, BiMapAlt, BiInfoCircle, BiMapPin, BiCircle, BiError, BiErrorCircle, BiXCircle, BiShieldAlt2 } from 'react-icons/bi';
+import { BiDollar, BiShield, BiMapAlt, BiInfoCircle, BiMapPin, BiCircle, BiError, BiErrorCircle, BiXCircle, BiShieldAlt2, BiRightArrowCircle } from 'react-icons/bi';
 import { HiOutlineSparkles } from 'react-icons/hi';
 import { useAuthStore } from '../store/authStore';
 import { cleanPostalCode } from '../utils/postalCodeRegex';
 import ContextBar from './ContextBar';
+import SafeRoutePlanner from './SafeRoutePlanner';
 
 export default function ZonesPanel({
   selectedCountry,
@@ -30,7 +31,8 @@ export default function ZonesPanel({
   setEditingCircleId,
   editingRadius,
   setEditingRadius,
-  onUpdatePlace
+  onUpdatePlace,
+  map
 }) {
   const router = useRouter();
   const { isAuthenticated } = useAuthStore();
@@ -53,6 +55,7 @@ export default function ZonesPanel({
   const [tempTitle, setTempTitle] = useState('');
   const [activeFilters, setActiveFilters] = useState(new Set());
   const [showFilters, setShowFilters] = useState(false);
+  const [showRoutePlanner, setShowRoutePlanner] = useState(false);
   const inputRef = useRef(null);
   const autocompleteRef = useRef(null);
   const cardRefs = useRef({});
@@ -496,6 +499,20 @@ export default function ZonesPanel({
             )}
           </div>
         )}
+      </div>
+
+      {/* Safe Route Planner Button */}
+      <div className="px-4 py-3 border-b border-gray-200 bg-gradient-to-r from-indigo-50 to-purple-50">
+        <button
+          onClick={() => setShowRoutePlanner(true)}
+          className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-semibold rounded-lg transition-all duration-200 shadow-md hover:shadow-lg transform hover:scale-[1.02]"
+        >
+          <BiRightArrowCircle className="text-xl" />
+          <span className="text-sm">Planificar Ruta Segura</span>
+        </button>
+        <p className="text-xs text-gray-600 text-center mt-2">
+          Verifica si tu ruta cruza zonas seguras
+        </p>
       </div>
 
       <div ref={scrollContainerRef} className="flex-1 overflow-y-auto p-3 space-y-3">
@@ -1256,6 +1273,15 @@ export default function ZonesPanel({
           </div>
         </div>
       )}
+
+      {/* Safe Route Planner Modal */}
+      <SafeRoutePlanner
+        isOpen={showRoutePlanner}
+        onClose={() => setShowRoutePlanner(false)}
+        map={map}
+        places={places}
+        selectedCountry={selectedCountry}
+      />
     </div>
   );
 }

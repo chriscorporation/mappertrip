@@ -10,7 +10,7 @@ import UserLocationIndicator from './UserLocationIndicator';
 import MapThemeSelector, { MAP_THEMES } from './MapThemeSelector';
 import MapNavigationControls from './MapNavigationControls';
 
-export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocation, onSavePolygon, onPolygonClick, onBoundsChanged, coworkingPlaces, instagramablePlaces, mapClickMode, onMapClick, highlightedPlace, pendingCircle, circleRadius, editingCircleId, editingRadius, visibleLevels, onToggleLevelVisibility, selectedCountry }) {
+export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocation, onSavePolygon, onPolygonClick, onBoundsChanged, coworkingPlaces, instagramablePlaces, mapClickMode, onMapClick, highlightedPlace, pendingCircle, circleRadius, editingCircleId, editingRadius, visibleLevels, onToggleLevelVisibility, selectedCountry, onMapReady }) {
   const mapRef = useRef(null);
   const [map, setMap] = useState(null);
   const [marker, setMarker] = useState(null);
@@ -36,6 +36,13 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
   const [colorPalette, setColorPalette] = useState(null);
   const [isNavigating, setIsNavigating] = useState(false);
   const [mapTheme, setMapTheme] = useState('standard');
+
+  // Notificar cuando el mapa esté listo
+  useEffect(() => {
+    if (map && onMapReady) {
+      onMapReady(map);
+    }
+  }, [map, onMapReady]);
 
   // Función para resetear la vista del país seleccionado
   const handleResetView = () => {
