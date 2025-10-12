@@ -8,6 +8,7 @@ import ZoneTooltip from './ZoneTooltip';
 import CompareZones from './CompareZones';
 import UserLocationIndicator from './UserLocationIndicator';
 import MapThemeSelector, { MAP_THEMES } from './MapThemeSelector';
+import MapNavigationControls from './MapNavigationControls';
 
 export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocation, onSavePolygon, onPolygonClick, onBoundsChanged, coworkingPlaces, instagramablePlaces, mapClickMode, onMapClick, highlightedPlace, pendingCircle, circleRadius, editingCircleId, editingRadius, visibleLevels, onToggleLevelVisibility, selectedCountry }) {
   const mapRef = useRef(null);
@@ -35,6 +36,39 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
   const [colorPalette, setColorPalette] = useState(null);
   const [isNavigating, setIsNavigating] = useState(false);
   const [mapTheme, setMapTheme] = useState('standard');
+
+  // Función para resetear la vista del país seleccionado
+  const handleResetView = () => {
+    if (!map || !selectedCountry) return;
+
+    const countryPlaces = places.filter(p =>
+      p.country_code === selectedCountry.country_code && p.active !== null
+    );
+
+    if (countryPlaces.length === 0) return;
+
+    setIsNavigating(true);
+
+    const bounds = new window.google.maps.LatLngBounds();
+
+    countryPlaces.forEach(place => {
+      bounds.extend({ lat: place.lat, lng: place.lng });
+
+      // Extender con el polígono si existe
+      if (place.polygon && place.polygon.length > 0) {
+        place.polygon.forEach(coord => {
+          bounds.extend({ lat: coord.lat, lng: coord.lng });
+        });
+      }
+    });
+
+    const padding = { top: 80, right: 80, bottom: 80, left: 120 };
+    map.fitBounds(bounds, padding);
+
+    setTimeout(() => {
+      setIsNavigating(false);
+    }, 800);
+  };
 
   // Cargar niveles de inseguridad para tooltips
   useEffect(() => {
@@ -1266,6 +1300,14 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
           setMapTheme(theme);
           localStorage.setItem('mapTheme', theme);
         }}
+      />
+
+      {/* Map Navigation Controls - Quick access to map controls */}
+      <MapNavigationControls
+        map={map}
+        selectedCountry={selectedCountry}
+        places={places}
+        onResetView={handleResetView}
       />
 
       {/* Map Legend - Safety Levels */}

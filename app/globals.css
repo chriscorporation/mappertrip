@@ -89,3 +89,19 @@ body {
 .animate-shrink {
   animation: shrink linear;
 }
+
+/* Slide in from left animation for navigation controls */
+@keyframes slideInLeft {
+  from {
+    opacity: 0;
+    transform: translateX(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.animate-slideInLeft {
+  animation: slideInLeft 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
