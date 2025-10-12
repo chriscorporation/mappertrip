@@ -1,11 +1,13 @@
 'use client';
 
 import { useRef, useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import ReactMarkdown from 'react-markdown';
 import { BiDollar, BiShield, BiMapAlt, BiInfoCircle, BiMapPin, BiCircle, BiError, BiErrorCircle, BiXCircle, BiShieldAlt2 } from 'react-icons/bi';
 import { HiOutlineSparkles } from 'react-icons/hi';
 import { useAuthStore } from '../store/authStore';
 import { cleanPostalCode } from '../utils/postalCodeRegex';
+import ContextBar from './ContextBar';
 
 export default function ZonesPanel({
   selectedCountry,
@@ -30,6 +32,7 @@ export default function ZonesPanel({
   setEditingRadius,
   onUpdatePlace
 }) {
+  const router = useRouter();
   const { isAuthenticated } = useAuthStore();
   const isAdminMode = isAuthenticated;
   const [address, setAddress] = useState('');
@@ -313,10 +316,12 @@ export default function ZonesPanel({
   return (
     <div className="flex">
     <div className="w-80 bg-white border-r border-gray-300 flex flex-col">
-      <div className="p-4 border-b border-gray-200">
-        <h2 className="text-xl font-bold">Zones</h2>
-        <p className="text-xs text-gray-500 mt-1">{selectedCountry.name}</p>
-      </div>
+      {/* Context Bar with Breadcrumb Navigation */}
+      <ContextBar
+        selectedCountry={selectedCountry}
+        zoneCount={countryPlaces.length}
+        onBackToCountries={() => router.push('/?tab=countries')}
+      />
 
       {isAdminMode && (
         <div className="p-4 border-b border-gray-200">
@@ -469,19 +474,42 @@ export default function ZonesPanel({
             No hay zonas creadas para {selectedCountry.name}
           </p>
         ) : (
-          countryPlaces.map(place => (
+          countryPlaces.map(place => {
+            // Obtener el nivel de seguridad actual para las microinteracciones
+            const currentLevel = insecurityLevels.find(l => l.id === (place.safety_level_id ?? 0));
+            const isHighlighted = highlightedPlace === place.id;
+
+            return (
             <div
               key={place.id}
               ref={el => cardRefs.current[place.id] = el}
-              className={`p-3 bg-gradient-to-br from-white to-gray-50 rounded-xl transition-all duration-300 ease-out transform ${
-                hoverEnabled ? 'cursor-pointer hover:shadow-lg hover:-translate-y-0.5 hover:from-blue-50 hover:to-cyan-50' : ''
+              className={`relative p-3 bg-gradient-to-br from-white to-gray-50 rounded-xl transition-all duration-300 ease-out transform overflow-hidden ${
+                hoverEnabled ? 'cursor-pointer hover:shadow-xl hover:-translate-y-1 hover:from-blue-50 hover:to-cyan-50' : ''
               } ${
-                highlightedPlace === place.id
-                  ? 'border-2 border-blue-400 shadow-md scale-[1.02]'
+                isHighlighted
+                  ? 'border-2 border-blue-400 shadow-xl scale-[1.03] animate-pulse-subtle'
                   : 'border border-gray-200'
               }`}
+              style={{
+                // Borde izquierdo dinámico según el nivel de seguridad
+                borderLeft: currentLevel ? `4px solid ${currentLevel.color}` : '4px solid #d1d5db',
+                // Gradiente de fondo sutil basado en el nivel de seguridad
+                background: isHighlighted
+                  ? `linear-gradient(135deg, rgba(59, 130, 246, 0.05) 0%, rgba(6, 182, 212, 0.05) 100%)`
+                  : `linear-gradient(135deg, rgba(255, 255, 255, 1) 0%, rgba(249, 250, 251, 1) 100%)`
+              }}
               onMouseEnter={() => hoverEnabled && onGoToPlace(place)}
             >
+              {/* Indicador de pulso sutil cuando está highlighted */}
+              {isHighlighted && (
+                <div
+                  className="absolute top-0 left-0 w-full h-1 animate-shimmer"
+                  style={{
+                    background: `linear-gradient(90deg, transparent, ${currentLevel?.color || '#60a5fa'}, transparent)`,
+                    backgroundSize: '200% 100%'
+                  }}
+                />
+              )}
               <div className="mb-2">
                 <div className="flex items-start justify-between mb-2">
                   {editingTitleId === place.id ? (
@@ -847,7 +875,8 @@ export default function ZonesPanel({
                 </div>
               )}
             </div>
-          ))
+            );
+          })
         )}
       </div>
 

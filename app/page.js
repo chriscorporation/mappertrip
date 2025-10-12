@@ -10,8 +10,12 @@ import AirbnbPanel from './components/AirbnbPanel';
 import CoWorkingPanel from './components/CoWorkingPanel';
 import InstagramablePlacesPanel from './components/InstagramablePlacesPanel';
 import Header from './components/Header';
+import QuickStats from './components/QuickStats';
+import MiniMap from './components/MiniMap';
+import StickyBreadcrumb from './components/StickyBreadcrumb';
 import { useAuthStore } from './store/authStore';
 import { useAppStore } from './store/appStore';
+import { useToast } from './components/ToastProvider';
 
 // Home page component with tab-based navigation for countries, zones, airbnb, coworking, and instagramable places
 function HomeContent() {
@@ -19,6 +23,7 @@ function HomeContent() {
   const searchParams = useSearchParams();
   const { isAuthenticated } = useAuthStore();
   const { selectedCountry, setSelectedCountry, _hasHydrated, initialZoomDone, setInitialZoomDone } = useAppStore();
+  const toast = useToast();
   const isAdminMode = isAuthenticated;
 
   const [airbnbLocation, setAirbnbLocation] = useState(null);
@@ -38,6 +43,8 @@ function HomeContent() {
   const [editingCircleId, setEditingCircleId] = useState(null);
   const [editingRadius, setEditingRadius] = useState(1000);
   const [insecurityLevels, setInsecurityLevels] = useState([]);
+  const [visibleLevels, setVisibleLevels] = useState({});
+  const [countries, setCountries] = useState([]);
 
   // Sync selectedTab with URL on mount and when searchParams change
   useEffect(() => {
@@ -151,6 +158,7 @@ function HomeContent() {
         if (!response.ok) {
           const error = await response.json();
           console.error('Error guardando polígono:', error);
+          toast.error('Error al guardar el polígono');
           return;
         }
 
@@ -160,8 +168,11 @@ function HomeContent() {
         setPlaces(prev => prev.map(p =>
           p.id === place.id ? { ...savedPlace, isDrawing: false } : p
         ));
+
+        toast.success('Polígono guardado correctamente');
       } catch (error) {
         console.error('Error:', error);
+        toast.error('Error al guardar el polígono');
       }
     }
   };
@@ -177,8 +188,10 @@ function HomeContent() {
     // Solo actualizar estado local si la eliminación en Supabase fue exitosa
     if (response.ok) {
       setPlaces(prev => prev.filter(p => p.id !== placeToDelete));
+      toast.success('Zona eliminada correctamente');
     } else {
       console.error('Error al eliminar zona de Supabase');
+      toast.error('Error al eliminar la zona');
     }
 
     setPlaceToDelete(null);
@@ -228,6 +241,13 @@ function HomeContent() {
     setPlaces(prev => prev.map(p =>
       p.id === placeId ? { ...p, ...updates } : p
     ));
+  };
+
+  const handleToggleLevelVisibility = (levelId) => {
+    setVisibleLevels(prev => ({
+      ...prev,
+      [levelId]: !prev[levelId]
+    }));
   };
 
   // Cargar lugares, airbnbs y coworking places desde Supabase al iniciar
@@ -305,9 +325,27 @@ function HomeContent() {
         const levels = await response.json();
         if (isMounted && levels) {
           setInsecurityLevels(levels);
+          // Inicializar todos los niveles como visibles
+          const initialVisibleLevels = {};
+          levels.forEach(level => {
+            initialVisibleLevels[level.id] = true;
+          });
+          setVisibleLevels(initialVisibleLevels);
         }
       } catch (error) {
         console.error('Error loading insecurity levels:', error);
+      }
+    };
+
+    const loadCountries = async () => {
+      try {
+        const response = await fetch('/api/countries');
+        const data = await response.json();
+        if (isMounted && data) {
+          setCountries(data);
+        }
+      } catch (error) {
+        console.error('Error loading countries:', error);
       }
     };
 
@@ -316,6 +354,7 @@ function HomeContent() {
     loadCoworkingPlaces();
     loadInstagramablePlaces();
     loadInsecurityLevels();
+    loadCountries();
 
     return () => {
       isMounted = false;
@@ -373,18 +412,28 @@ function HomeContent() {
         const savedPlace = await response.json();
         setCoworkingPlaces(prev => [savedPlace, ...prev]);
         setSelectedPlace(savedPlace);
+        toast.success('Espacio de coworking añadido');
+      } else {
+        toast.error('Error al añadir el espacio de coworking');
       }
     } catch (error) {
       console.error('Error adding coworking place:', error);
+      toast.error('Error al añadir el espacio de coworking');
     }
   };
 
   const handleDeleteCoworkingPlace = async (placeId) => {
     try {
-      await fetch(`/api/coworking?id=${placeId}`, { method: 'DELETE' });
-      setCoworkingPlaces(prev => prev.filter(p => p.id !== placeId));
+      const response = await fetch(`/api/coworking?id=${placeId}`, { method: 'DELETE' });
+      if (response.ok) {
+        setCoworkingPlaces(prev => prev.filter(p => p.id !== placeId));
+        toast.success('Espacio de coworking eliminado');
+      } else {
+        toast.error('Error al eliminar el espacio de coworking');
+      }
     } catch (error) {
       console.error('Error deleting coworking place:', error);
+      toast.error('Error al eliminar el espacio de coworking');
     }
   };
 
@@ -400,25 +449,51 @@ function HomeContent() {
         const savedPlace = await response.json();
         setInstagramablePlaces(prev => [savedPlace, ...prev]);
         setSelectedPlace(savedPlace);
+        toast.success('Lugar instagrameable añadido');
+      } else {
+        toast.error('Error al añadir el lugar instagrameable');
       }
     } catch (error) {
       console.error('Error adding instagramable place:', error);
+      toast.error('Error al añadir el lugar instagrameable');
     }
   };
 
   const handleDeleteInstagramablePlace = async (placeId) => {
     try {
-      await fetch(`/api/instagramable?id=${placeId}`, { method: 'DELETE' });
-      setInstagramablePlaces(prev => prev.filter(p => p.id !== placeId));
+      const response = await fetch(`/api/instagramable?id=${placeId}`, { method: 'DELETE' });
+      if (response.ok) {
+        setInstagramablePlaces(prev => prev.filter(p => p.id !== placeId));
+        toast.success('Lugar instagrameable eliminado');
+      } else {
+        toast.error('Error al eliminar el lugar instagrameable');
+      }
     } catch (error) {
       console.error('Error deleting instagramable place:', error);
+      toast.error('Error al eliminar el lugar instagrameable');
     }
   };
 
   return (
     <div className="flex flex-col h-screen">
       {/* Header */}
-      <Header isAdminMode={isAdminMode} />
+      <Header
+        isAdminMode={isAdminMode}
+        places={places}
+        countries={countries}
+        insecurityLevels={insecurityLevels}
+        selectedCountry={selectedCountry}
+        onSelectCountry={handleSelectCountry}
+        onGoToPlace={handleGoToPlace}
+      />
+
+      {/* Sticky Breadcrumb Navigation */}
+      <StickyBreadcrumb
+        selectedCountry={selectedCountry}
+        selectedTab={selectedTab}
+        places={places}
+        highlightedPlace={highlightedPlace}
+      />
 
       {/* Contenido principal */}
       <div className="flex flex-1 overflow-hidden">
@@ -476,6 +551,7 @@ function HomeContent() {
 
               if (!response.ok) {
                 console.error('Error creando zona');
+                toast.error('Error al crear la zona');
                 return;
               }
 
@@ -496,8 +572,11 @@ function HomeContent() {
                 }, 500);
               }
 
+              toast.success('Zona creada correctamente');
+
               // Iniciar proceso de Perplexity en background
               try {
+                toast.info('Generando información de la zona con IA...');
                 await fetch('/api/perplexity-populate', {
                   method: 'POST',
                   headers: { 'Content-Type': 'application/json' },
@@ -510,6 +589,7 @@ function HomeContent() {
               }
             } catch (error) {
               console.error('Error:', error);
+              toast.error('Error al crear la zona');
             }
           }}
           onMapClickModeChange={(isActive, callback) => {
@@ -558,7 +638,7 @@ function HomeContent() {
       )}
 
       {/* Panel derecho - Mapa de Google */}
-      <div className="flex-1">
+      <div className="flex-1 relative">
         <GoogleMap
           selectedPlace={selectedPlace}
           places={places}
@@ -583,6 +663,26 @@ function HomeContent() {
           circleRadius={circleRadius}
           editingCircleId={editingCircleId}
           editingRadius={editingRadius}
+          visibleLevels={visibleLevels}
+          onToggleLevelVisibility={handleToggleLevelVisibility}
+          selectedCountry={selectedCountry}
+        />
+
+        {/* Quick Stats Widget */}
+        <QuickStats
+          places={places}
+          selectedCountry={selectedCountry}
+          airbnbs={airbnbs}
+          coworkingPlaces={coworkingPlaces}
+          instagramablePlaces={instagramablePlaces}
+        />
+
+        {/* Mini Map Navigation */}
+        <MiniMap
+          selectedCountry={selectedCountry}
+          places={places}
+          onNavigateToPlace={handleGoToPlace}
+          currentPlace={selectedPlace}
         />
       </div>
       </div>
