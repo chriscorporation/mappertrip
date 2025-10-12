@@ -51,6 +51,8 @@ export default function ZonesPanel({
   const [pendingPlaceName, setPendingPlaceName] = useState('');
   const [editingTitleId, setEditingTitleId] = useState(null);
   const [tempTitle, setTempTitle] = useState('');
+  const [activeFilters, setActiveFilters] = useState(new Set());
+  const [showFilters, setShowFilters] = useState(false);
   const inputRef = useRef(null);
   const autocompleteRef = useRef(null);
   const cardRefs = useRef({});
@@ -298,6 +300,24 @@ export default function ZonesPanel({
     }
   };
 
+  // Función para alternar filtros
+  const toggleFilter = (levelId) => {
+    setActiveFilters(prev => {
+      const newFilters = new Set(prev);
+      if (newFilters.has(levelId)) {
+        newFilters.delete(levelId);
+      } else {
+        newFilters.add(levelId);
+      }
+      return newFilters;
+    });
+  };
+
+  // Función para limpiar todos los filtros
+  const clearAllFilters = () => {
+    setActiveFilters(new Set());
+  };
+
   if (!selectedCountry) {
     return (
       <div className="w-80 bg-white border-r border-gray-300 p-4">
@@ -310,7 +330,14 @@ export default function ZonesPanel({
   const countryPlaces = places.filter(p => {
     if (!p || !selectedCountry) return false;
     // Mostrar todas EXCEPTO las que tienen active = null (no matchearon con geo_json)
-    return p.country_code === selectedCountry.country_code && p.active !== null;
+    const matchesCountry = p.country_code === selectedCountry.country_code && p.active !== null;
+
+    // Si hay filtros activos, aplicarlos
+    if (activeFilters.size > 0) {
+      return matchesCountry && activeFilters.has(p.safety_level_id);
+    }
+
+    return matchesCountry;
   });
 
   return (
@@ -381,6 +408,94 @@ export default function ZonesPanel({
           />
           <span>Activar roll over</span>
         </label>
+      </div>
+
+      {/* Quick Filters Section */}
+      <div className="px-4 py-3 border-b border-gray-200 bg-white">
+        <button
+          onClick={() => setShowFilters(!showFilters)}
+          className="flex items-center justify-between w-full text-left group"
+        >
+          <div className="flex items-center gap-2">
+            <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+            </svg>
+            <span className="text-xs font-semibold text-gray-700">
+              Filtros rápidos
+            </span>
+            {activeFilters.size > 0 && (
+              <span className="bg-blue-100 text-blue-700 text-xs px-2 py-0.5 rounded-full font-medium">
+                {activeFilters.size}
+              </span>
+            )}
+          </div>
+          <svg
+            className={`w-4 h-4 text-gray-500 transition-transform duration-200 ${showFilters ? 'rotate-180' : ''}`}
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+          </svg>
+        </button>
+
+        {showFilters && (
+          <div className="mt-3 space-y-2 animate-fadeIn">
+            {insecurityLevels.map((level) => {
+              const isActive = activeFilters.has(level.id);
+              const count = places.filter(p =>
+                p.country_code === selectedCountry?.country_code &&
+                p.active !== null &&
+                p.safety_level_id === level.id
+              ).length;
+
+              if (count === 0) return null;
+
+              return (
+                <button
+                  key={level.id}
+                  onClick={() => toggleFilter(level.id)}
+                  className={`
+                    w-full flex items-center justify-between px-3 py-2 rounded-lg border-2 transition-all duration-200
+                    ${isActive
+                      ? 'border-blue-500 bg-blue-50 shadow-sm'
+                      : 'border-gray-200 bg-white hover:border-gray-300 hover:shadow-sm'
+                    }
+                  `}
+                >
+                  <div className="flex items-center gap-2">
+                    <div
+                      className="w-3 h-3 rounded-full"
+                      style={{ backgroundColor: level.color }}
+                    />
+                    <span className={`text-xs font-medium ${isActive ? 'text-blue-700' : 'text-gray-700'}`}>
+                      {level.label}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className={`text-xs font-bold ${isActive ? 'text-blue-700' : 'text-gray-500'}`}>
+                      {count}
+                    </span>
+                    {isActive && (
+                      <svg className="w-3 h-3 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                      </svg>
+                    )}
+                  </div>
+                </button>
+              );
+            })}
+
+            {activeFilters.size > 0 && (
+              <button
+                onClick={clearAllFilters}
+                className="w-full mt-2 px-3 py-2 text-xs font-medium text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors duration-200"
+              >
+                Limpiar filtros
+              </button>
+            )}
+          </div>
+        )}
       </div>
 
       <div ref={scrollContainerRef} className="flex-1 overflow-y-auto p-3 space-y-3">
@@ -470,9 +585,25 @@ export default function ZonesPanel({
           </div>
         )}
         {countryPlaces.length === 0 && !pendingPlace ? (
-          <p className="text-gray-500 text-sm text-center mt-4">
-            No hay zonas creadas para {selectedCountry.name}
-          </p>
+          <div className="text-center mt-8">
+            <svg className="w-12 h-12 text-gray-300 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <p className="text-gray-500 text-sm mb-2">
+              {activeFilters.size > 0
+                ? 'No hay zonas con los filtros seleccionados'
+                : `No hay zonas creadas para ${selectedCountry.name}`
+              }
+            </p>
+            {activeFilters.size > 0 && (
+              <button
+                onClick={clearAllFilters}
+                className="text-xs text-blue-600 hover:text-blue-700 font-medium"
+              >
+                Limpiar filtros
+              </button>
+            )}
+          </div>
         ) : (
           countryPlaces.map(place => (
             <div
