@@ -2,7 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 // SVG Icon component for Countries
 const CountriesIcon = ({ className }) => (
@@ -73,6 +73,22 @@ export default function Sidebar({ selectedTab, selectedCountry, isZonesEnabled }
   const router = useRouter();
   const [hoveredTab, setHoveredTab] = useState(null);
   const [rippleEffect, setRippleEffect] = useState(null);
+  const [isCollapsed, setIsCollapsed] = useState(false);
+
+  // Cargar estado de colapso desde localStorage
+  useEffect(() => {
+    const savedState = localStorage.getItem('sidebarCollapsed');
+    if (savedState !== null) {
+      setIsCollapsed(JSON.parse(savedState));
+    }
+  }, []);
+
+  // Guardar estado de colapso en localStorage
+  const toggleCollapse = () => {
+    const newState = !isCollapsed;
+    setIsCollapsed(newState);
+    localStorage.setItem('sidebarCollapsed', JSON.stringify(newState));
+  };
 
   const tabs = [
     {
@@ -130,7 +146,29 @@ export default function Sidebar({ selectedTab, selectedCountry, isZonesEnabled }
   };
 
   return (
-    <div className="w-[100px] bg-gradient-to-b from-gray-50 to-gray-100 border-r border-gray-300 flex flex-col shadow-sm">
+    <div
+      className={`
+        ${isCollapsed ? 'w-[60px]' : 'w-[100px]'}
+        bg-gradient-to-b from-gray-50 to-gray-100 border-r border-gray-300 flex flex-col shadow-sm
+        transition-all duration-300 ease-in-out relative
+      `}
+    >
+      {/* Toggle Button - Floating on the right edge */}
+      <button
+        onClick={toggleCollapse}
+        className="absolute -right-3 top-6 z-50 w-6 h-6 bg-white border border-gray-300 rounded-full shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-110 flex items-center justify-center group"
+        aria-label={isCollapsed ? 'Expandir sidebar' : 'Colapsar sidebar'}
+      >
+        <svg
+          className={`w-3 h-3 text-gray-600 transition-transform duration-300 ${isCollapsed ? 'rotate-180' : ''}`}
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+        </svg>
+      </button>
+
       {tabs.map((tab, index) => {
         const isActive = selectedTab === tab.id;
         const isHovered = hoveredTab === tab.id;
@@ -151,7 +189,7 @@ export default function Sidebar({ selectedTab, selectedCountry, isZonesEnabled }
               }}
               className={`
                 w-full relative overflow-hidden
-                flex flex-col items-center justify-center py-6 px-2 border-b border-gray-200
+                flex flex-col items-center justify-center ${isCollapsed ? 'py-5 px-2' : 'py-6 px-2'} border-b border-gray-200
                 transition-all duration-300 ease-out
                 ${isActive
                   ? 'bg-gradient-to-r from-white via-blue-50 to-white border-l-4 border-l-blue-600 shadow-md'
@@ -174,7 +212,7 @@ export default function Sidebar({ selectedTab, selectedCountry, isZonesEnabled }
 
               {/* Icon with micro-animation */}
               <div className={`
-                relative z-10 mb-1 transition-all duration-300
+                relative z-10 ${isCollapsed ? '' : 'mb-1'} transition-all duration-300
                 ${isActive ? 'scale-110' : ''}
                 ${!tab.disabled && isHovered ? 'scale-125 rotate-6' : ''}
                 ${tab.disabled ? 'opacity-40 grayscale' : ''}
@@ -182,15 +220,17 @@ export default function Sidebar({ selectedTab, selectedCountry, isZonesEnabled }
                 <tab.Icon className="text-2xl" />
               </div>
 
-              {/* Label */}
-              <span className={`
-                relative z-10 text-xs font-medium text-center transition-all duration-300
-                ${isActive ? 'text-blue-700 font-bold' : ''}
-                ${tab.disabled ? 'text-gray-300' : 'text-gray-700'}
-                ${!tab.disabled && isHovered ? 'text-blue-600' : ''}
-              `}>
-                {tab.label}
-              </span>
+              {/* Label - Hidden when collapsed */}
+              {!isCollapsed && (
+                <span className={`
+                  relative z-10 text-xs font-medium text-center transition-all duration-300
+                  ${isActive ? 'text-blue-700 font-bold' : ''}
+                  ${tab.disabled ? 'text-gray-300' : 'text-gray-700'}
+                  ${!tab.disabled && isHovered ? 'text-blue-600' : ''}
+                `}>
+                  {tab.label}
+                </span>
+              )}
 
               {/* Active indicator pulse */}
               {isActive && (
@@ -198,11 +238,11 @@ export default function Sidebar({ selectedTab, selectedCountry, isZonesEnabled }
               )}
             </button>
 
-            {/* Tooltip */}
-            {isHovered && (
+            {/* Tooltip - Always show when collapsed, or on hover when expanded */}
+            {(isCollapsed || isHovered) && (
               <div className="absolute left-full ml-2 top-1/2 -translate-y-1/2 z-50 pointer-events-none animate-fadeIn">
                 <div className="bg-gray-900 text-white text-xs px-3 py-2 rounded-lg shadow-xl whitespace-nowrap">
-                  {tab.tooltip}
+                  {isCollapsed ? tab.label : tab.tooltip}
                   <div className="absolute right-full top-1/2 -translate-y-1/2 border-4 border-transparent border-r-gray-900" />
                 </div>
               </div>

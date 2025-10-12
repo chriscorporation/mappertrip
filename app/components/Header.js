@@ -3,8 +3,9 @@
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '../store/authStore';
+import GlobalSearch from './GlobalSearch';
 
-export default function Header({ isAdminMode }) {
+export default function Header({ isAdminMode, places, countries, insecurityLevels, selectedCountry, onSelectCountry, onGoToPlace }) {
   const router = useRouter();
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [username, setUsername] = useState('');
@@ -55,44 +56,63 @@ export default function Header({ isAdminMode }) {
 
   return (
     <>
-      <header className="bg-white border-b border-gray-300 px-6 py-2 flex justify-between items-center">
+      <header className="bg-gradient-to-r from-blue-50 via-white to-purple-50 backdrop-blur-sm border-b border-gray-200 shadow-sm px-6 py-2 flex justify-between items-center relative">
+        {/* Subtle overlay for depth */}
+        <div className="absolute inset-0 bg-white/40 backdrop-blur-sm"></div>
+
         {/* Logo - siempre visible */}
         <img
           src="/images/logotipo-mapper-trip.png"
           alt="Mapper Trip - Real and secure trips"
           onClick={() => router.push('/')}
-          className="cursor-pointer hover:opacity-80 transition-opacity"
+          className="cursor-pointer hover:scale-105 transition-all duration-300 relative z-10 drop-shadow-sm"
           style={{ height: '50px' }}
         />
 
+        {/* Global Search - visible en desktop */}
+        {!isMobile && places && countries && (
+          <div className="relative z-10">
+            <GlobalSearch
+              places={places}
+              countries={countries}
+              insecurityLevels={insecurityLevels}
+              selectedCountry={selectedCountry}
+              onSelectCountry={onSelectCountry}
+              onGoToPlace={onGoToPlace}
+            />
+          </div>
+        )}
+
         {/* Desktop Menu - solo visible en pantallas grandes */}
         {!isMobile && (
-          <div className="flex items-center gap-6">
+          <div className="flex items-center gap-6 relative z-10">
             {isAdminMode && (
-              <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">Admin</span>
+              <span className="text-xs bg-gradient-to-r from-blue-500 to-blue-600 text-white px-3 py-1 rounded-full shadow-sm font-semibold">
+                Admin
+              </span>
             )}
 
             <button
               onClick={() => router.push('/')}
-              className="text-sm text-gray-600 hover:text-gray-900 transition-colors cursor-pointer"
+              className="text-sm font-medium text-gray-700 hover:text-blue-600 transition-colors cursor-pointer hover:scale-105 transform duration-200"
             >
               Trip
             </button>
             <button
               onClick={() => router.push('/nomadas-digitales')}
-              className="text-sm text-gray-600 hover:text-gray-900 transition-colors cursor-pointer"
+              className="text-sm font-medium text-gray-700 hover:text-blue-600 transition-colors cursor-pointer hover:scale-105 transform duration-200"
             >
               Nómadas digitales
             </button>
             <button
               onClick={() => router.push('/zonas-seguras-para-viajar')}
-              className="text-sm text-gray-600 hover:text-gray-900 transition-colors cursor-pointer"
+              className="text-sm font-medium text-gray-700 hover:text-blue-600 transition-colors cursor-pointer hover:scale-105 transform duration-200"
             >
               Zonas seguras
             </button>
             <button
               onClick={() => router.push('/barrios')}
-              className="text-sm text-gray-600 hover:text-gray-900 transition-colors cursor-pointer"
+              className="text-sm font-medium text-gray-700 hover:text-blue-600 transition-colors cursor-pointer hover:scale-105 transform duration-200"
             >
               Barrios
             </button>
@@ -100,17 +120,17 @@ export default function Header({ isAdminMode }) {
               href="https://vuelahoy.com/"
               target="_blank"
               rel="noopener noreferrer"
-              className="text-sm text-gray-600 hover:text-gray-900 transition-colors cursor-pointer"
+              className="text-sm font-medium text-gray-700 hover:text-blue-600 transition-colors cursor-pointer hover:scale-105 transform duration-200"
             >
               Vuelos
             </a>
 
             {isAuthenticated ? (
               <>
-                <span className="text-sm text-gray-700">{user?.email}</span>
+                <span className="text-sm text-gray-700 font-medium">{user?.email}</span>
                 <button
                   onClick={handleLogout}
-                  className="text-sm text-blue-600 hover:text-blue-800 font-medium hover:underline cursor-pointer"
+                  className="text-sm bg-gradient-to-r from-red-500 to-red-600 text-white px-4 py-1.5 rounded-full font-medium hover:from-red-600 hover:to-red-700 transition-all cursor-pointer shadow-sm hover:shadow-md"
                 >
                   Salir
                 </button>
@@ -118,7 +138,7 @@ export default function Header({ isAdminMode }) {
             ) : (
               <button
                 onClick={() => setShowLoginModal(!showLoginModal)}
-                className="text-sm text-gray-700 hover:text-gray-900 font-medium cursor-pointer"
+                className="text-sm bg-gradient-to-r from-blue-600 to-purple-600 text-white px-4 py-1.5 rounded-full font-medium hover:from-blue-700 hover:to-purple-700 transition-all cursor-pointer shadow-sm hover:shadow-md"
               >
                 Iniciar sesión
               </button>
@@ -130,7 +150,7 @@ export default function Header({ isAdminMode }) {
         {isMobile && (
           <button
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="text-gray-800 cursor-pointer hover:text-gray-600 transition-colors"
+            className="text-gray-800 cursor-pointer hover:text-blue-600 transition-colors relative z-10 hover:scale-110 transform duration-200"
             aria-label="Menu"
           >
             <svg
@@ -152,11 +172,13 @@ export default function Header({ isAdminMode }) {
 
       {/* Mobile Dropdown Menu */}
       {isMobile && mobileMenuOpen && (
-        <div className="absolute top-14 right-0 bg-white border border-gray-300 rounded-lg shadow-xl w-64 z-50">
+        <div className="absolute top-14 right-0 bg-white/95 backdrop-blur-md border border-gray-200 rounded-xl shadow-2xl w-64 z-50 overflow-hidden">
           <div className="py-2">
             {isAdminMode && (
-              <div className="px-4 py-2 border-b border-gray-200">
-                <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">Admin</span>
+              <div className="px-4 py-2 border-b border-gray-100">
+                <span className="text-xs bg-gradient-to-r from-blue-500 to-blue-600 text-white px-3 py-1 rounded-full shadow-sm font-semibold">
+                  Admin
+                </span>
               </div>
             )}
             <button
@@ -164,7 +186,7 @@ export default function Header({ isAdminMode }) {
                 router.push('/');
                 setMobileMenuOpen(false);
               }}
-              className="w-full text-left px-4 py-2 text-sm text-gray-600 hover:bg-gray-50 cursor-pointer"
+              className="w-full text-left px-4 py-3 text-sm font-medium text-gray-700 hover:bg-blue-50 hover:text-blue-600 cursor-pointer transition-all"
             >
               Trip
             </button>
@@ -173,7 +195,7 @@ export default function Header({ isAdminMode }) {
                 router.push('/nomadas-digitales');
                 setMobileMenuOpen(false);
               }}
-              className="w-full text-left px-4 py-2 text-sm text-gray-600 hover:bg-gray-50 cursor-pointer"
+              className="w-full text-left px-4 py-3 text-sm font-medium text-gray-700 hover:bg-blue-50 hover:text-blue-600 cursor-pointer transition-all"
             >
               Nómadas digitales
             </button>
@@ -182,7 +204,7 @@ export default function Header({ isAdminMode }) {
                 router.push('/zonas-seguras-para-viajar');
                 setMobileMenuOpen(false);
               }}
-              className="w-full text-left px-4 py-2 text-sm text-gray-600 hover:bg-gray-50 cursor-pointer"
+              className="w-full text-left px-4 py-3 text-sm font-medium text-gray-700 hover:bg-blue-50 hover:text-blue-600 cursor-pointer transition-all"
             >
               Zonas seguras
             </button>
@@ -191,7 +213,7 @@ export default function Header({ isAdminMode }) {
                 router.push('/barrios');
                 setMobileMenuOpen(false);
               }}
-              className="w-full text-left px-4 py-2 text-sm text-gray-600 hover:bg-gray-50 cursor-pointer"
+              className="w-full text-left px-4 py-3 text-sm font-medium text-gray-700 hover:bg-blue-50 hover:text-blue-600 cursor-pointer transition-all"
             >
               Barrios
             </button>
@@ -200,22 +222,22 @@ export default function Header({ isAdminMode }) {
               target="_blank"
               rel="noopener noreferrer"
               onClick={() => setMobileMenuOpen(false)}
-              className="block px-4 py-2 text-sm text-gray-600 hover:bg-gray-50 cursor-pointer"
+              className="block px-4 py-3 text-sm font-medium text-gray-700 hover:bg-blue-50 hover:text-blue-600 cursor-pointer transition-all"
             >
               Vuelos
             </a>
 
             {isAuthenticated ? (
               <>
-                <div className="px-4 py-2 border-t border-gray-200">
-                  <span className="text-sm text-gray-700">{user?.email}</span>
+                <div className="px-4 py-3 border-t border-gray-100">
+                  <span className="text-sm text-gray-700 font-medium">{user?.email}</span>
                 </div>
                 <button
                   onClick={() => {
                     handleLogout();
                     setMobileMenuOpen(false);
                   }}
-                  className="w-full text-left px-4 py-2 text-sm text-blue-600 hover:bg-gray-50 cursor-pointer"
+                  className="w-full text-left px-4 py-3 text-sm font-medium text-red-600 hover:bg-red-50 cursor-pointer transition-all"
                 >
                   Salir
                 </button>
@@ -226,7 +248,7 @@ export default function Header({ isAdminMode }) {
                   setShowLoginModal(true);
                   setMobileMenuOpen(false);
                 }}
-                className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 cursor-pointer border-t border-gray-200"
+                className="w-full text-left px-4 py-3 text-sm font-medium text-blue-600 hover:bg-blue-50 cursor-pointer border-t border-gray-100 transition-all"
               >
                 Iniciar sesión
               </button>
@@ -238,18 +260,20 @@ export default function Header({ isAdminMode }) {
 
       {/* Modal de login sin overlay */}
       {showLoginModal && (
-        <div className="absolute top-12 right-6 bg-white border border-gray-300 rounded-lg shadow-xl p-6 w-80 z-50">
-          <h2 className="text-lg font-bold mb-4">Iniciar sesión</h2>
+        <div className="absolute top-12 right-6 bg-white/95 backdrop-blur-md border border-gray-200 rounded-2xl shadow-2xl p-6 w-80 z-50 animate-fadeIn">
+          <h2 className="text-lg font-bold mb-4 bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+            Iniciar sesión
+          </h2>
 
           <form onSubmit={handleLogin} className="space-y-4">
             {error && (
-              <div className="bg-red-50 border border-red-200 text-red-700 px-3 py-2 rounded-lg text-sm">
+              <div className="bg-gradient-to-r from-red-50 to-red-100 border border-red-300 text-red-700 px-3 py-2 rounded-xl text-sm">
                 {error}
               </div>
             )}
 
             <div>
-              <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-1">
+              <label htmlFor="username" className="block text-sm font-semibold text-gray-700 mb-1">
                 Usuario
               </label>
               <input
@@ -258,7 +282,7 @@ export default function Header({ isAdminMode }) {
                 type="text"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                 placeholder="Tu usuario"
                 required
                 disabled={isLoading}
@@ -266,7 +290,7 @@ export default function Header({ isAdminMode }) {
             </div>
 
             <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
+              <label htmlFor="password" className="block text-sm font-semibold text-gray-700 mb-1">
                 Contraseña
               </label>
               <input
@@ -274,17 +298,17 @@ export default function Header({ isAdminMode }) {
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                 placeholder="Tu contraseña"
                 required
                 disabled={isLoading}
               />
             </div>
 
-            <div className="flex gap-2">
+            <div className="flex gap-2 pt-2">
               <button
                 type="submit"
-                className="flex-1 px-4 py-2 text-sm text-white bg-blue-600 rounded-lg hover:bg-blue-700 flex items-center justify-center gap-2"
+                className="flex-1 px-4 py-2.5 text-sm font-semibold text-white bg-gradient-to-r from-blue-600 to-purple-600 rounded-xl hover:from-blue-700 hover:to-purple-700 flex items-center justify-center gap-2 shadow-md hover:shadow-lg transition-all"
                 disabled={isLoading}
               >
                 {isLoading ? (
@@ -302,7 +326,7 @@ export default function Header({ isAdminMode }) {
               <button
                 type="button"
                 onClick={handleCloseModal}
-                className="flex-1 px-4 py-2 text-sm text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200"
+                className="flex-1 px-4 py-2.5 text-sm font-semibold text-gray-700 bg-gray-100 rounded-xl hover:bg-gray-200 transition-all"
                 disabled={isLoading}
               >
                 Cancelar
