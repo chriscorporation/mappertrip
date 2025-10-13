@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, useMemo } from 'react';
 import * as turf from '@turf/turf';
 
-export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocation, onSavePolygon, onPolygonClick, onBoundsChanged, coworkingPlaces, instagramablePlaces, mapClickMode, onMapClick, highlightedPlace, pendingCircle, circleRadius, editingCircleId, editingRadius }) {
+export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocation, onSavePolygon, onPolygonClick, onBoundsChanged, coworkingPlaces, instagramablePlaces, mapClickMode, onMapClick, highlightedPlace, pendingCircle, circleRadius, editingCircleId, editingRadius, insecurityLevels }) {
   const mapRef = useRef(null);
   const [map, setMap] = useState(null);
   const [marker, setMarker] = useState(null);
@@ -20,6 +20,18 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
   const boundsChangeTimeoutRef = useRef(null);
   const mapClickListenerRef = useRef(null);
   const tempMarkerRef = useRef(null);
+
+  // Función helper para obtener el color desde insecurity_level_id
+  const getColorFromInsecurityLevel = (place) => {
+    if (!insecurityLevels || insecurityLevels.length === 0) {
+      // Fallback si no hay niveles cargados
+      return '#00C853'; // Verde por defecto
+    }
+
+    const levelId = place.safety_level_id ?? place.insecurity_level_id ?? 0;
+    const level = insecurityLevels.find(l => l.id === levelId);
+    return level?.color || insecurityLevels[0]?.color || '#00C853';
+  };
 
   useEffect(() => {
     const loadGoogleMaps = () => {
@@ -401,12 +413,13 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
         }
 
         // Actualizar opciones del polígono con el color seleccionado
+        const drawingColor = getColorFromInsecurityLevel(drawingPlace);
         drawingManager.setOptions({
           polygonOptions: {
-            fillColor: drawingPlace.color,
+            fillColor: drawingColor,
             fillOpacity: 0.15,
             strokeWeight: 3,
-            strokeColor: drawingPlace.color,
+            strokeColor: drawingColor,
             editable: true,
             draggable: false,
           }
@@ -455,9 +468,10 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
         // Si ya está renderizado, solo actualizar opciones
         if (polygonsRef.current[place.id]) {
           const existingPolygon = polygonsRef.current[place.id];
+          const placeColor = getColorFromInsecurityLevel(place);
           existingPolygon.setOptions({
-            fillColor: place.color || '#FFD700',
-            strokeColor: place.color || '#FFD700',
+            fillColor: placeColor,
+            strokeColor: placeColor,
           });
           return;
         }
@@ -465,40 +479,48 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
         // Si no está renderizado, crearlo
         let coordinates;
 
-        try {
-          // Crear polígono de Turf para aplicar buffer negativo (inset)
-          const turfPolygon = turf.polygon([place.polygon]);
-          // Aplicar buffer negativo de -30 metros (-0.03 km) para crear "aire" entre polígonos
-          const buffered = turf.buffer(turfPolygon, -0.03, { units: 'kilometers' });
+        // Usar coordenadas originales (buffer negativo temporalmente deshabilitado)
+        coordinates = place.polygon.map(coord => ({
+          lat: coord[1],
+          lng: coord[0]
+        }));
 
-          if (buffered && buffered.geometry && buffered.geometry.coordinates && buffered.geometry.coordinates[0]) {
-            // Usar coordenadas con buffer negativo aplicado
-            coordinates = buffered.geometry.coordinates[0].map(coord => ({
-              lat: coord[1],
-              lng: coord[0]
-            }));
-          } else {
-            // Fallback: usar coordenadas originales si el buffer falla
-            coordinates = place.polygon.map(coord => ({
-              lat: coord[1],
-              lng: coord[0]
-            }));
-          }
-        } catch (error) {
-          // Si hay error con Turf, usar coordenadas originales
-          console.warn('Error applying buffer to polygon:', error);
-          coordinates = place.polygon.map(coord => ({
-            lat: coord[1],
-            lng: coord[0]
-          }));
-        }
+        // CÓDIGO DE BUFFER NEGATIVO TEMPORALMENTE COMENTADO
+        // try {
+        //   // Crear polígono de Turf para aplicar buffer negativo (inset)
+        //   const turfPolygon = turf.polygon([place.polygon]);
+        //   // Aplicar buffer negativo de -30 metros (-0.03 km) para crear "aire" entre polígonos
+        //   const buffered = turf.buffer(turfPolygon, -0.03, { units: 'kilometers' });
+        //
+        //   if (buffered && buffered.geometry && buffered.geometry.coordinates && buffered.geometry.coordinates[0]) {
+        //     // Usar coordenadas con buffer negativo aplicado
+        //     coordinates = buffered.geometry.coordinates[0].map(coord => ({
+        //       lat: coord[1],
+        //       lng: coord[0]
+        //     }));
+        //   } else {
+        //     // Fallback: usar coordenadas originales si el buffer falla
+        //     coordinates = place.polygon.map(coord => ({
+        //       lat: coord[1],
+        //       lng: coord[0]
+        //     }));
+        //   }
+        // } catch (error) {
+        //   // Si hay error con Turf, usar coordenadas originales
+        //   console.warn('Error applying buffer to polygon:', error);
+        //   coordinates = place.polygon.map(coord => ({
+        //     lat: coord[1],
+        //     lng: coord[0]
+        //   }));
+        // }
 
+        const placeColor = getColorFromInsecurityLevel(place);
         const polygon = new window.google.maps.Polygon({
           paths: coordinates,
-          fillColor: place.color || '#FFD700',
+          fillColor: placeColor,
           fillOpacity: 0.15,
           strokeWeight: 3,
-          strokeColor: place.color || '#FFD700',
+          strokeColor: placeColor,
           editable: false,
           map: map,
         });
@@ -604,11 +626,12 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
 
       const isHighlighted = highlightedPlace === parseInt(placeId);
       const isEditing = place.isDrawing;
+      const placeColor = getColorFromInsecurityLevel(place);
 
       polygon.setOptions({
         strokeWeight: isHighlighted || isEditing ? 5 : 3,
         strokeOpacity: 1,
-        strokeColor: isEditing ? '#8b5cf6' : (isHighlighted ? '#FFEB3B' : (place.color || '#FFD700')),
+        strokeColor: isEditing ? '#8b5cf6' : (isHighlighted ? '#FFEB3B' : placeColor),
         fillOpacity: isHighlighted || isEditing ? 0.25 : 0.15,
         zIndex: isHighlighted ? 1000 : 1,
       });
@@ -647,9 +670,10 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
         // Si ya está renderizado, solo actualizar opciones
         if (circlesRef.current[place.id]) {
           const existingCircle = circlesRef.current[place.id];
+          const placeColor = getColorFromInsecurityLevel(place);
           existingCircle.setOptions({
-            fillColor: place.color || '#8b5cf6',
-            strokeColor: isEditing ? '#8b5cf6' : (isHighlighted ? '#FFEB3B' : (place.color || '#8b5cf6')),
+            fillColor: placeColor,
+            strokeColor: isEditing ? '#8b5cf6' : (isHighlighted ? '#FFEB3B' : placeColor),
             strokeWeight: isHighlighted || isEditing ? 4 : 2,
             fillOpacity: isHighlighted || isEditing ? 0.45 : 0.35,
             radius: radiusToUse,
@@ -658,11 +682,12 @@ export default function GoogleMap({ selectedPlace, places, airbnbs, airbnbLocati
         }
 
         // Si no está renderizado, crearlo
+        const placeColor = getColorFromInsecurityLevel(place);
         const circle = new window.google.maps.Circle({
-          strokeColor: isEditing ? '#8b5cf6' : (isHighlighted ? '#FFEB3B' : (place.color || '#8b5cf6')),
+          strokeColor: isEditing ? '#8b5cf6' : (isHighlighted ? '#FFEB3B' : placeColor),
           strokeOpacity: 0.8,
           strokeWeight: isHighlighted || isEditing ? 4 : 2,
-          fillColor: place.color || '#8b5cf6',
+          fillColor: placeColor,
           fillOpacity: isHighlighted || isEditing ? 0.45 : 0.35,
           map: map,
           center: { lat: place.lat, lng: place.lng },

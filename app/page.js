@@ -185,12 +185,8 @@ function HomeContent() {
   };
 
   const handleColorChange = async (placeId, safety_level_id) => {
-    // Obtener color desde los niveles cargados de la BD
-    const level = insecurityLevels.find(l => l.id === safety_level_id);
-    const color = level?.color || insecurityLevels[0]?.color || '#00C853';
-
     setPlaces(prev => prev.map(p =>
-      p.id === placeId ? { ...p, safety_level_id, color } : p
+      p.id === placeId ? { ...p, safety_level_id } : p
     ));
 
     // Actualizar en Supabase
@@ -206,22 +202,8 @@ function HomeContent() {
 
   const handleGoToPlace = (place) => {
     setSelectedPlace(place);
-  };
-
-  const handleTuristicChange = async (placeId, is_turistic) => {
-    setPlaces(prev => prev.map(p =>
-      p.id === placeId ? { ...p, is_turistic } : p
-    ));
-
-    // Actualizar en Supabase
-    await fetch('/api/places', {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        id: placeId,
-        is_turistic
-      })
-    });
+    // Toggle: si ya está seleccionado, deseleccionar; si no, seleccionar
+    setHighlightedPlace(prev => prev === place.id ? null : place.id);
   };
 
   const handleUpdatePlace = (placeId, updates) => {
@@ -247,11 +229,9 @@ function HomeContent() {
             lng: parseFloat(p.lng),
             placeId: p.place_id,
             polygon: p.polygon,
-            color: p.color,
             safety_level: p.safety_level,
             safety_level_id: p.safety_level_id,
             country_code: p.country_code,
-            is_turistic: p.is_turistic || false,
             circle_radius: p.circle_radius,
             notes: p.notes || [],
             isDrawing: false
@@ -446,7 +426,6 @@ function HomeContent() {
           onStartDrawing={handleStartDrawing}
           onDeletePlace={handleDeletePlace}
           onColorChange={handleColorChange}
-          onTuristicChange={handleTuristicChange}
           onGoToPlace={handleGoToPlace}
           placeToDelete={placeToDelete}
           highlightedPlace={highlightedPlace}
@@ -562,11 +541,12 @@ function HomeContent() {
         <GoogleMap
           selectedPlace={selectedPlace}
           places={places}
-          airbnbs={airbnbs.filter(a => a.country_code === selectedCountry?.country_code)}
+          airbnbs={selectedTab === 'zones' ? [] : airbnbs.filter(a => a.country_code === selectedCountry?.country_code)}
           airbnbLocation={airbnbLocation}
           onSavePolygon={handleSavePolygon}
           onPolygonClick={(placeId) => {
-            setHighlightedPlace(placeId);
+            // Toggle: si ya está seleccionado, deseleccionar; si no, seleccionar
+            setHighlightedPlace(prev => prev === placeId ? null : placeId);
             router.push('/?tab=zones');
           }}
           onBoundsChanged={setMapBounds}
@@ -583,6 +563,7 @@ function HomeContent() {
           circleRadius={circleRadius}
           editingCircleId={editingCircleId}
           editingRadius={editingRadius}
+          insecurityLevels={insecurityLevels}
         />
       </div>
       </div>

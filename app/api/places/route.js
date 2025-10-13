@@ -57,8 +57,6 @@ export async function GET() {
   // Normalizar datos para mantener compatibilidad con el frontend
   const normalizedData = data.map(place => ({
     ...place,
-    // Mantener el color existente o usar el de la relación
-    color: place.insecurity_level?.color_insecurity?.hex_code || place.color,
     // Añadir información adicional del nivel de seguridad
     safety_level: place.insecurity_level?.name,
     safety_level_id: place.insecurity_level?.id,
@@ -84,39 +82,15 @@ export async function POST(request) {
     place_id: body.placeId,
     polygon: body.polygon,
     country_code: body.country_code || 'AR',
-    is_turistic: body.is_turistic || false,
     active: true  // Nuevas zonas activas por defecto
   };
 
-  // Determinar insecurity_level_id basado en el color si viene del frontend antiguo
+  // Determinar insecurity_level_id
   if (body.insecurity_level_id !== undefined) {
     insertData.insecurity_level_id = body.insecurity_level_id;
-  } else if (body.color) {
-    // Mapeo de colores legacy a IDs de nivel de seguridad
-    const colorToLevelMap = {
-      '#00C853': 0, // seguro
-      '#2196F3': 1, // medio
-      '#FF9800': 2, // regular
-      '#FFC107': 3, // precaucion
-      '#F44336': 4, // inseguro
-      '#22c55e': 0, // legacy verde
-      '#eb4034': 4  // legacy rojo
-    };
-    insertData.insecurity_level_id = colorToLevelMap[body.color] || 0;
   } else {
     // Default: seguro
     insertData.insecurity_level_id = 0;
-  }
-
-  // Obtener el color correcto desde la tabla
-  const { data: levelData } = await supabaseRead
-    .from('insecurity_level')
-    .select('color_insecurity(hex_code)')
-    .eq('id', insertData.insecurity_level_id)
-    .single();
-
-  if (levelData) {
-    insertData.color = levelData.color_insecurity.hex_code;
   }
 
   // Agregar circle_radius solo si está definido
@@ -149,31 +123,11 @@ export async function PUT(request) {
   if (body.lng !== undefined) updateData.lng = parseFloat(body.lng);
   if (body.placeId !== undefined) updateData.place_id = body.placeId;
   if (body.polygon !== undefined) updateData.polygon = body.polygon;
-  if (body.is_turistic !== undefined) updateData.is_turistic = body.is_turistic;
   if (body.circle_radius !== undefined) updateData.circle_radius = body.circle_radius;
 
-  // Manejar insecurity_level_id y color
+  // Manejar insecurity_level_id
   if (body.insecurity_level_id !== undefined) {
     updateData.insecurity_level_id = body.insecurity_level_id;
-
-    // Obtener el color correcto desde la tabla
-    const { data: levelData } = await supabaseRead
-      .from('insecurity_level')
-      .select('color_insecurity(hex_code)')
-      .eq('id', body.insecurity_level_id)
-      .single();
-
-    if (levelData) {
-      updateData.color = levelData.color_insecurity.hex_code;
-    }
-  } else if (body.color !== undefined) {
-    // Si viene solo color (legacy), mapear a insecurity_level_id
-    const colorToLevelMap = {
-      '#00C853': 0, '#2196F3': 1, '#FF9800': 2,
-      '#FFC107': 3, '#F44336': 4, '#22c55e': 0, '#eb4034': 4
-    };
-    updateData.insecurity_level_id = colorToLevelMap[body.color] || 0;
-    updateData.color = body.color;
   }
 
   const { data, error } = await supabaseWrite

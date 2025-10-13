@@ -1,8 +1,7 @@
 const { createClient } = require('@supabase/supabase-js');
 const fs = require('fs');
-require('dotenv').config({ path: '.env.local' });
+require('dotenv').config({ path: '../.env.local' });
 
-// Configuración de Supabase
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
@@ -13,8 +12,30 @@ if (!supabaseUrl || !supabaseKey) {
 
 const supabase = createClient(supabaseUrl, supabaseKey);
 
-// Configuración de región
-const REGION = 'ciudad autonoma de buenos aires';
+// Leer argumentos de línea de comandos
+function parseArguments() {
+  const args = process.argv.slice(2);
+  const params = {};
+
+  args.forEach(arg => {
+    const match = arg.match(/^(\w+)=["']?([^"']+)["']?$/);
+    if (match) {
+      params[match[1]] = match[2];
+    }
+  });
+
+  return params;
+}
+
+const cliArgs = parseArguments();
+
+// Validar que venga el argumento file
+if (!cliArgs.file) {
+  console.error('❌ node operations/import-geodata.js file=departamentos-cordoba.json');
+  process.exit(1);
+}
+
+const FILE_NAME = cliArgs.file;
 
 // Función para normalizar coordenadas según el tipo de geometría
 function extractPolygonCoordinates(geometry) {
@@ -28,11 +49,48 @@ function extractPolygonCoordinates(geometry) {
   return null;
 }
 
+// Función para calcular el centroide desde un polígono
+function calculateCentroid(polygon) {
+  if (!polygon || polygon.length === 0) {
+    return null;
+  }
+
+  let totalLat = 0;
+  let totalLng = 0;
+  let count = 0;
+
+  polygon.forEach(coord => {
+    if (Array.isArray(coord) && coord.length >= 2) {
+      // GeoJSON usa [lng, lat]
+      totalLng += coord[0];
+      totalLat += coord[1];
+      count++;
+    }
+  });
+
+  if (count === 0) {
+    return null;
+  }
+
+  return {
+    lat: totalLat / count,
+    lng: totalLng / count
+  };
+}
+
+// Función para capitalizar texto correctamente
+function capitalizeName(text) {
+  return text
+    .split(' ')
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+    .join(' ');
+}
+
 async function testConnection() {
   console.log('🔄 Probando conectividad con Supabase...\n');
 
   const { data, error } = await supabase
-    .from('geo_json')
+    .from('geoplaces')
     .select('count')
     .limit(1);
 
@@ -46,7 +104,7 @@ async function testConnection() {
 
 async function checkExistingIds() {
   const { data, error } = await supabase
-    .from('geo_json')
+    .from('geoplaces')
     .select('id_ref');
 
   if (error) {
@@ -54,15 +112,15 @@ async function checkExistingIds() {
     return new Set();
   }
 
-  return new Set(data.map(item => item.id_ref));
+  return new Set(data.map(item => item.id_ref).filter(id => id !== null));
 }
 
 async function importGeoData() {
   await testConnection();
 
   // Leer archivo GeoJSON
-  console.log('📂 Leyendo archivo departamentos-ciudad_autonoma_de_buenos_aires.json...\n');
-  const geoData = JSON.parse(fs.readFileSync('./geojson/departamentos-ciudad_autonoma_de_buenos_aires.json', 'utf8'));
+  console.log(`📂 Leyendo archivo ${FILE_NAME}...\n`);
+  const geoData = JSON.parse(fs.readFileSync(`../geojson/${FILE_NAME}`, 'utf8'));
 
   const features = geoData.features;
   console.log(`📊 Total de features encontrados: ${features.length}\n`);
@@ -90,20 +148,31 @@ async function importGeoData() {
   for (let i = 0; i < newFeatures.length; i += BATCH_SIZE) {
     const batch = newFeatures.slice(i, i + BATCH_SIZE).map(feature => {
       const polygon = extractPolygonCoordinates(feature.geometry);
+      const centroid = calculateCentroid(polygon);
+
+      if (!centroid) {
+        console.log(`⚠️  Sin polígono válido para feature ${feature.properties.id}`);
+        return null;
+      }
+
+      const departamento = capitalizeName(feature.properties.departamento || '');
+      const cabecera = capitalizeName(feature.properties.cabecera || '');
+      const provincia = capitalizeName(feature.properties.provincia || '');
 
       return {
-        name1: feature.properties.departamento,
-        name2: feature.properties.cabecera,
-        name3: feature.properties.provincia,
-        country_code: 'AR',
+        address: `${cabecera}, ${provincia}`,
         id_ref: feature.properties.id,
+        country_code: 'AR',
+        lat: centroid.lat,
+        lng: centroid.lng,
         polygon: polygon,
-        region: REGION
+        type: 'claude',
+        status: 'PENDING'
       };
-    });
+    }).filter(item => item !== null);
 
     const { data, error } = await supabase
-      .from('geo_json')
+      .from('geoplaces')
       .insert(batch);
 
     if (error) {

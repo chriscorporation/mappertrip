@@ -14,7 +14,6 @@ export default function ZonesPanel({
   onStartDrawing,
   onDeletePlace,
   onColorChange,
-  onTuristicChange,
   onGoToPlace,
   placeToDelete,
   highlightedPlace,
@@ -142,7 +141,6 @@ export default function ZonesPanel({
             // Limpiar el formatted_address eliminando códigos postales según el país
             const cleanAddress = cleanPostalCode(place.formatted_address, selectedCountry.country_code);
 
-            const defaultLevel = insecurityLevels.find(l => l.id === 0) || insecurityLevels[0];
             const placeData = {
               id: Date.now(),
               address: cleanAddress,
@@ -152,7 +150,6 @@ export default function ZonesPanel({
               polygon: null,
               isDrawing: true, // Activar modo de dibujo automáticamente
               insecurity_level_id: 0, // Default: seguro
-              color: defaultLevel?.color || '#00C853',
               country_code: selectedCountry.country_code,
             };
 
@@ -387,7 +384,6 @@ export default function ZonesPanel({
               onChange={(e) => setPendingPlaceName(e.target.value)}
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && pendingPlaceName.trim()) {
-                  const defaultLevel = insecurityLevels.find(l => l.id === 0) || insecurityLevels[0];
                   const placeData = {
                     id: Date.now(),
                     address: pendingPlaceName.trim(),
@@ -397,7 +393,6 @@ export default function ZonesPanel({
                     polygon: null,
                     isDrawing: true, // Activar modo de dibujo automáticamente
                     insecurity_level_id: 0, // Default: seguro
-                    color: defaultLevel?.color || '#00C853',
                     country_code: selectedCountry.country_code,
                   };
                   onAddPlace(placeData);
@@ -423,7 +418,6 @@ export default function ZonesPanel({
               onChange={(e) => setPendingPlaceName(e.target.value)}
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && pendingPlaceName.trim()) {
-                  const medioLevel = insecurityLevels.find(l => l.id === 1) || insecurityLevels[0];
                   const placeData = {
                     id: Date.now(),
                     address: pendingPlaceName.trim(),
@@ -434,7 +428,6 @@ export default function ZonesPanel({
                     circle_radius: circleRadius,
                     isDrawing: false,
                     insecurity_level_id: 1, // Default: medio (azul) para círculos
-                    color: medioLevel?.color || '#2196F3',
                     country_code: selectedCountry.country_code,
                   };
                   onAddPlace(placeData);
@@ -469,7 +462,7 @@ export default function ZonesPanel({
             No hay zonas creadas para {selectedCountry.name}
           </p>
         ) : (
-          countryPlaces.map(place => (
+          countryPlaces.map((place, index) => (
             <div
               key={place.id}
               ref={el => cardRefs.current[place.id] = el}
@@ -502,7 +495,7 @@ export default function ZonesPanel({
                     />
                   ) : (
                     <h3
-                      className="font-semibold text-sm mb-1 cursor-pointer hover:text-blue-600 transition-all duration-200 flex-1 hover:translate-x-1"
+                      className="font-semibold text-sm mb-1 cursor-pointer hover:text-blue-600 transition-all duration-200 flex-1 hover:translate-x-1 flex items-center gap-2"
                       onDoubleClick={(e) => {
                         e.stopPropagation();
                         setEditingTitleId(place.id);
@@ -569,7 +562,10 @@ export default function ZonesPanel({
                     }
                   }}
                     >
-                      {place.address}
+                      <span className="inline-flex items-center justify-center w-5 h-5 bg-gray-400 text-white text-xs font-normal rounded-full flex-shrink-0">
+                        {index + 1}
+                      </span>
+                      <span>{place.address}</span>
                     </h3>
                   )}
                   <a
@@ -734,7 +730,7 @@ export default function ZonesPanel({
                     onChange={(e) => onColorChange(place.id, parseInt(e.target.value))}
                     className="text-xs px-2 py-1 border border-gray-300 rounded cursor-pointer"
                     style={{
-                      color: insecurityLevels.find(l => l.id === (place.safety_level_id ?? 0))?.color || place.color
+                      color: insecurityLevels.find(l => l.id === (place.safety_level_id ?? 0))?.color || '#00C853'
                     }}
                   >
                     {insecurityLevels.map(level => {
@@ -774,17 +770,6 @@ export default function ZonesPanel({
                       </svg>
                     </button>
                   )}
-                  <label
-                    className="flex items-center p-2 rounded hover:bg-gray-100 cursor-pointer"
-                    title="Lugar turístico"
-                  >
-                    <input
-                      type="checkbox"
-                      checked={place.is_turistic || false}
-                      onChange={(e) => onTuristicChange(place.id, e.target.checked)}
-                      className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
-                    />
-                  </label>
                   <button
                     onClick={async () => {
                       setLoadingAI(prev => ({ ...prev, [place.id]: true }));

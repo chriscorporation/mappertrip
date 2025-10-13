@@ -47,12 +47,14 @@ async function processPerplexityData(zone_id, zone, countryName, existing) {
   for (const searchType of searchTypes) {
     // Para orientation, verificamos si ya existe en geoplaces
     if (searchType === 'orientation' && zone.orientation) {
+      console.log(`⏭️  Orientation ya existe (${zone.orientation}), omitiendo llamada a Perplexity`);
       orientationValue = zone.orientation;
       continue;
     }
 
-    // Si el campo ya tiene información, omitir
-    if (searchType !== 'orientation' && existing && existing[searchType]) {
+    // Si el campo ya tiene información (no null y no vacío), omitir
+    if (searchType !== 'orientation' && existing && existing[searchType] !== null && existing[searchType] !== '') {
+      console.log(`⏭️  Campo ${searchType} ya tiene contenido, omitiendo llamada a Perplexity`);
       results[searchType] = existing[searchType];
       continue;
     }
@@ -171,8 +173,11 @@ async function processPerplexityData(zone_id, zone, countryName, existing) {
     console.error('Stack:', error.stack);
   }
 
-  // Actualizar orientation y/o insecurity_level_id en geoplaces
-  const geoplacesUpdate = {};
+  // Actualizar orientation, insecurity_level_id, active y status en geoplaces
+  const geoplacesUpdate = {
+    active: true, // Marcar como activa al finalizar el procesamiento
+    status: 'DONE' // Marcar como completada
+  };
 
   if (orientationValue) {
     geoplacesUpdate.orientation = orientationValue;
@@ -182,24 +187,24 @@ async function processPerplexityData(zone_id, zone, countryName, existing) {
     geoplacesUpdate.insecurity_level_id = insecurityLevelId;
   }
 
-  if (Object.keys(geoplacesUpdate).length > 0) {
-    console.log(`\n--- Actualizando geoplaces con: ${JSON.stringify(geoplacesUpdate)} ---`);
-    try {
-      await supabaseWrite
-        .from('geoplaces')
-        .update(geoplacesUpdate)
-        .eq('id', zone_id);
+  console.log(`\n--- Actualizando geoplaces con: ${JSON.stringify(geoplacesUpdate)} ---`);
+  try {
+    await supabaseWrite
+      .from('geoplaces')
+      .update(geoplacesUpdate)
+      .eq('id', zone_id);
 
-      if (orientationValue) {
-        console.log(`✅ Orientation guardada: ${orientationValue}`);
-      }
-      if (insecurityLevelId !== null) {
-        console.log(`✅ Nivel de seguridad actualizado: ID ${insecurityLevelId}`);
-      }
-    } catch (error) {
-      console.error('❌ Error updating geoplaces:', error.message);
-      console.error('Stack:', error.stack);
+    if (orientationValue) {
+      console.log(`✅ Orientation guardada: ${orientationValue}`);
     }
+    if (insecurityLevelId !== null) {
+      console.log(`✅ Nivel de seguridad actualizado: ID ${insecurityLevelId}`);
+    }
+    console.log(`✅ Zona marcada como activa (active: true)`);
+    console.log(`✅ Status actualizado a DONE`);
+  } catch (error) {
+    console.error('❌ Error updating geoplaces:', error.message);
+    console.error('Stack:', error.stack);
   }
 
   console.log(`\n=== Procesamiento completado para zona ${zone_id} ===\n`);

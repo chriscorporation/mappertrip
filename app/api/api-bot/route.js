@@ -129,10 +129,8 @@ export async function POST(request) {
           lng: parseFloat(lng),
           circle_radius: radiusMeters,
           insecurity_level_id: levelData.id,
-          color: levelData.color_insecurity.hex_code, // Mantener por compatibilidad
           country_code: country_code,
-          type: 'external',
-          is_turistic: false
+          type: 'external'
         };
         break;
 
