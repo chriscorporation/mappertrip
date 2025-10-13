@@ -1,74 +1,75 @@
-name: Claude Bot Automation
-
-on:
-  issues:
-    types: [opened, edited, reopened]
-  issue_comment:
-    types: [created]
-
-jobs:
-  claude-job:
-    # Solo ejecutar para issue con título "Improvements" cuando se menciona @claude
-    if: |
-      (github.event_name == 'issues' && github.event.issue.title == 'Improvements') ||
-      (github.event_name == 'issue_comment' && github.event.issue.title == 'Improvements' && contains(github.event.comment.body, '@claude'))
-
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-
-    permissions:
-      contents: write
-      pull-requests: write
-      issues: write
-      id-token: write
-      actions: read  # Required for Claude to read CI results
-
-    steps:
-      - name: Checkout claude_bot branch
-        uses: actions/checkout@v4
-        with:
-          ref: claude_bot
-          fetch-depth: 0
-
-      - name: Run Claude Code
-        uses: anthropics/claude-code-action@v1
-        id: claude
-        with:
-          # Trigger cuando se menciona @claude en el issue
-          trigger_phrase: "@claude"
-
-          # Autenticación con OAuth token de Claude Max
-          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
-
-          # Permitir todas las herramientas necesarias para crear PRs
-          claude_args: |
-            --allowedTools Bash,Edit,Write,Read
-
-          # Prompt personalizado para el bot
-          prompt: |
-            ISSUE: #${{ github.event.issue.number }} - ${{ github.event.issue.title }}
-            REQUEST: ${{ github.event.issue.body }}${{ github.event.comment.body }}
-
-            ROLE: Senior engineer making incremental improvements. Read GOAL.md first - align ALL changes with project mission.
-
-            APPROACH:
-            - Make proactive decisions based on context
-            - Prioritize small, focused improvements
-            - Ensure backward compatibility
-
-            WORKFLOW (MANDATORY):
-            1. Read GOAL.md and analyze request
-            2. Create branch: feature/{descriptive-name}
-            3. Implement changes with clear commits
-            4. Run build
-            5. Fix any errors and commit fixes
-            6. Push branch to remote
-            7. Create PR to current base branch (check with git)
-            8. Comment on issue with PR link and summary
-            9. Close issue: gh issue close ${{ github.event.issue.number }}
-
-            CRITICAL:
-            - Match language of original issue (ES/EN)
-            - Never skip build verification
-            - Always create PR, never direct commits
-            - MUST close issue after PR creation
+# TEMPORALMENTE DESACTIVADO
+# name: Claude Bot Automation
+#
+# on:
+#   issues:
+#     types: [opened, edited, reopened]
+#   issue_comment:
+#     types: [created]
+#
+# jobs:
+#   claude-job:
+#     # Solo ejecutar para issue con título "Improvements" cuando se menciona @claude
+#     if: |
+#       (github.event_name == 'issues' && github.event.issue.title == 'Improvements') ||
+#       (github.event_name == 'issue_comment' && github.event.issue.title == 'Improvements' && contains(github.event.comment.body, '@claude'))
+#
+#     runs-on: ubuntu-latest
+#     timeout-minutes: 30
+#
+#     permissions:
+#       contents: write
+#       pull-requests: write
+#       issues: write
+#       id-token: write
+#       actions: read  # Required for Claude to read CI results
+#
+#     steps:
+#       - name: Checkout claude_bot branch
+#         uses: actions/checkout@v4
+#         with:
+#           ref: claude_bot
+#           fetch-depth: 0
+#
+#       - name: Run Claude Code
+#         uses: anthropics/claude-code-action@v1
+#         id: claude
+#         with:
+#           # Trigger cuando se menciona @claude en el issue
+#           trigger_phrase: "@claude"
+#
+#           # Autenticación con OAuth token de Claude Max
+#           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+#
+#           # Permitir todas las herramientas necesarias para crear PRs
+#           claude_args: |
+#             --allowedTools Bash,Edit,Write,Read
+#
+#           # Prompt personalizado para el bot
+#           prompt: |
+#             ISSUE: #${{ github.event.issue.number }} - ${{ github.event.issue.title }}
+#             REQUEST: ${{ github.event.issue.body }}${{ github.event.comment.body }}
+#
+#             ROLE: Senior engineer making incremental improvements. Read GOAL.md first - align ALL changes with project mission.
+#
+#             APPROACH:
+#             - Make proactive decisions based on context
+#             - Prioritize small, focused improvements
+#             - Ensure backward compatibility
+#
+#             WORKFLOW (MANDATORY):
+#             1. Read GOAL.md and analyze request
+#             2. Create branch: feature/{descriptive-name}
+#             3. Implement changes with clear commits
+#             4. Run build
+#             5. Fix any errors and commit fixes
+#             6. Push branch to remote
+#             7. Create PR to current base branch (check with git)
+#             8. Comment on issue with PR link and summary
+#             9. Close issue: gh issue close ${{ github.event.issue.number }}
+#
+#             CRITICAL:
+#             - Match language of original issue (ES/EN)
+#             - Never skip build verification
+#             - Always create PR, never direct commits
+#             - MUST close issue after PR creation
